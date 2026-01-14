@@ -348,18 +348,107 @@
             transition: width 0.3s;
         }
 
-        /* Mobile */
-        @media (max-width: 900px) {
+        /* Mobile Thumbnail Strip (hidden by default, shown on mobile/tablet) */
+        .mobile-thumbs {
+            display: none;
+            position: fixed;
+            bottom: 70px;
+            left: 0;
+            right: 0;
+            padding: 10px 15px;
+            overflow-x: auto;
+            scrollbar-width: none;
+            -webkit-overflow-scrolling: touch;
+            z-index: 90;
+        }
+
+        .mobile-thumbs::-webkit-scrollbar {
+            display: none;
+        }
+
+        .mobile-thumb-list {
+            display: flex;
+            gap: 8px;
+            padding: 0 10px;
+        }
+
+        .mobile-thumb {
+            flex-shrink: 0;
+            width: 44px;
+            height: 44px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .mobile-thumb.active {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.4);
+            transform: scale(1.1);
+        }
+
+        /* Tablet (600px - 900px) */
+        @media (max-width: 900px) and (min-width: 601px) {
             nav {
-                padding: 20px 20px;
+                padding: 20px 30px;
+            }
+
+            .main-view {
+                grid-template-columns: 1fr 1fr;
+                padding: 100px 30px 140px;
+            }
+
+            .left-panel {
+                padding-right: 20px;
+            }
+
+            .flower-title {
+                font-size: 2.5rem;
+            }
+
+            .right-panel {
+                display: none;
+            }
+
+            .mobile-thumbs {
+                display: block;
+            }
+
+            .main-flower {
+                font-size: 6rem;
+                width: 250px;
+                height: 250px;
+            }
+
+            .view-btn {
+                bottom: 20px;
+            }
+
+            .bottom-nav {
+                bottom: 18px;
+                left: 30px;
+                right: 30px;
+            }
+        }
+
+        /* Mobile (< 600px) */
+        @media (max-width: 600px) {
+            nav {
+                padding: 15px 20px;
             }
 
             .main-view {
                 display: flex;
                 flex-direction: column;
                 align-items: center;
-                padding: 90px 20px 120px;
-                gap: 25px;
+                padding: 80px 20px 150px;
+                gap: 20px;
                 min-height: 100vh;
             }
 
@@ -371,18 +460,19 @@
             }
 
             .flower-title {
-                font-size: 2.5rem;
-                margin-bottom: 15px;
+                font-size: 2rem;
+                margin-bottom: 10px;
             }
 
             .flower-desc {
                 max-width: 90%;
-                margin-bottom: 20px;
+                margin-bottom: 15px;
+                font-size: 0.8rem;
             }
 
             .meta-info {
                 flex-direction: row;
-                gap: 30px;
+                gap: 25px;
             }
 
             .center-panel {
@@ -390,35 +480,62 @@
             }
 
             .main-flower {
-                font-size: 5rem;
-                width: 200px;
-                height: 200px;
+                font-size: 4.5rem;
+                width: 180px;
+                height: 180px;
                 max-width: none;
+            }
+
+            .main-flower::after {
+                width: 240px;
+                height: 240px;
+                font-size: 0.6rem;
+            }
+
+            .main-flower::before {
+                width: 180px;
+                height: 180px;
             }
 
             .right-panel {
                 display: none;
             }
 
+            .mobile-thumbs {
+                display: block;
+                bottom: 65px;
+            }
+
+            .mobile-thumb {
+                width: 40px;
+                height: 40px;
+                font-size: 1.1rem;
+            }
+
             .view-btn {
                 padding: 10px 25px;
                 font-size: 0.6rem;
+                bottom: 18px;
             }
 
             .bottom-nav {
-                left: 20px;
-                right: 20px;
-                bottom: 20px;
+                left: 15px;
+                right: 15px;
+                bottom: 15px;
             }
 
             .nav-arrow {
-                width: 40px;
-                height: 40px;
+                width: 36px;
+                height: 36px;
+            }
+
+            .nav-arrow svg {
+                width: 14px;
+                height: 14px;
             }
 
             .progress-bar {
-                left: 60px;
-                width: 80px;
+                display: none;
             }
         }
     </style>
@@ -459,6 +576,11 @@
             </div>
         </div>
     </main>
+
+    <!-- Mobile Thumbnail Strip -->
+    <div class="mobile-thumbs" id="mobileThumbs">
+        <div class="mobile-thumb-list" id="mobileThumbList"></div>
+    </div>
 
     <!-- Bottom Navigation -->
     <div class="bottom-nav">
@@ -543,20 +665,31 @@
         const mainFlower = document.getElementById('mainFlower');
         const viewBtn = document.getElementById('viewBtn');
         const thumbList = document.getElementById('thumbList');
+        const mobileThumbList = document.getElementById('mobileThumbList');
         const progressFill = document.getElementById('progressFill');
         const currentNum = document.getElementById('currentNum');
 
-        // Create thumbnails for all 20 flowers
+        // Create thumbnails for all 50 flowers (desktop + mobile)
         flowers.forEach((flower, i) => {
+            // Desktop thumbnail
             const thumb = document.createElement('div');
             thumb.className = 'thumb' + (i === 0 ? ' active' : '');
             thumb.textContent = flower.emoji;
             thumb.dataset.index = i;
             thumb.addEventListener('click', () => updateFlower(i));
             thumbList.appendChild(thumb);
+
+            // Mobile thumbnail
+            const mobileThumb = document.createElement('div');
+            mobileThumb.className = 'mobile-thumb' + (i === 0 ? ' active' : '');
+            mobileThumb.textContent = flower.emoji;
+            mobileThumb.dataset.index = i;
+            mobileThumb.addEventListener('click', () => updateFlower(i));
+            mobileThumbList.appendChild(mobileThumb);
         });
 
         const thumbs = document.querySelectorAll('.thumb');
+        const mobileThumbs = document.querySelectorAll('.mobile-thumb');
 
         function updateFlower(index) {
             currentIndex = index;
@@ -578,11 +711,13 @@
                 // Update progress
                 progressFill.style.width = ((index + 1) / flowers.length * 100) + '%';
 
-                // Update active states
+                // Update active states (desktop + mobile)
                 thumbs.forEach((t, i) => t.classList.toggle('active', i === index));
+                mobileThumbs.forEach((t, i) => t.classList.toggle('active', i === index));
 
-                // Scroll thumbnail into view
+                // Scroll thumbnails into view
                 thumbs[index].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                mobileThumbs[index].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
 
                 // Animate in
                 mainFlower.style.opacity = '1';
@@ -621,6 +756,44 @@
 
         // Initialize
         progressFill.style.width = (1 / flowers.length * 100) + '%';
+
+        // Touch swipe support
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchEndX = 0;
+        let touchEndY = 0;
+
+        const mainView = document.querySelector('.main-view');
+
+        mainView.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+            touchStartY = e.changedTouches[0].screenY;
+        }, { passive: true });
+
+        mainView.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            touchEndY = e.changedTouches[0].screenY;
+            handleSwipe();
+        }, { passive: true });
+
+        function handleSwipe() {
+            const diffX = touchEndX - touchStartX;
+            const diffY = touchEndY - touchStartY;
+            const threshold = 50;
+
+            // Only handle horizontal swipes (ignore vertical scrolling)
+            if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > threshold) {
+                if (diffX < 0) {
+                    // Swipe left = next
+                    const newIndex = currentIndex === flowers.length - 1 ? 0 : currentIndex + 1;
+                    updateFlower(newIndex);
+                } else {
+                    // Swipe right = prev
+                    const newIndex = currentIndex === 0 ? flowers.length - 1 : currentIndex - 1;
+                    updateFlower(newIndex);
+                }
+            }
+        }
     </script>
 </body>
 
