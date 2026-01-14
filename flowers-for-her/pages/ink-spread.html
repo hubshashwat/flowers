@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ink-Spread Flower | Flowers For You 🌸</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+    <div class="loading-overlay">
+        <div class="loading-flower"></div>
+        <p class="loading-text">Spreading ink...</p>
+    </div>
+
+    <div class="flower-page">
+        <nav class="page-nav">
+            <a href="../index.html" class="back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Back to Garden
+            </a>
+        </nav>
+        <div id="canvas-container" class="flower-canvas"></div>
+        <div class="flower-info">
+            <h1>Ink-Spread Flower</h1>
+            <p>Petals emerge from spreading ink patterns</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        (function () {
+            const container = document.getElementById('canvas-container');
+            const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
+                background: 0xf5f0e8
+            });
+
+            camera.position.set(0, 4, 3);
+            camera.lookAt(0, 0, 0);
+
+            // Soft lighting
+            const ambient = new THREE.AmbientLight(0xffffff, 0.7);
+            scene.add(ambient);
+            const mainLight = new THREE.DirectionalLight(0xffffff, 0.5);
+            mainLight.position.set(3, 5, 3);
+            scene.add(mainLight);
+
+            // Paper surface
+            const paperGeom = new THREE.PlaneGeometry(4, 4);
+            const paperMat = new THREE.MeshStandardMaterial({ color: 0xfaf5e8, roughness: 0.9 });
+            const paper = new THREE.Mesh(paperGeom, paperMat);
+            paper.rotation.x = -Math.PI / 2;
+            scene.add(paper);
+
+            // Ink splatter particles
+            const inkBlobs = [];
+            const inkMat = new THREE.MeshBasicMaterial({ color: 0x1a1a2e, transparent: true, opacity: 0.9 });
+
+            function createInkBlob(x, z, size, delay) {
+                const geom = new THREE.CircleGeometry(size, 32);
+                const blob = new THREE.Mesh(geom, inkMat.clone());
+                blob.rotation.x = -Math.PI / 2;
+                blob.position.set(x, 0.001, z);
+                blob.scale.setScalar(0);
+                blob.userData = { targetSize: size, delay: delay, grown: false };
+                scene.add(blob);
+                inkBlobs.push(blob);
+                return blob;
+            }
+
+            // Create ink spread pattern
+            for (let ring = 0; ring < 5; ring++) {
+                const count = ring === 0 ? 1 : ring * 6;
+                for (let i = 0; i < count; i++) {
+                    const angle = (i / count) * Math.PI * 2 + ring * 0.2;
+                    const radius = ring * 0.15;
+                    const size = 0.08 + Math.random() * 0.05;
+                    createInkBlob(
+                        Math.cos(angle) * radius,
+                        Math.sin(angle) * radius,
+                        size,
+                        ring * 0.2 + i * 0.02
+                    );
+                }
+            }
+
+            // Flower (emerges from ink)
+            const flowerGroup = new THREE.Group();
+            scene.add(flowerGroup);
+
+            const petalMat = new THREE.MeshStandardMaterial({
+                color: 0x1a1a2e,
+                side: THREE.DoubleSide,
+                roughness: 0.7
+            });
+
+            // Create ink petals
+            const petalCount = 8;
+            const petals = [];
+            for (let i = 0; i < petalCount; i++) {
+                const shape = new THREE.Shape();
+                shape.moveTo(0, 0);
+                shape.bezierCurveTo(0.12, 0.05, 0.15, 0.3, 0.08, 0.5);
+                shape.bezierCurveTo(0.02, 0.6, -0.02, 0.6, -0.08, 0.5);
+                shape.bezierCurveTo(-0.15, 0.3, -0.12, 0.05, 0, 0);
+
+                const geom = new THREE.ShapeGeometry(shape, 16);
+                const petal = new THREE.Mesh(geom, petalMat.clone());
+                const angle = (i / petalCount) * Math.PI * 2;
+                petal.rotation.z = angle;
+                petal.rotation.x = -Math.PI / 2;
+                petal.scale.setScalar(0);
+                petal.userData = { delay: 2 + i * 0.15 };
+                flowerGroup.add(petal);
+                petals.push(petal);
+            }
+
+            // Center
+            const centerGeom = new THREE.SphereGeometry(0.08, 16, 16);
+            const center = new THREE.Mesh(centerGeom, petalMat.clone());
+            center.position.y = 0.02;
+            center.scale.setScalar(0);
+            center.userData = { delay: 1.5 };
+            flowerGroup.add(center);
+
+            // Ink drip trails
+            const trails = [];
+            for (let i = 0; i < 6; i++) {
+                const angle = (i / 6) * Math.PI * 2;
+                const length = 0.5 + Math.random() * 0.3;
+
+                const points = [];
+                for (let j = 0; j < 10; j++) {
+                    const t = j / 9;
+                    const spread = t * 0.1;
+                    points.push(new THREE.Vector3(
+                        Math.cos(angle) * (0.3 + t * length) + (Math.random() - 0.5) * spread,
+                        0.001,
+                        Math.sin(angle) * (0.3 + t * length) + (Math.random() - 0.5) * spread
+                    ));
+                }
+
+                const curve = new THREE.CatmullRomCurve3(points);
+                const trailGeom = new THREE.TubeGeometry(curve, 20, 0.01, 4, false);
+                const trail = new THREE.Mesh(trailGeom, inkMat.clone());
+                trail.scale.x = 0;
+                trail.userData = { delay: 3 + i * 0.2 };
+                scene.add(trail);
+                trails.push(trail);
+            }
+
+            let cycleStart = 0;
+            const cycleDuration = 8;
+
+            function animate() {
+                requestAnimationFrame(animate);
+                const elapsed = clock.getElapsedTime();
+                const cycleTime = (elapsed - cycleStart) % cycleDuration;
+
+                // Reset cycle
+                if (cycleTime < 0.1 && elapsed - cycleStart > cycleDuration - 0.5) {
+                    cycleStart = elapsed;
+                    inkBlobs.forEach(b => b.scale.setScalar(0));
+                    petals.forEach(p => p.scale.setScalar(0));
+                    center.scale.setScalar(0);
+                    trails.forEach(t => t.scale.x = 0);
+                }
+
+                // Grow ink blobs
+                inkBlobs.forEach(blob => {
+                    if (cycleTime > blob.userData.delay) {
+                        const progress = Math.min(1, (cycleTime - blob.userData.delay) * 3);
+                        blob.scale.setScalar(progress);
+                    }
+                });
+
+                // Grow center
+                if (cycleTime > center.userData.delay) {
+                    const progress = Math.min(1, (cycleTime - center.userData.delay) * 2);
+                    center.scale.setScalar(progress);
+                }
+
+                // Grow petals
+                petals.forEach(petal => {
+                    if (cycleTime > petal.userData.delay) {
+                        const progress = Math.min(1, (cycleTime - petal.userData.delay) * 2);
+                        petal.scale.setScalar(progress);
+                        petal.rotation.x = -Math.PI / 2 + progress * 0.5;
+                    }
+                });
+
+                // Grow trails
+                trails.forEach(trail => {
+                    if (cycleTime > trail.userData.delay) {
+                        const progress = Math.min(1, (cycleTime - trail.userData.delay) * 2);
+                        trail.scale.x = progress;
+                    }
+                });
+
+                camera.position.x = Math.sin(elapsed * 0.1) * 0.3;
+                camera.lookAt(0, 0, 0);
+
+                renderer.render(scene, camera);
+            }
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+            FlowerUtils.hideLoading();
+        })();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Garden | Flowers For You 🌸</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <style>
+        .hint {
+            position: fixed;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            padding: 10px 20px;
+            border-radius: 20px;
+            color: white;
+            font-size: 14px;
+            opacity: 1;
+            transition: opacity 0.5s;
+            z-index: 50;
+        }
+
+        .hint.hidden {
+            opacity: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="loading-overlay">
+        <div class="loading-flower"></div>
+        <p class="loading-text">Planting garden...</p>
+    </div>
+
+    <div class="flower-page">
+        <nav class="page-nav">
+            <a href="../index.html" class="back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Back to Garden
+            </a>
+        </nav>
+        <div id="canvas-container" class="flower-canvas"></div>
+        <div class="hint" id="hint">👆 Click on flowers to make them bloom!</div>
+        <div class="flower-info">
+            <h1>Interactive Garden</h1>
+            <p>Click flowers to bloom them and release glowing pollen particles</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        (function () {
+            const container = document.getElementById('canvas-container');
+            const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
+                background: 0x1a2e1a
+            });
+
+            camera.position.set(0, 4, 8);
+            camera.lookAt(0, 0, 0);
+
+            // Lighting
+            const ambient = new THREE.AmbientLight(0x404060, 0.4);
+            scene.add(ambient);
+
+            const sunLight = new THREE.DirectionalLight(0xfffae6, 1);
+            sunLight.position.set(5, 10, 5);
+            scene.add(sunLight);
+
+            // Ground
+            const groundGeom = new THREE.PlaneGeometry(20, 20);
+            const groundMat = new THREE.MeshStandardMaterial({
+                color: 0x2d5a2d,
+                roughness: 0.9
+            });
+            const ground = new THREE.Mesh(groundGeom, groundMat);
+            ground.rotation.x = -Math.PI / 2;
+            ground.position.y = -0.1;
+            scene.add(ground);
+
+            // Raycaster for interaction
+            const raycaster = new THREE.Raycaster();
+            const mouse = new THREE.Vector2();
+
+            // Create flower bud
+            function createFlowerBud(x, z, color) {
+                const group = new THREE.Group();
+                group.position.set(x, 0, z);
+
+                // Stem
+                const stemGeom = new THREE.CylinderGeometry(0.02, 0.03, 0.5, 6);
+                const stemMat = new THREE.MeshStandardMaterial({ color: 0x228b22 });
+                const stem = new THREE.Mesh(stemGeom, stemMat);
+                stem.position.y = 0.25;
+                group.add(stem);
+
+                // Petals (start closed)
+                const petals = [];
+                const petalGeom = new THREE.ShapeGeometry((() => {
+                    const s = new THREE.Shape();
+                    s.moveTo(0, 0);
+                    s.bezierCurveTo(0.1, 0.1, 0.12, 0.3, 0.06, 0.45);
+                    s.bezierCurveTo(0.02, 0.5, -0.02, 0.5, -0.06, 0.45);
+                    s.bezierCurveTo(-0.12, 0.3, -0.1, 0.1, 0, 0);
+                    return s;
+                })(), 16);
+
+                for (let i = 0; i < 6; i++) {
+                    const petalMat = new THREE.MeshStandardMaterial({
+                        color: color,
+                        side: THREE.DoubleSide
+                    });
+                    const petal = new THREE.Mesh(petalGeom, petalMat);
+                    petal.rotation.z = (i / 6) * Math.PI * 2;
+                    petal.rotation.x = 0.1; // Closed position
+                    petal.position.y = 0.5;
+                    group.add(petal);
+                    petals.push(petal);
+                }
+
+                // Center (hidden when closed)
+                const centerGeom = new THREE.SphereGeometry(0.05, 12, 12);
+                const centerMat = new THREE.MeshStandardMaterial({ color: 0xffd700 });
+                const center = new THREE.Mesh(centerGeom, centerMat);
+                center.position.y = 0.52;
+                center.scale.setScalar(0);
+                group.add(center);
+
+                // Hitbox
+                const hitGeom = new THREE.SphereGeometry(0.3, 8, 8);
+                const hitMat = new THREE.MeshBasicMaterial({ visible: false });
+                const hitbox = new THREE.Mesh(hitGeom, hitMat);
+                hitbox.position.y = 0.5;
+                group.add(hitbox);
+
+                group.userData = {
+                    petals,
+                    center,
+                    hitbox,
+                    bloomed: false,
+                    bloomProgress: 0,
+                    color
+                };
+
+                return group;
+            }
+
+            // Create flowers
+            const flowers = [];
+            const colors = [0xff6b6b, 0xffb6c1, 0xffd700, 0xff69b4, 0xdda0dd, 0x87ceeb];
+
+            for (let i = 0; i < 15; i++) {
+                const x = (Math.random() - 0.5) * 8;
+                const z = (Math.random() - 0.5) * 8;
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                const flower = createFlowerBud(x, z, color);
+                scene.add(flower);
+                flowers.push(flower);
+            }
+
+            // Pollen particles
+            const pollenGroup = new THREE.Group();
+            scene.add(pollenGroup);
+
+            function createPollen(position, color) {
+                const count = 20;
+                const geometry = new THREE.BufferGeometry();
+                const positions = new Float32Array(count * 3);
+                const velocities = [];
+
+                for (let i = 0; i < count; i++) {
+                    positions[i * 3] = position.x;
+                    positions[i * 3 + 1] = position.y;
+                    positions[i * 3 + 2] = position.z;
+                    velocities.push({
+                        x: (Math.random() - 0.5) * 0.05,
+                        y: Math.random() * 0.05 + 0.02,
+                        z: (Math.random() - 0.5) * 0.05
+                    });
+                }
+
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+                const material = new THREE.PointsMaterial({
+                    size: 0.05,
+                    color: color,
+                    transparent: true,
+                    opacity: 1,
+                    blending: THREE.AdditiveBlending
+                });
+
+                const particles = new THREE.Points(geometry, material);
+                particles.userData = { velocities, life: 2 };
+                pollenGroup.add(particles);
+            }
+
+            // Click handler
+            function onClick(event) {
+                const rect = renderer.domElement.getBoundingClientRect();
+                mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+                mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+                raycaster.setFromCamera(mouse, camera);
+
+                const hitboxes = flowers.map(f => f.userData.hitbox);
+                const intersects = raycaster.intersectObjects(hitboxes);
+
+                if (intersects.length > 0) {
+                    const flower = intersects[0].object.parent;
+                    if (!flower.userData.bloomed) {
+                        flower.userData.bloomed = true;
+                        createPollen(flower.position.clone().add(new THREE.Vector3(0, 0.5, 0)), flower.userData.color);
+
+                        // Hide hint after first click
+                        document.getElementById('hint').classList.add('hidden');
+                    }
+                }
+            }
+
+            renderer.domElement.addEventListener('click', onClick);
+            renderer.domElement.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                if (e.touches.length > 0) {
+                    onClick({ clientX: e.touches[0].clientX, clientY: e.touches[0].clientY });
+                }
+            });
+
+            function animate() {
+                requestAnimationFrame(animate);
+                const delta = clock.getDelta();
+                const elapsed = clock.getElapsedTime();
+
+                // Bloom animation
+                flowers.forEach(f => {
+                    if (f.userData.bloomed && f.userData.bloomProgress < 1) {
+                        f.userData.bloomProgress = Math.min(f.userData.bloomProgress + delta * 2, 1);
+                        const p = FlowerUtils.easing.easeOutBack(f.userData.bloomProgress);
+
+                        f.userData.petals.forEach((petal, i) => {
+                            petal.rotation.x = 0.1 + p * 0.7;
+                        });
+                        f.userData.center.scale.setScalar(p);
+                    }
+
+                    // Gentle sway
+                    f.rotation.z = Math.sin(elapsed + f.position.x) * 0.05;
+                });
+
+                // Update pollen
+                const toRemove = [];
+                pollenGroup.children.forEach((p, i) => {
+                    p.userData.life -= delta;
+                    if (p.userData.life <= 0) {
+                        toRemove.push(p);
+                        return;
+                    }
+
+                    const positions = p.geometry.attributes.position.array;
+                    const vels = p.userData.velocities;
+                    for (let j = 0; j < vels.length; j++) {
+                        positions[j * 3] += vels[j].x;
+                        positions[j * 3 + 1] += vels[j].y;
+                        positions[j * 3 + 2] += vels[j].z;
+                        vels[j].y -= 0.001; // gravity
+                    }
+                    p.geometry.attributes.position.needsUpdate = true;
+                    p.material.opacity = p.userData.life / 2;
+                });
+
+                toRemove.forEach(p => {
+                    pollenGroup.remove(p);
+                    p.geometry.dispose();
+                    p.material.dispose();
+                });
+
+                // Camera
+                camera.position.x = Math.sin(elapsed * 0.1) * 2;
+                camera.lookAt(0, 0.5, 0);
+
+                renderer.render(scene, camera);
+            }
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+            FlowerUtils.hideLoading();
+        })();
+    </script>
+</body>
+
+</html>

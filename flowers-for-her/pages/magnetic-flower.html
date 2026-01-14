@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Magnetic Flower | Flowers For You 🌸</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+    <div class="loading-overlay">
+        <div class="loading-flower"></div>
+        <p class="loading-text">Aligning fields...</p>
+    </div>
+
+    <div class="flower-page">
+        <nav class="page-nav">
+            <a href="../index.html" class="back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Back to Garden
+            </a>
+        </nav>
+        <div id="canvas-container" class="flower-canvas"></div>
+        <div class="flower-info">
+            <h1>Magnetic Flower</h1>
+            <p>Petals attract and repel from invisible magnetic fields</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        (function () {
+            const container = document.getElementById('canvas-container');
+            const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
+                background: 0x050508
+            });
+
+            camera.position.set(0, 2, 5);
+            camera.lookAt(0, 0.5, 0);
+
+            // Lighting
+            const ambient = new THREE.AmbientLight(0x222244, 0.5);
+            scene.add(ambient);
+            const mainLight = new THREE.DirectionalLight(0x6688ff, 1);
+            mainLight.position.set(3, 5, 3);
+            scene.add(mainLight);
+
+            // Flower group
+            const flowerGroup = new THREE.Group();
+            scene.add(flowerGroup);
+
+            // Magnetic field visualization
+            const fieldLines = [];
+            for (let i = 0; i < 8; i++) {
+                const curve = new THREE.EllipseCurve(0, 0, 1.5 + i * 0.2, 2 + i * 0.3, 0, Math.PI * 2, false, 0);
+                const points = curve.getPoints(50);
+                const geom = new THREE.BufferGeometry().setFromPoints(points);
+                const mat = new THREE.LineBasicMaterial({ color: 0x4466ff, transparent: true, opacity: 0.1 });
+                const line = new THREE.Line(geom, mat);
+                line.rotation.x = Math.PI / 2;
+                line.position.y = 0.5;
+                scene.add(line);
+                fieldLines.push(line);
+            }
+
+            // Create petal with iron veins
+            function createMagneticPetal() {
+                const group = new THREE.Group();
+
+                const shape = new THREE.Shape();
+                shape.moveTo(0, 0);
+                shape.bezierCurveTo(0.15, 0.1, 0.18, 0.4, 0.1, 0.65);
+                shape.bezierCurveTo(0.03, 0.78, -0.03, 0.78, -0.1, 0.65);
+                shape.bezierCurveTo(-0.18, 0.4, -0.15, 0.1, 0, 0);
+
+                const petalGeom = new THREE.ShapeGeometry(shape, 24);
+                const positions = petalGeom.attributes.position;
+                for (let i = 0; i < positions.count; i++) {
+                    const y = positions.getY(i);
+                    positions.setZ(i, Math.sin(y * Math.PI * 0.6) * 0.08);
+                }
+                positions.needsUpdate = true;
+                petalGeom.computeVertexNormals();
+
+                const petalMat = new THREE.MeshStandardMaterial({
+                    color: 0x334455,
+                    roughness: 0.4,
+                    metalness: 0.6,
+                    side: THREE.DoubleSide
+                });
+                const petal = new THREE.Mesh(petalGeom, petalMat);
+                group.add(petal);
+
+                // Iron veins
+                const veinMat = new THREE.MeshBasicMaterial({ color: 0x66aaff, transparent: true, opacity: 0.6 });
+                for (let v = 0; v < 3; v++) {
+                    const veinGeom = new THREE.PlaneGeometry(0.01, 0.4);
+                    const vein = new THREE.Mesh(veinGeom, veinMat.clone());
+                    vein.position.set((v - 1) * 0.04, 0.3, 0.01);
+                    vein.rotation.z = (v - 1) * 0.1;
+                    group.add(vein);
+                    group.userData.veins = group.userData.veins || [];
+                    group.userData.veins.push(vein);
+                }
+
+                return group;
+            }
+
+            // Create petals
+            const petalCount = 8;
+            const petals = [];
+            for (let i = 0; i < petalCount; i++) {
+                const petal = createMagneticPetal();
+                const angle = (i / petalCount) * Math.PI * 2;
+                petal.rotation.z = angle;
+                petal.rotation.x = -Math.PI / 2 + 0.4;
+                petal.position.y = 0.5;
+                petal.userData.baseAngle = angle;
+                petal.userData.phase = i * 0.5;
+                flowerGroup.add(petal);
+                petals.push(petal);
+            }
+
+            // Center
+            const centerGeom = new THREE.SphereGeometry(0.1, 32, 32);
+            const centerMat = new THREE.MeshStandardMaterial({ color: 0x445566, metalness: 0.8, roughness: 0.2 });
+            const center = new THREE.Mesh(centerGeom, centerMat);
+            center.position.y = 0.55;
+            flowerGroup.add(center);
+
+            // Compass ring
+            const compassGeom = new THREE.TorusGeometry(0.8, 0.02, 8, 64);
+            const compassMat = new THREE.MeshStandardMaterial({ color: 0x88aaff, metalness: 0.9, roughness: 0.1 });
+            const compass = new THREE.Mesh(compassGeom, compassMat);
+            compass.position.y = 0.5;
+            compass.rotation.x = Math.PI / 2;
+            scene.add(compass);
+
+            // Compass needle
+            const needleGeom = new THREE.ConeGeometry(0.03, 0.3, 8);
+            const needleMat = new THREE.MeshStandardMaterial({ color: 0xff4444, metalness: 0.8 });
+            const needle = new THREE.Mesh(needleGeom, needleMat);
+            needle.position.set(0.6, 0.5, 0);
+            needle.rotation.z = -Math.PI / 2;
+            scene.add(needle);
+
+            // Stem
+            const stemCurve = new THREE.CatmullRomCurve3([
+                new THREE.Vector3(0, 0.4, 0),
+                new THREE.Vector3(0.02, 0, 0.01),
+                new THREE.Vector3(0, -0.8, 0)
+            ]);
+            const stemGeom = new THREE.TubeGeometry(stemCurve, 16, 0.025, 8, false);
+            const stemMat = new THREE.MeshStandardMaterial({ color: 0x334455, metalness: 0.5 });
+            const stem = new THREE.Mesh(stemGeom, stemMat);
+            flowerGroup.add(stem);
+
+            // Magnetic field variables
+            let fieldAngle = 0;
+
+            function animate() {
+                requestAnimationFrame(animate);
+                const elapsed = clock.getElapsedTime();
+
+                fieldAngle = elapsed * 0.3;
+
+                // Petals respond to magnetic field
+                petals.forEach((petal, i) => {
+                    const alignment = Math.sin(fieldAngle + petal.userData.phase);
+                    const attraction = alignment * 0.15;
+                    petal.rotation.x = -Math.PI / 2 + 0.4 + attraction;
+
+                    // Veins glow when aligned
+                    if (petal.userData.veins) {
+                        petal.userData.veins.forEach(vein => {
+                            vein.material.opacity = 0.3 + Math.abs(alignment) * 0.7;
+                        });
+                    }
+                });
+
+                // Compass reacts
+                compass.rotation.z = fieldAngle * 2;
+                needle.rotation.y = fieldAngle * 3;
+                needle.position.x = 0.6 + Math.sin(elapsed) * 0.1;
+
+                // Field lines pulse
+                fieldLines.forEach((line, i) => {
+                    line.material.opacity = 0.05 + Math.abs(Math.sin(elapsed * 0.5 + i * 0.3)) * 0.1;
+                });
+
+                flowerGroup.rotation.y = elapsed * 0.1;
+
+                camera.position.x = Math.sin(elapsed * 0.1) * 0.5;
+                camera.lookAt(0, 0.5, 0);
+
+                renderer.render(scene, camera);
+            }
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+            FlowerUtils.hideLoading();
+        })();
+    </script>
+</body>
+
+</html>

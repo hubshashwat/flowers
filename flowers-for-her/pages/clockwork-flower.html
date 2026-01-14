@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clockwork Flower | Flowers For You 🌸</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+    <div class="loading-overlay">
+        <div class="loading-flower"></div>
+        <p class="loading-text">Winding time...</p>
+    </div>
+
+    <div class="flower-page">
+        <nav class="page-nav">
+            <a href="../index.html" class="back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Back to Garden
+            </a>
+        </nav>
+        <div id="canvas-container" class="flower-canvas"></div>
+        <div class="flower-info">
+            <h1>Clockwork Flower</h1>
+            <p>Petals mark time like clock hands</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        (function () {
+            const container = document.getElementById('canvas-container');
+            const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
+                background: 0x1a1510
+            });
+
+            camera.position.set(0, 3, 4);
+            camera.lookAt(0, 0.5, 0);
+
+            // Warm lighting
+            const ambient = new THREE.AmbientLight(0x443322, 0.5);
+            scene.add(ambient);
+            const mainLight = new THREE.DirectionalLight(0xffddaa, 1);
+            mainLight.position.set(3, 5, 3);
+            scene.add(mainLight);
+
+            // Materials
+            const goldMat = new THREE.MeshStandardMaterial({
+                color: 0xccaa55,
+                metalness: 0.8,
+                roughness: 0.3
+            });
+
+            const bronzeMat = new THREE.MeshStandardMaterial({
+                color: 0x885533,
+                metalness: 0.7,
+                roughness: 0.4
+            });
+
+            // Clock face
+            const clockFaceGeom = new THREE.CylinderGeometry(0.8, 0.8, 0.05, 64);
+            const clockFace = new THREE.Mesh(clockFaceGeom, bronzeMat);
+            clockFace.position.y = 0.2;
+            scene.add(clockFace);
+
+            // Clock rim
+            const rimGeom = new THREE.TorusGeometry(0.8, 0.03, 8, 64);
+            const rim = new THREE.Mesh(rimGeom, goldMat);
+            rim.rotation.x = Math.PI / 2;
+            rim.position.y = 0.225;
+            scene.add(rim);
+
+            // Hour markers (positions for petals)
+            const markers = [];
+            for (let i = 0; i < 12; i++) {
+                const markerGeom = new THREE.BoxGeometry(0.03, 0.08, 0.02);
+                const marker = new THREE.Mesh(markerGeom, goldMat);
+                const angle = (i / 12) * Math.PI * 2 - Math.PI / 2;
+                marker.position.set(
+                    Math.cos(angle) * 0.65,
+                    0.23,
+                    Math.sin(angle) * 0.65
+                );
+                marker.rotation.y = -angle;
+                scene.add(marker);
+                markers.push(marker);
+            }
+
+            // Flower (petals as clock hands)
+            const flowerGroup = new THREE.Group();
+            flowerGroup.position.y = 0.25;
+            scene.add(flowerGroup);
+
+            // Create petal (clock hand style)
+            function createClockPetal(length, width, color) {
+                const group = new THREE.Group();
+
+                // Hand/petal shape
+                const shape = new THREE.Shape();
+                shape.moveTo(0, 0);
+                shape.lineTo(-width / 2, length * 0.1);
+                shape.lineTo(-width / 3, length);
+                shape.lineTo(0, length * 1.1);
+                shape.lineTo(width / 3, length);
+                shape.lineTo(width / 2, length * 0.1);
+                shape.closePath();
+
+                const extrudeSettings = { depth: 0.02, bevelEnabled: false };
+                const geom = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+                const mat = new THREE.MeshStandardMaterial({
+                    color: color,
+                    metalness: 0.7,
+                    roughness: 0.4,
+                    side: THREE.DoubleSide
+                });
+                const petal = new THREE.Mesh(geom, mat);
+                petal.rotation.x = -Math.PI / 2;
+                group.add(petal);
+
+                return group;
+            }
+
+            // 12 petals for each hour
+            const petals = [];
+            for (let i = 0; i < 12; i++) {
+                const petal = createClockPetal(0.5, 0.1, 0xffaa66);
+                petal.userData.hour = i;
+                petal.userData.isOpen = false;
+                petal.rotation.y = -(i / 12) * Math.PI * 2 + Math.PI / 2;
+                petal.userData.baseRotation = petal.rotation.clone();
+                flowerGroup.add(petal);
+                petals.push(petal);
+            }
+
+            // Center (clock hub)
+            const centerGeom = new THREE.CylinderGeometry(0.08, 0.1, 0.05, 16);
+            const center = new THREE.Mesh(centerGeom, goldMat);
+            flowerGroup.add(center);
+
+            // Hour hand
+            const hourHandGeom = new THREE.BoxGeometry(0.02, 0.3, 0.01);
+            const hourHand = new THREE.Mesh(hourHandGeom, goldMat.clone());
+            hourHand.position.y = 0.15;
+            hourHand.geometry.translate(0, 0.15, 0);
+            flowerGroup.add(hourHand);
+
+            // Minute hand
+            const minuteHandGeom = new THREE.BoxGeometry(0.015, 0.45, 0.008);
+            const minuteHand = new THREE.Mesh(minuteHandGeom, goldMat.clone());
+            minuteHand.material.color.set(0xddcc88);
+            minuteHand.position.y = 0.15;
+            minuteHand.geometry.translate(0, 0.225, 0);
+            flowerGroup.add(minuteHand);
+
+            // Second hand
+            const secondHandGeom = new THREE.BoxGeometry(0.008, 0.5, 0.005);
+            const secondHandMat = new THREE.MeshStandardMaterial({ color: 0xff6644, metalness: 0.6 });
+            const secondHand = new THREE.Mesh(secondHandGeom, secondHandMat);
+            secondHand.position.y = 0.16;
+            secondHand.geometry.translate(0, 0.25, 0);
+            flowerGroup.add(secondHand);
+
+            // Stem
+            const stemGeom = new THREE.CylinderGeometry(0.04, 0.05, 1, 8);
+            const stem = new THREE.Mesh(stemGeom, bronzeMat);
+            stem.position.y = -0.3;
+            scene.add(stem);
+
+            function animate() {
+                requestAnimationFrame(animate);
+                const elapsed = clock.getElapsedTime();
+
+                // Use elapsed time as simulated clock (sped up)
+                const seconds = (elapsed * 10) % 60;
+                const minutes = (elapsed * 10 / 60) % 60;
+                const hours = (elapsed * 10 / 3600) % 12;
+
+                // Rotate hands
+                secondHand.rotation.z = -(seconds / 60) * Math.PI * 2;
+                minuteHand.rotation.z = -(minutes / 60) * Math.PI * 2;
+                hourHand.rotation.z = -(hours / 12) * Math.PI * 2;
+
+                // Petals bloom based on current "hour"
+                const currentHour = Math.floor(hours);
+                petals.forEach((petal, i) => {
+                    const shouldOpen = i <= currentHour;
+                    const targetTilt = shouldOpen ? 0.6 : 0;
+
+                    // Smooth transition
+                    const currentTilt = petal.rotation.x || 0;
+                    petal.rotation.x += (targetTilt - currentTilt) * 0.05;
+                });
+
+                camera.position.x = Math.sin(elapsed * 0.1) * 0.3;
+                camera.lookAt(0, 0.3, 0);
+
+                renderer.render(scene, camera);
+            }
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+            FlowerUtils.hideLoading();
+        })();
+    </script>
+</body>
+
+</html>

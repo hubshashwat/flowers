@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biomechanical Flower | Flowers For You 🌸</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+    <div class="loading-overlay">
+        <div class="loading-flower"></div>
+        <p class="loading-text">Assembling mechanics...</p>
+    </div>
+
+    <div class="flower-page">
+        <nav class="page-nav">
+            <a href="../index.html" class="back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Back to Garden
+            </a>
+        </nav>
+        <div id="canvas-container" class="flower-canvas"></div>
+        <div class="flower-info">
+            <h1>Biomechanical Flower</h1>
+            <p>Metallic petals with mechanical hinge motion and glowing core</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        (function () {
+            const container = document.getElementById('canvas-container');
+            const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
+                background: 0x0a0a0f
+            });
+
+            camera.position.set(0, 2, 5);
+            camera.lookAt(0, 0.5, 0);
+
+            // Lighting
+            const ambient = new THREE.AmbientLight(0x222233, 0.5);
+            scene.add(ambient);
+
+            const spotLight = new THREE.SpotLight(0xffffff, 1.5);
+            spotLight.position.set(5, 10, 5);
+            spotLight.angle = 0.4;
+            spotLight.penumbra = 0.5;
+            scene.add(spotLight);
+
+            const rimLight = new THREE.PointLight(0x4488ff, 0.8, 20);
+            rimLight.position.set(-3, 2, -3);
+            scene.add(rimLight);
+
+            // Flower group
+            const flowerGroup = new THREE.Group();
+            scene.add(flowerGroup);
+
+            // Metallic petal material
+            const metalMaterial = new THREE.MeshStandardMaterial({
+                color: 0x888899,
+                metalness: 0.9,
+                roughness: 0.2,
+                side: THREE.DoubleSide
+            });
+
+            // Create mechanical petal with hinge
+            function createMechanicalPetal() {
+                const group = new THREE.Group();
+
+                // Petal plate
+                const shape = new THREE.Shape();
+                shape.moveTo(0, 0);
+                shape.lineTo(0.15, 0.05);
+                shape.lineTo(0.18, 0.4);
+                shape.lineTo(0.1, 0.7);
+                shape.lineTo(0, 0.75);
+                shape.lineTo(-0.1, 0.7);
+                shape.lineTo(-0.18, 0.4);
+                shape.lineTo(-0.15, 0.05);
+                shape.lineTo(0, 0);
+
+                const petalGeom = new THREE.ExtrudeGeometry(shape, {
+                    depth: 0.02,
+                    bevelEnabled: true,
+                    bevelThickness: 0.005,
+                    bevelSize: 0.005,
+                    bevelSegments: 2
+                });
+
+                const petal = new THREE.Mesh(petalGeom, metalMaterial);
+                group.add(petal);
+
+                // Hinge detail
+                const hingeGeom = new THREE.CylinderGeometry(0.02, 0.02, 0.2, 8);
+                const hinge = new THREE.Mesh(hingeGeom, metalMaterial);
+                hinge.rotation.z = Math.PI / 2;
+                hinge.position.y = 0.02;
+                group.add(hinge);
+
+                // Rivets
+                const rivetGeom = new THREE.SphereGeometry(0.015, 8, 8);
+                [0.2, 0.4, 0.6].forEach(y => {
+                    const rivet = new THREE.Mesh(rivetGeom, metalMaterial);
+                    rivet.position.set(0, y, 0.015);
+                    group.add(rivet);
+                });
+
+                return group;
+            }
+
+            // Create petals
+            const petalCount = 8;
+            const petals = [];
+
+            for (let i = 0; i < petalCount; i++) {
+                const petal = createMechanicalPetal();
+                const angle = (i / petalCount) * Math.PI * 2;
+
+                // Pivot point at base
+                const pivot = new THREE.Group();
+                pivot.add(petal);
+                pivot.rotation.z = angle;
+                pivot.rotation.x = 0.2; // Start slightly closed
+                pivot.position.y = 0.3;
+
+                flowerGroup.add(pivot);
+                petals.push({
+                    pivot,
+                    angle,
+                    targetOpen: Math.PI / 3,
+                    phase: i * 0.2
+                });
+            }
+
+            // Glowing core
+            const coreGeom = new THREE.SphereGeometry(0.15, 32, 32);
+            const coreMaterial = new THREE.MeshBasicMaterial({
+                color: 0x00ffff,
+                transparent: true,
+                opacity: 0.9
+            });
+            const core = new THREE.Mesh(coreGeom, coreMaterial);
+            core.position.y = 0.35;
+            flowerGroup.add(core);
+
+            // Core glow
+            const glowGeom = new THREE.SphereGeometry(0.25, 32, 32);
+            const glowMaterial = new THREE.MeshBasicMaterial({
+                color: 0x00ffff,
+                transparent: true,
+                opacity: 0.3
+            });
+            const glow = new THREE.Mesh(glowGeom, glowMaterial);
+            glow.position.y = 0.35;
+            flowerGroup.add(glow);
+
+            // Core light
+            const coreLight = new THREE.PointLight(0x00ffff, 1, 5);
+            coreLight.position.y = 0.35;
+            flowerGroup.add(coreLight);
+
+            // Mechanical stem
+            const stemSegments = 5;
+            const stemGroup = new THREE.Group();
+
+            for (let i = 0; i < stemSegments; i++) {
+                const segGeom = new THREE.CylinderGeometry(0.04, 0.05, 0.25, 8);
+                const segment = new THREE.Mesh(segGeom, metalMaterial);
+                segment.position.y = -0.3 - i * 0.25;
+                stemGroup.add(segment);
+
+                // Joint
+                const jointGeom = new THREE.TorusGeometry(0.05, 0.015, 8, 16);
+                const joint = new THREE.Mesh(jointGeom, metalMaterial);
+                joint.rotation.x = Math.PI / 2;
+                joint.position.y = -0.3 - i * 0.25 - 0.125;
+                stemGroup.add(joint);
+            }
+            flowerGroup.add(stemGroup);
+
+            // Ground disc
+            const groundGeom = new THREE.CylinderGeometry(2, 2, 0.05, 32);
+            const groundMat = new THREE.MeshStandardMaterial({
+                color: 0x111115,
+                metalness: 0.3,
+                roughness: 0.8
+            });
+            const ground = new THREE.Mesh(groundGeom, groundMat);
+            ground.position.y = -1.6;
+            scene.add(ground);
+
+            // Animation state
+            let isOpen = false;
+            let openProgress = 0;
+            let lastToggle = 0;
+            const toggleInterval = 4;
+
+            function animate() {
+                requestAnimationFrame(animate);
+                const elapsed = clock.getElapsedTime();
+                const delta = clock.getDelta();
+
+                // Toggle open/close periodically
+                if (elapsed - lastToggle > toggleInterval) {
+                    isOpen = !isOpen;
+                    lastToggle = elapsed;
+                }
+
+                // Smooth open/close
+                const targetProgress = isOpen ? 1 : 0;
+                openProgress += (targetProgress - openProgress) * delta * 2;
+
+                // Animate petals with mechanical motion
+                petals.forEach((p, i) => {
+                    const delay = p.phase * 0.5;
+                    const delayedProgress = Math.max(0, Math.min(1, (openProgress * (1 + delay)) - delay));
+                    p.pivot.rotation.x = 0.2 + delayedProgress * (p.targetOpen - 0.2);
+                });
+
+                // Pulsing core
+                const pulse = 0.8 + Math.sin(elapsed * 3) * 0.2;
+                coreMaterial.opacity = 0.7 + Math.sin(elapsed * 4) * 0.3;
+                coreLight.intensity = pulse * 1.5;
+                glow.scale.setScalar(1 + Math.sin(elapsed * 2) * 0.1);
+
+                // Slow rotation
+                flowerGroup.rotation.y += delta * 0.3;
+
+                // Camera
+                camera.position.x = Math.sin(elapsed * 0.2) * 0.5;
+                camera.lookAt(0, 0.2, 0);
+
+                renderer.render(scene, camera);
+            }
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+            FlowerUtils.hideLoading();
+        })();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infinite Flower Field | Flowers For You 🌸</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+    <div class="loading-overlay">
+        <div class="loading-flower"></div>
+        <p class="loading-text">Planting flowers...</p>
+    </div>
+
+    <div class="flower-page">
+        <nav class="page-nav">
+            <a href="../index.html" class="back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Back to Garden
+            </a>
+        </nav>
+        <div id="canvas-container" class="flower-canvas"></div>
+        <div class="flower-info">
+            <h1>Infinite Flower Field</h1>
+            <p>Thousands of flowers swaying in the wind, fading into mist</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        (function () {
+            const container = document.getElementById('canvas-container');
+            const isMobile = FlowerUtils.isMobile();
+            const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
+                background: 0x87ceeb,
+                fog: { color: 0xddeeff, near: 10, far: 80 }
+            });
+
+            camera.position.set(0, 2, 8);
+            camera.lookAt(0, 0.5, 0);
+
+            scene.background = FlowerUtils.createGradientBackground('#87ceeb', '#e0f0ff');
+
+            const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambient);
+            const sunLight = new THREE.DirectionalLight(0xfffae6, 1.2);
+            sunLight.position.set(10, 20, 10);
+            scene.add(sunLight);
+
+            // Ground
+            const groundGeometry = new THREE.PlaneGeometry(200, 200);
+            const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x4a7c4a, roughness: 0.9 });
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            ground.position.y = -0.1;
+            scene.add(ground);
+
+            // Flower geometry
+            const petalShape = new THREE.Shape();
+            petalShape.moveTo(0, 0);
+            petalShape.bezierCurveTo(0.08, 0.1, 0.1, 0.25, 0.05, 0.35);
+            petalShape.bezierCurveTo(0.02, 0.4, -0.02, 0.4, -0.05, 0.35);
+            petalShape.bezierCurveTo(-0.1, 0.25, -0.08, 0.1, 0, 0);
+            const petalGeometry = new THREE.ShapeGeometry(petalShape, 8);
+
+            const flowerColors = [0xffb6c1, 0xffd700, 0xff6b6b, 0xffffff, 0xdda0dd, 0xff69b4];
+            const flowerCount = isMobile ? 1500 : 4000;
+            const flowers = [], flowerData = [];
+
+            for (let i = 0; i < flowerCount; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const radius = Math.sqrt(Math.random()) * 50;
+                const x = Math.cos(angle) * radius;
+                const z = Math.sin(angle) * radius;
+                const color = flowerColors[Math.floor(Math.random() * flowerColors.length)];
+                const stemHeight = 0.3 + Math.random() * 0.4;
+                const flowerScale = 0.5 + Math.random() * 0.5;
+
+                const flower = new THREE.Group();
+                flower.position.set(x, 0, z);
+
+                const stemGeom = new THREE.CylinderGeometry(0.01, 0.015, stemHeight, 4);
+                const stem = new THREE.Mesh(stemGeom, new THREE.MeshBasicMaterial({ color: 0x228b22 }));
+                stem.position.y = stemHeight / 2;
+                flower.add(stem);
+
+                const petalMat = new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide });
+                for (let p = 0; p < 5; p++) {
+                    const petal = new THREE.Mesh(petalGeometry, petalMat);
+                    petal.rotation.z = (p / 5) * Math.PI * 2;
+                    petal.rotation.x = -Math.PI / 2 + 0.5;
+                    petal.position.y = stemHeight;
+                    petal.scale.setScalar(flowerScale);
+                    flower.add(petal);
+                }
+
+                const center = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.03 * flowerScale, 8, 8),
+                    new THREE.MeshBasicMaterial({ color: 0xffd700 })
+                );
+                center.position.y = stemHeight + 0.02;
+                flower.add(center);
+
+                scene.add(flower);
+                flowers.push(flower);
+                flowerData.push({ phase: Math.random() * Math.PI * 2, sway: 0.05 + Math.random() * 0.1 });
+            }
+
+            let windTime = 0, cameraAngle = 0;
+
+            function animate() {
+                requestAnimationFrame(animate);
+                const delta = clock.getDelta();
+                const elapsed = clock.getElapsedTime();
+                windTime += delta * 1.5;
+
+                flowers.forEach((flower, i) => {
+                    const d = flowerData[i];
+                    const w = Math.sin(windTime + flower.position.x * 0.1 + flower.position.z * 0.1);
+                    flower.rotation.z = w * 0.15 * d.sway;
+                    flower.rotation.x = Math.sin(windTime * 0.7 + d.phase) * 0.08 * d.sway;
+                });
+
+                cameraAngle += delta * 0.1;
+                camera.position.x = Math.sin(cameraAngle) * 3;
+                camera.position.z = 8 + Math.cos(cameraAngle) * 2;
+                camera.position.y = 2 + Math.sin(elapsed * 0.3) * 0.5;
+                camera.lookAt(0, 0.5, -5);
+
+                renderer.render(scene, camera);
+            }
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+            FlowerUtils.hideLoading();
+        })();
+    </script>
+</body>
+
+</html>

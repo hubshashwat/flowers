@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum Flower | Flowers For You 🌸</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+    <div class="loading-overlay">
+        <div class="loading-flower"></div>
+        <p class="loading-text">Superposition...</p>
+    </div>
+
+    <div class="flower-page">
+        <nav class="page-nav">
+            <a href="../index.html" class="back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Back to Garden
+            </a>
+        </nav>
+        <div id="canvas-container" class="flower-canvas"></div>
+        <div class="flower-info">
+            <h1>Quantum Flower</h1>
+            <p>Exists in multiple states until observed</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        (function () {
+            const container = document.getElementById('canvas-container');
+            const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
+                background: 0x0a0a15
+            });
+
+            camera.position.set(0, 2, 5);
+            camera.lookAt(0, 0.5, 0);
+
+            // Lighting
+            const ambient = new THREE.AmbientLight(0x4444aa, 0.4);
+            scene.add(ambient);
+            const mainLight = new THREE.DirectionalLight(0x8888ff, 1);
+            mainLight.position.set(3, 5, 3);
+            scene.add(mainLight);
+
+            // Flower states (3 different configurations)
+            const states = [
+                { color: 0xff6688, petalAngle: 0.5, scale: 1 },
+                { color: 0x66ff88, petalAngle: 0.3, scale: 0.8 },
+                { color: 0x8866ff, petalAngle: 0.7, scale: 1.2 }
+            ];
+
+            // Create ghost flowers for each state
+            const flowerStates = [];
+
+            function createFlowerState(stateIndex) {
+                const state = states[stateIndex];
+                const group = new THREE.Group();
+
+                const petalMat = new THREE.MeshStandardMaterial({
+                    color: state.color,
+                    transparent: true,
+                    opacity: 0.3,
+                    side: THREE.DoubleSide
+                });
+
+                for (let i = 0; i < 8; i++) {
+                    const shape = new THREE.Shape();
+                    shape.moveTo(0, 0);
+                    shape.bezierCurveTo(0.15, 0.1, 0.18, 0.4, 0.1, 0.6);
+                    shape.bezierCurveTo(0.03, 0.72, -0.03, 0.72, -0.1, 0.6);
+                    shape.bezierCurveTo(-0.18, 0.4, -0.15, 0.1, 0, 0);
+
+                    const geom = new THREE.ShapeGeometry(shape, 16);
+                    const petal = new THREE.Mesh(geom, petalMat.clone());
+
+                    const angle = (i / 8) * Math.PI * 2;
+                    petal.rotation.z = angle;
+                    petal.rotation.x = -Math.PI / 2 + state.petalAngle;
+                    petal.position.y = 0.5;
+                    group.add(petal);
+                }
+
+                // Center
+                const centerGeom = new THREE.SphereGeometry(0.08, 16, 16);
+                const center = new THREE.Mesh(centerGeom, petalMat.clone());
+                center.position.y = 0.55;
+                group.add(center);
+
+                group.scale.setScalar(state.scale);
+                group.userData.stateIndex = stateIndex;
+
+                return group;
+            }
+
+            for (let s = 0; s < states.length; s++) {
+                const flower = createFlowerState(s);
+                scene.add(flower);
+                flowerStates.push(flower);
+            }
+
+            // Collapsed state flower
+            const collapsedGroup = new THREE.Group();
+            const collapsedMat = new THREE.MeshStandardMaterial({
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0,
+                side: THREE.DoubleSide
+            });
+
+            for (let i = 0; i < 8; i++) {
+                const shape = new THREE.Shape();
+                shape.moveTo(0, 0);
+                shape.bezierCurveTo(0.15, 0.1, 0.18, 0.4, 0.1, 0.6);
+                shape.bezierCurveTo(0.03, 0.72, -0.03, 0.72, -0.1, 0.6);
+                shape.bezierCurveTo(-0.18, 0.4, -0.15, 0.1, 0, 0);
+
+                const geom = new THREE.ShapeGeometry(shape, 16);
+                const petal = new THREE.Mesh(geom, collapsedMat.clone());
+
+                const angle = (i / 8) * Math.PI * 2;
+                petal.rotation.z = angle;
+                petal.rotation.x = -Math.PI / 2 + 0.4;
+                petal.position.y = 0.5;
+                collapsedGroup.add(petal);
+            }
+
+            const collapsedCenter = new THREE.Mesh(
+                new THREE.SphereGeometry(0.08, 16, 16),
+                collapsedMat.clone()
+            );
+            collapsedCenter.position.y = 0.55;
+            collapsedGroup.add(collapsedCenter);
+            scene.add(collapsedGroup);
+
+            // Stem
+            const stemCurve = new THREE.CatmullRomCurve3([
+                new THREE.Vector3(0, 0.4, 0),
+                new THREE.Vector3(0.02, 0, 0.01),
+                new THREE.Vector3(0, -0.8, 0)
+            ]);
+            const stemGeom = new THREE.TubeGeometry(stemCurve, 16, 0.025, 8, false);
+            const stemMat = new THREE.MeshStandardMaterial({ color: 0x556655, transparent: true, opacity: 0.5 });
+            const stem = new THREE.Mesh(stemGeom, stemMat);
+            scene.add(stem);
+
+            // Observation detection (mouse proximity)
+            let isObserved = false;
+            let collapseProgress = 0;
+            let collapsedState = 0;
+
+            const raycaster = new THREE.Raycaster();
+            const mouse = new THREE.Vector2();
+
+            container.addEventListener('mousemove', (e) => {
+                const rect = container.getBoundingClientRect();
+                mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+                mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+            });
+
+            container.addEventListener('click', () => {
+                isObserved = true;
+                collapsedState = Math.floor(Math.random() * states.length);
+            });
+
+            container.addEventListener('mouseleave', () => {
+                isObserved = false;
+            });
+
+            function animate() {
+                requestAnimationFrame(animate);
+                const elapsed = clock.getElapsedTime();
+
+                // Quantum superposition flickering
+                flowerStates.forEach((flower, i) => {
+                    const flicker = Math.sin(elapsed * 10 + i * 2) * 0.5 + 0.5;
+                    const offset = Math.sin(elapsed * 3 + i * 1.5) * 0.1;
+
+                    flower.position.x = offset;
+                    flower.position.z = Math.cos(elapsed * 2.5 + i * 1.2) * 0.08;
+                    flower.rotation.y = elapsed * 0.2 + i * 0.3;
+
+                    // Fade based on observation
+                    if (isObserved) {
+                        collapseProgress = Math.min(1, collapseProgress + 0.05);
+                        if (i === collapsedState) {
+                            flower.children.forEach(child => {
+                                child.material.opacity = collapseProgress;
+                            });
+                        } else {
+                            flower.children.forEach(child => {
+                                child.material.opacity = 0.3 * (1 - collapseProgress);
+                            });
+                        }
+                    } else {
+                        collapseProgress = Math.max(0, collapseProgress - 0.02);
+                        flower.children.forEach(child => {
+                            child.material.opacity = 0.2 + flicker * 0.15;
+                        });
+                    }
+                });
+
+                // Collapsed flower
+                collapsedGroup.visible = isObserved && collapseProgress > 0.5;
+                if (collapsedGroup.visible) {
+                    const state = states[collapsedState];
+                    collapsedGroup.children.forEach(child => {
+                        child.material.color.set(state.color);
+                        child.material.opacity = collapseProgress;
+                    });
+                    collapsedGroup.rotation.y = elapsed * 0.15;
+                }
+
+                camera.position.x = Math.sin(elapsed * 0.1) * 0.3;
+                camera.lookAt(0, 0.5, 0);
+
+                renderer.render(scene, camera);
+            }
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+            FlowerUtils.hideLoading();
+        })();
+    </script>
+</body>
+
+</html>

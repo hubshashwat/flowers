@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Burning Phoenix Flower | Flowers For You 🌸</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+    <div class="loading-overlay">
+        <div class="loading-flower"></div>
+        <p class="loading-text">Rising from ashes...</p>
+    </div>
+
+    <div class="flower-page">
+        <nav class="page-nav">
+            <a href="../index.html" class="back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Back to Garden
+            </a>
+        </nav>
+        <div id="canvas-container" class="flower-canvas"></div>
+        <div class="flower-info">
+            <h1>Burning Phoenix Flower</h1>
+            <p>Ignites into flames and reborn from glowing embers</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        (function () {
+            const container = document.getElementById('canvas-container');
+            const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
+                background: 0x0a0505
+            });
+
+            camera.position.set(0, 2, 4.5);
+            camera.lookAt(0, 0.5, 0);
+
+            // Warm fire lighting
+            const ambient = new THREE.AmbientLight(0x331100, 0.3);
+            scene.add(ambient);
+            const fireLight = new THREE.PointLight(0xff6600, 2, 5);
+            fireLight.position.set(0, 0.5, 0);
+            scene.add(fireLight);
+
+            // Flower group
+            const flowerGroup = new THREE.Group();
+            scene.add(flowerGroup);
+
+            // Fire gradient colors
+            function getFireColor(t) {
+                if (t < 0.3) return new THREE.Color(0xff0000);
+                if (t < 0.6) return new THREE.Color(0xff6600);
+                if (t < 0.8) return new THREE.Color(0xffaa00);
+                return new THREE.Color(0xffff88);
+            }
+
+            // Create petal
+            function createFirePetal() {
+                const shape = new THREE.Shape();
+                shape.moveTo(0, 0);
+                shape.bezierCurveTo(0.15, 0.1, 0.18, 0.4, 0.1, 0.6);
+                shape.bezierCurveTo(0.03, 0.72, -0.03, 0.72, -0.1, 0.6);
+                shape.bezierCurveTo(-0.18, 0.4, -0.15, 0.1, 0, 0);
+
+                const geom = new THREE.ShapeGeometry(shape, 16);
+                const mat = new THREE.MeshBasicMaterial({
+                    color: 0xff6600,
+                    side: THREE.DoubleSide,
+                    transparent: true,
+                    opacity: 1
+                });
+                return new THREE.Mesh(geom, mat);
+            }
+
+            // Create petals
+            const petalCount = 8;
+            const petals = [];
+            for (let i = 0; i < petalCount; i++) {
+                const petal = createFirePetal();
+                const angle = (i / petalCount) * Math.PI * 2;
+                petal.rotation.z = angle;
+                petal.rotation.x = -Math.PI / 2 + 0.4;
+                petal.position.y = 0.5;
+                petal.userData.phase = i * 0.3;
+                flowerGroup.add(petal);
+                petals.push(petal);
+            }
+
+            // Center (ember core)
+            const centerGeom = new THREE.SphereGeometry(0.1, 32, 32);
+            const centerMat = new THREE.MeshBasicMaterial({ color: 0xffff88 });
+            const center = new THREE.Mesh(centerGeom, centerMat);
+            center.position.y = 0.55;
+            flowerGroup.add(center);
+
+            // Stem
+            const stemCurve = new THREE.CatmullRomCurve3([
+                new THREE.Vector3(0, 0.4, 0),
+                new THREE.Vector3(0.02, 0, 0.01),
+                new THREE.Vector3(0, -0.6, 0)
+            ]);
+            const stemGeom = new THREE.TubeGeometry(stemCurve, 16, 0.025, 8, false);
+            const stemMat = new THREE.MeshBasicMaterial({ color: 0x442200 });
+            const stem = new THREE.Mesh(stemGeom, stemMat);
+            flowerGroup.add(stem);
+
+            // Fire particles
+            const fireParticleCount = 100;
+            const fireGeom = new THREE.BufferGeometry();
+            const firePos = new Float32Array(fireParticleCount * 3);
+            const fireColors = new Float32Array(fireParticleCount * 3);
+            const fireVels = [];
+            for (let i = 0; i < fireParticleCount; i++) {
+                firePos[i * 3] = (Math.random() - 0.5) * 0.5;
+                firePos[i * 3 + 1] = 0.3 + Math.random() * 0.5;
+                firePos[i * 3 + 2] = (Math.random() - 0.5) * 0.5;
+                const color = getFireColor(Math.random());
+                fireColors[i * 3] = color.r;
+                fireColors[i * 3 + 1] = color.g;
+                fireColors[i * 3 + 2] = color.b;
+                fireVels.push({
+                    x: (Math.random() - 0.5) * 0.01,
+                    y: 0.02 + Math.random() * 0.03,
+                    z: (Math.random() - 0.5) * 0.01
+                });
+            }
+            fireGeom.setAttribute('position', new THREE.BufferAttribute(firePos, 3));
+            fireGeom.setAttribute('color', new THREE.BufferAttribute(fireColors, 3));
+            const fireMat = new THREE.PointsMaterial({
+                size: 0.04,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.8
+            });
+            const fireParticles = new THREE.Points(fireGeom, fireMat);
+            scene.add(fireParticles);
+
+            // Ember particles (for rebirth phase)
+            const emberCount = 50;
+            const emberGeom = new THREE.BufferGeometry();
+            const emberPos = new Float32Array(emberCount * 3);
+            for (let i = 0; i < emberCount; i++) {
+                emberPos[i * 3] = (Math.random() - 0.5) * 0.8;
+                emberPos[i * 3 + 1] = -0.5 + Math.random() * 0.3;
+                emberPos[i * 3 + 2] = (Math.random() - 0.5) * 0.8;
+            }
+            emberGeom.setAttribute('position', new THREE.BufferAttribute(emberPos, 3));
+            const emberMat = new THREE.PointsMaterial({
+                color: 0xff4400,
+                size: 0.03,
+                transparent: true,
+                opacity: 0
+            });
+            const embers = new THREE.Points(emberGeom, emberMat);
+            scene.add(embers);
+
+            const cycleDuration = 10;
+
+            function animate() {
+                requestAnimationFrame(animate);
+                const elapsed = clock.getElapsedTime();
+                const cycleTime = elapsed % cycleDuration;
+
+                // Phase: 0-4 bloom with fire, 4-6 burn down, 6-8 embers, 8-10 rebirth
+                let phase;
+                if (cycleTime < 4) phase = 'bloom';
+                else if (cycleTime < 6) phase = 'burn';
+                else if (cycleTime < 8) phase = 'embers';
+                else phase = 'rebirth';
+
+                // Animate petals
+                petals.forEach((petal, i) => {
+                    const flicker = Math.sin(elapsed * 10 + petal.userData.phase) * 0.1;
+
+                    if (phase === 'bloom') {
+                        const progress = cycleTime / 4;
+                        petal.scale.setScalar(progress);
+                        petal.material.opacity = progress;
+                        petal.material.color.copy(getFireColor(0.5 + flicker));
+                    } else if (phase === 'burn') {
+                        const burnProgress = (cycleTime - 4) / 2;
+                        petal.material.opacity = 1 - burnProgress;
+                        petal.scale.y = 1 - burnProgress * 0.5;
+                        petal.material.color.copy(getFireColor(0.8));
+                    } else if (phase === 'embers') {
+                        petal.material.opacity = 0;
+                    } else {
+                        const rebirthProgress = (cycleTime - 8) / 2;
+                        petal.scale.setScalar(rebirthProgress);
+                        petal.material.opacity = rebirthProgress;
+                        petal.material.color.copy(getFireColor(0.3 + rebirthProgress * 0.4));
+                    }
+                });
+
+                // Center
+                if (phase === 'embers') {
+                    center.material.opacity = 0.3;
+                    center.scale.setScalar(0.5);
+                } else {
+                    center.material.opacity = 1;
+                    center.scale.setScalar(1 + Math.sin(elapsed * 5) * 0.1);
+                }
+
+                // Fire particles
+                const fPos = fireGeom.attributes.position.array;
+                for (let i = 0; i < fireParticleCount; i++) {
+                    fPos[i * 3] += fireVels[i].x;
+                    fPos[i * 3 + 1] += fireVels[i].y;
+                    fPos[i * 3 + 2] += fireVels[i].z;
+                    if (fPos[i * 3 + 1] > 1.5) {
+                        fPos[i * 3] = (Math.random() - 0.5) * 0.5;
+                        fPos[i * 3 + 1] = 0.3 + Math.random() * 0.2;
+                        fPos[i * 3 + 2] = (Math.random() - 0.5) * 0.5;
+                    }
+                }
+                fireGeom.attributes.position.needsUpdate = true;
+                fireParticles.material.opacity = phase === 'embers' ? 0.2 : 0.8;
+
+                // Embers glow during ember phase
+                emberMat.opacity = phase === 'embers' ? 0.8 : phase === 'rebirth' ? 0.8 - (cycleTime - 8) / 2 * 0.8 : 0;
+
+                // Fire light intensity
+                fireLight.intensity = phase === 'embers' ? 0.5 : 2 + Math.sin(elapsed * 8) * 0.5;
+
+                flowerGroup.rotation.y = elapsed * 0.05;
+
+                camera.position.x = Math.sin(elapsed * 0.1) * 0.4;
+                camera.lookAt(0, 0.5, 0);
+
+                renderer.render(scene, camera);
+            }
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+            FlowerUtils.hideLoading();
+        })();
+    </script>
+</body>
+
+</html>

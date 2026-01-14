@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Torn Fabric Flower | Flowers For You 🌸</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+    <div class="loading-overlay">
+        <div class="loading-flower"></div>
+        <p class="loading-text">Tearing silk...</p>
+    </div>
+
+    <div class="flower-page">
+        <nav class="page-nav">
+            <a href="../index.html" class="back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Back to Garden
+            </a>
+        </nav>
+        <div id="canvas-container" class="flower-canvas"></div>
+        <div class="flower-info">
+            <h1>Torn Fabric Flower</h1>
+            <p>Silk cloth petals with realistic flutter physics</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        (function () {
+            const container = document.getElementById('canvas-container');
+            const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
+                background: 0x1a1515
+            });
+
+            camera.position.set(0, 2, 4.5);
+            camera.lookAt(0, 0.5, 0);
+
+            // Soft lighting
+            const ambient = new THREE.AmbientLight(0x443333, 0.5);
+            scene.add(ambient);
+            const mainLight = new THREE.DirectionalLight(0xffeedd, 1);
+            mainLight.position.set(3, 5, 3);
+            scene.add(mainLight);
+
+            // Flower group
+            const flowerGroup = new THREE.Group();
+            scene.add(flowerGroup);
+
+            // Silk fabric material
+            const silkMat = new THREE.MeshStandardMaterial({
+                color: 0xffaaaa,
+                side: THREE.DoubleSide,
+                roughness: 0.7,
+                metalness: 0.1
+            });
+
+            // Create torn fabric petal with irregular edges
+            function createFabricPetal() {
+                const shape = new THREE.Shape();
+
+                // Irregular torn edges
+                shape.moveTo(0, 0);
+
+                const segments = 15;
+                for (let i = 0; i <= segments; i++) {
+                    const t = i / segments;
+                    const baseWidth = Math.sin(t * Math.PI) * 0.15;
+                    const tear = (Math.random() - 0.5) * 0.03;
+                    const x = baseWidth + tear;
+                    const y = t * 0.7;
+                    if (i === 0) continue;
+                    shape.lineTo(x, y);
+                }
+
+                for (let i = segments; i >= 0; i--) {
+                    const t = i / segments;
+                    const baseWidth = -Math.sin(t * Math.PI) * 0.15;
+                    const tear = (Math.random() - 0.5) * 0.03;
+                    const x = baseWidth + tear;
+                    const y = t * 0.7;
+                    shape.lineTo(x, y);
+                }
+
+                const geom = new THREE.ShapeGeometry(shape, 24);
+
+                // Add some Z variation for cloth-like appearance
+                const positions = geom.attributes.position;
+                for (let i = 0; i < positions.count; i++) {
+                    const y = positions.getY(i);
+                    const x = positions.getX(i);
+                    positions.setZ(i, Math.sin(y * Math.PI * 2) * 0.02 + Math.sin(x * 10) * 0.01);
+                }
+                positions.needsUpdate = true;
+                geom.computeVertexNormals();
+
+                const petal = new THREE.Mesh(geom, silkMat.clone());
+                petal.userData.originalPositions = positions.array.slice();
+                return petal;
+            }
+
+            // Create petals
+            const petalCount = 7;
+            const petals = [];
+            for (let i = 0; i < petalCount; i++) {
+                const petal = createFabricPetal();
+                petal.material.color.setHSL(0.95 + Math.random() * 0.05, 0.4, 0.7);
+                const angle = (i / petalCount) * Math.PI * 2;
+                petal.rotation.z = angle;
+                petal.rotation.x = -Math.PI / 2 + 0.5;
+                petal.position.y = 0.5;
+                petal.userData.phase = i * 0.4;
+                flowerGroup.add(petal);
+                petals.push(petal);
+            }
+
+            // Inner petals
+            for (let i = 0; i < 5; i++) {
+                const petal = createFabricPetal();
+                petal.material.color.setHSL(0.98, 0.3, 0.8);
+                petal.scale.setScalar(0.6);
+                const angle = (i / 5) * Math.PI * 2 + 0.3;
+                petal.rotation.z = angle;
+                petal.rotation.x = -Math.PI / 2 + 0.4;
+                petal.position.y = 0.52;
+                petal.userData.phase = i * 0.3 + 2;
+                flowerGroup.add(petal);
+                petals.push(petal);
+            }
+
+            // Center
+            const centerGeom = new THREE.SphereGeometry(0.08, 32, 32);
+            const centerMat = new THREE.MeshStandardMaterial({ color: 0xffddaa, roughness: 0.8 });
+            const center = new THREE.Mesh(centerGeom, centerMat);
+            center.position.y = 0.55;
+            flowerGroup.add(center);
+
+            // Stem
+            const stemCurve = new THREE.CatmullRomCurve3([
+                new THREE.Vector3(0, 0.4, 0),
+                new THREE.Vector3(0.02, 0, 0.01),
+                new THREE.Vector3(0, -0.8, 0)
+            ]);
+            const stemGeom = new THREE.TubeGeometry(stemCurve, 16, 0.025, 8, false);
+            const stemMat = new THREE.MeshStandardMaterial({ color: 0x557755 });
+            const stem = new THREE.Mesh(stemGeom, stemMat);
+            flowerGroup.add(stem);
+
+            // Floating threads
+            const threads = [];
+            for (let i = 0; i < 8; i++) {
+                const threadPoints = [];
+                const startAngle = Math.random() * Math.PI * 2;
+                for (let j = 0; j < 10; j++) {
+                    threadPoints.push(new THREE.Vector3(
+                        Math.cos(startAngle) * 0.2 + (Math.random() - 0.5) * 0.1,
+                        0.5 + j * 0.05,
+                        Math.sin(startAngle) * 0.2 + (Math.random() - 0.5) * 0.1
+                    ));
+                }
+                const threadCurve = new THREE.CatmullRomCurve3(threadPoints);
+                const threadGeom = new THREE.TubeGeometry(threadCurve, 10, 0.003, 4, false);
+                const threadMat = new THREE.MeshBasicMaterial({ color: 0xffcccc, transparent: true, opacity: 0.5 });
+                const thread = new THREE.Mesh(threadGeom, threadMat);
+                thread.userData.phase = i * 0.5;
+                scene.add(thread);
+                threads.push(thread);
+            }
+
+            function animate() {
+                requestAnimationFrame(animate);
+                const elapsed = clock.getElapsedTime();
+
+                // Cloth physics simulation (simplified flutter)
+                petals.forEach(petal => {
+                    const positions = petal.geometry.attributes.position;
+                    const original = petal.userData.originalPositions;
+
+                    for (let i = 0; i < positions.count; i++) {
+                        const y = original[i * 3 + 1];
+                        const flutter = Math.sin(elapsed * 4 + y * 10 + petal.userData.phase) * 0.015 * y;
+                        positions.setZ(i, original[i * 3 + 2] + flutter);
+                    }
+                    positions.needsUpdate = true;
+
+                    // Gentle sway
+                    petal.rotation.x = -Math.PI / 2 + 0.5 + Math.sin(elapsed * 0.8 + petal.userData.phase) * 0.05;
+                });
+
+                // Threads float
+                threads.forEach(thread => {
+                    thread.position.y = Math.sin(elapsed + thread.userData.phase) * 0.03;
+                    thread.rotation.y = elapsed * 0.2 + thread.userData.phase;
+                });
+
+                flowerGroup.rotation.y = elapsed * 0.08;
+
+                camera.position.x = Math.sin(elapsed * 0.1) * 0.4;
+                camera.lookAt(0, 0.5, 0);
+
+                renderer.render(scene, camera);
+            }
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+            FlowerUtils.hideLoading();
+        })();
+    </script>
+</body>
+
+</html>

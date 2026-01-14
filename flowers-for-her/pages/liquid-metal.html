@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Liquid Metal Flower | Flowers For You 🌸</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+    <div class="loading-overlay">
+        <div class="loading-flower"></div>
+        <p class="loading-text">Mercury forming...</p>
+    </div>
+
+    <div class="flower-page">
+        <nav class="page-nav">
+            <a href="../index.html" class="back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Back to Garden
+            </a>
+        </nav>
+        <div id="canvas-container" class="flower-canvas"></div>
+        <div class="flower-info">
+            <h1>Liquid Metal Flower</h1>
+            <p>Mercury-like petals morphing between states with detaching droplets</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        (function () {
+            const container = document.getElementById('canvas-container');
+            const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
+                background: 0x0a0a0a
+            });
+
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+
+            camera.position.set(0, 2, 4.5);
+            camera.lookAt(0, 0.5, 0);
+
+            // Lighting for reflective surface
+            const ambient = new THREE.AmbientLight(0xffffff, 0.3);
+            scene.add(ambient);
+            const mainLight = new THREE.DirectionalLight(0xffffff, 1.5);
+            mainLight.position.set(3, 5, 3);
+            scene.add(mainLight);
+            const rimLight = new THREE.PointLight(0x8888ff, 1, 10);
+            rimLight.position.set(-3, 2, -2);
+            scene.add(rimLight);
+
+            // Mercury material
+            const mercuryMat = new THREE.MeshStandardMaterial({
+                color: 0xcccccc,
+                metalness: 1,
+                roughness: 0.05,
+                envMapIntensity: 1
+            });
+
+            // Flower group
+            const flowerGroup = new THREE.Group();
+            scene.add(flowerGroup);
+
+            // Create morphable petal (uses sphere geometry for liquid look)
+            function createLiquidPetal() {
+                const geom = new THREE.SphereGeometry(0.15, 32, 32);
+                const petal = new THREE.Mesh(geom, mercuryMat.clone());
+                petal.scale.set(0.5, 1, 0.1);
+                return petal;
+            }
+
+            // Petals
+            const petalCount = 6;
+            const petals = [];
+            for (let i = 0; i < petalCount; i++) {
+                const petal = createLiquidPetal();
+                const angle = (i / petalCount) * Math.PI * 2;
+                petal.userData.baseAngle = angle;
+                petal.userData.phase = i * 0.5;
+                flowerGroup.add(petal);
+                petals.push(petal);
+            }
+
+            // Center blob
+            const centerGeom = new THREE.SphereGeometry(0.15, 32, 32);
+            const center = new THREE.Mesh(centerGeom, mercuryMat.clone());
+            center.position.y = 0.5;
+            flowerGroup.add(center);
+
+            // Droplets
+            const droplets = [];
+            for (let i = 0; i < 10; i++) {
+                const dropGeom = new THREE.SphereGeometry(0.02 + Math.random() * 0.02, 16, 16);
+                const drop = new THREE.Mesh(dropGeom, mercuryMat.clone());
+                drop.visible = false;
+                drop.userData = {
+                    velocity: new THREE.Vector3(),
+                    active: false,
+                    lifetime: 0
+                };
+                scene.add(drop);
+                droplets.push(drop);
+            }
+
+            // Stem
+            const stemGeom = new THREE.CylinderGeometry(0.04, 0.06, 1.2, 16);
+            const stem = new THREE.Mesh(stemGeom, mercuryMat.clone());
+            stem.position.y = -0.1;
+            flowerGroup.add(stem);
+
+            let morphState = 0; // 0 = closed, 1 = open
+            let morphDirection = 1;
+            let nextDropletTime = 0;
+
+            function animate() {
+                requestAnimationFrame(animate);
+                const elapsed = clock.getElapsedTime();
+
+                // Morph between open and closed
+                morphState += morphDirection * 0.003;
+                if (morphState > 1) { morphState = 1; morphDirection = -1; }
+                if (morphState < 0) { morphState = 0; morphDirection = 1; }
+
+                // Animate petals
+                petals.forEach((petal, i) => {
+                    const angle = petal.userData.baseAngle;
+                    const openDist = 0.3 + morphState * 0.4;
+                    const openRotation = morphState * 0.8;
+
+                    petal.position.set(
+                        Math.cos(angle) * openDist,
+                        0.5 + Math.sin(elapsed * 2 + petal.userData.phase) * 0.02,
+                        Math.sin(angle) * openDist
+                    );
+
+                    petal.rotation.z = angle + Math.PI / 2;
+                    petal.rotation.x = -openRotation;
+
+                    // Liquid wobble
+                    const wobble = Math.sin(elapsed * 3 + petal.userData.phase) * 0.1;
+                    petal.scale.x = 0.5 + wobble * 0.1;
+                    petal.scale.y = 1 + wobble * 0.05;
+                });
+
+                // Center blob morphs
+                const centerWobble = Math.sin(elapsed * 2) * 0.1;
+                center.scale.set(1 + centerWobble, 1 - centerWobble * 0.5, 1 + centerWobble);
+
+                // Spawn droplets occasionally
+                if (elapsed > nextDropletTime) {
+                    const inactiveDrop = droplets.find(d => !d.userData.active);
+                    if (inactiveDrop) {
+                        const randomPetal = petals[Math.floor(Math.random() * petals.length)];
+                        inactiveDrop.position.copy(randomPetal.position);
+                        inactiveDrop.userData.velocity.set(
+                            (Math.random() - 0.5) * 0.02,
+                            0.02,
+                            (Math.random() - 0.5) * 0.02
+                        );
+                        inactiveDrop.userData.active = true;
+                        inactiveDrop.userData.lifetime = 0;
+                        inactiveDrop.visible = true;
+                    }
+                    nextDropletTime = elapsed + 0.5 + Math.random() * 1;
+                }
+
+                // Update droplets
+                droplets.forEach(drop => {
+                    if (drop.userData.active) {
+                        drop.userData.velocity.y -= 0.001; // gravity
+                        drop.position.add(drop.userData.velocity);
+                        drop.userData.lifetime += 0.016;
+
+                        // Reabsorb into stem
+                        if (drop.position.y < 0 || drop.userData.lifetime > 2) {
+                            drop.userData.active = false;
+                            drop.visible = false;
+                        }
+                    }
+                });
+
+                // Stem wobble
+                stem.scale.x = 1 + Math.sin(elapsed * 1.5) * 0.05;
+                stem.scale.z = 1 + Math.cos(elapsed * 1.5) * 0.05;
+
+                flowerGroup.rotation.y = elapsed * 0.1;
+
+                camera.position.x = Math.sin(elapsed * 0.1) * 0.4;
+                camera.lookAt(0, 0.4, 0);
+
+                renderer.render(scene, camera);
+            }
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+            FlowerUtils.hideLoading();
+        })();
+    </script>
+</body>
+
+</html>

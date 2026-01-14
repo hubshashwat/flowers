@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Macro Photography | Flowers For You 🌸</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+    <div class="loading-overlay">
+        <div class="loading-flower"></div>
+        <p class="loading-text">Focusing lens...</p>
+    </div>
+
+    <div class="flower-page">
+        <nav class="page-nav">
+            <a href="../index.html" class="back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Back to Garden
+            </a>
+        </nav>
+        <div id="canvas-container" class="flower-canvas"></div>
+        <div class="flower-info">
+            <h1>Macro Photography</h1>
+            <p>Extreme close-up view of pollen grains and petal fibers with depth-of-field</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        (function () {
+            const container = document.getElementById('canvas-container');
+            const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
+                background: 0x0a0808
+            });
+
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.3;
+
+            // Macro camera - very close
+            camera.position.set(0, 0.1, 1.2);
+            camera.lookAt(0, 0, 0);
+            camera.fov = 35;
+            camera.updateProjectionMatrix();
+
+            // Soft lighting for macro
+            const keyLight = new THREE.DirectionalLight(0xfff5e6, 1.5);
+            keyLight.position.set(1, 2, 2);
+            scene.add(keyLight);
+
+            const fillLight = new THREE.DirectionalLight(0xe6f0ff, 0.5);
+            fillLight.position.set(-2, 1, 1);
+            scene.add(fillLight);
+
+            const backLight = new THREE.DirectionalLight(0xffddcc, 0.8);
+            backLight.position.set(0, 1, -2);
+            scene.add(backLight);
+
+            const ambient = new THREE.AmbientLight(0xffffff, 0.2);
+            scene.add(ambient);
+
+            // Flower center group (macro focus)
+            const centerGroup = new THREE.Group();
+            scene.add(centerGroup);
+
+            // Create pollen grains
+            const pollenCount = 80;
+            const pollenGeom = new THREE.SphereGeometry(0.015, 16, 16);
+            const pollenMat = new THREE.MeshStandardMaterial({
+                color: 0xffd700,
+                roughness: 0.3,
+                metalness: 0.1
+            });
+
+            for (let i = 0; i < pollenCount; i++) {
+                const pollen = new THREE.Mesh(pollenGeom, pollenMat.clone());
+
+                // Distribute on a dome
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.random() * Math.PI * 0.4;
+                const r = 0.15 + Math.random() * 0.1;
+
+                pollen.position.set(
+                    r * Math.sin(phi) * Math.cos(theta),
+                    r * Math.cos(phi),
+                    r * Math.sin(phi) * Math.sin(theta)
+                );
+
+                // Vary pollen sizes
+                const scale = 0.6 + Math.random() * 0.8;
+                pollen.scale.setScalar(scale);
+
+                // Slight color variation
+                const hue = 0.12 + Math.random() * 0.05;
+                pollen.material.color.setHSL(hue, 0.8, 0.5 + Math.random() * 0.2);
+
+                centerGroup.add(pollen);
+            }
+
+            // Stamen filaments
+            const filamentCount = 20;
+            for (let i = 0; i < filamentCount; i++) {
+                const angle = (i / filamentCount) * Math.PI * 2;
+                const height = 0.2 + Math.random() * 0.1;
+
+                const curve = new THREE.CatmullRomCurve3([
+                    new THREE.Vector3(Math.cos(angle) * 0.1, 0, Math.sin(angle) * 0.1),
+                    new THREE.Vector3(Math.cos(angle) * 0.15, height * 0.5, Math.sin(angle) * 0.15),
+                    new THREE.Vector3(Math.cos(angle) * 0.12, height, Math.sin(angle) * 0.12)
+                ]);
+
+                const filamentGeom = new THREE.TubeGeometry(curve, 12, 0.003, 6, false);
+                const filamentMat = new THREE.MeshStandardMaterial({
+                    color: 0xffee88,
+                    roughness: 0.7
+                });
+                const filament = new THREE.Mesh(filamentGeom, filamentMat);
+                centerGroup.add(filament);
+
+                // Anther (pollen sac) at top
+                const antherGeom = new THREE.SphereGeometry(0.012, 8, 8);
+                const antherMat = new THREE.MeshStandardMaterial({
+                    color: 0xcc8800,
+                    roughness: 0.5
+                });
+                const anther = new THREE.Mesh(antherGeom, antherMat);
+                anther.position.set(
+                    Math.cos(angle) * 0.12,
+                    height,
+                    Math.sin(angle) * 0.12
+                );
+                centerGroup.add(anther);
+            }
+
+            // Petal surface behind (out of focus)
+            const petalSurfaceGeom = new THREE.PlaneGeometry(2, 2, 32, 32);
+            const petalPositions = petalSurfaceGeom.attributes.position;
+            for (let i = 0; i < petalPositions.count; i++) {
+                const x = petalPositions.getX(i);
+                const y = petalPositions.getY(i);
+                // Add surface texture
+                const z = Math.sin(x * 20) * 0.005 + Math.sin(y * 25) * 0.003;
+                petalPositions.setZ(i, z);
+            }
+            petalPositions.needsUpdate = true;
+            petalSurfaceGeom.computeVertexNormals();
+
+            const petalSurfaceMat = new THREE.MeshStandardMaterial({
+                color: 0xff6b8a,
+                roughness: 0.6,
+                side: THREE.DoubleSide
+            });
+            const petalSurface = new THREE.Mesh(petalSurfaceGeom, petalSurfaceMat);
+            petalSurface.position.z = -0.3;
+            petalSurface.rotation.x = -0.2;
+            scene.add(petalSurface);
+
+            // Petal veins
+            for (let i = 0; i < 5; i++) {
+                const veinCurve = new THREE.CatmullRomCurve3([
+                    new THREE.Vector3(-0.8 + i * 0.4, -0.8, -0.28),
+                    new THREE.Vector3(-0.6 + i * 0.35, 0, -0.27),
+                    new THREE.Vector3(-0.5 + i * 0.3, 0.8, -0.26)
+                ]);
+                const veinGeom = new THREE.TubeGeometry(veinCurve, 16, 0.003, 6, false);
+                const veinMat = new THREE.MeshStandardMaterial({
+                    color: 0xdd5070,
+                    roughness: 0.5
+                });
+                const vein = new THREE.Mesh(veinGeom, veinMat);
+                scene.add(vein);
+            }
+
+            // Floating dust particles (bokeh)
+            const dustCount = 100;
+            const dustGeom = new THREE.BufferGeometry();
+            const dustPos = new Float32Array(dustCount * 3);
+            const dustSizes = new Float32Array(dustCount);
+
+            for (let i = 0; i < dustCount; i++) {
+                dustPos[i * 3] = (Math.random() - 0.5) * 2;
+                dustPos[i * 3 + 1] = (Math.random() - 0.5) * 2;
+                dustPos[i * 3 + 2] = Math.random() * 1.5 - 0.5;
+                dustSizes[i] = 0.01 + Math.random() * 0.03;
+            }
+
+            dustGeom.setAttribute('position', new THREE.BufferAttribute(dustPos, 3));
+            const dustMat = new THREE.PointsMaterial({
+                size: 0.02,
+                color: 0xffffee,
+                transparent: true,
+                opacity: 0.4,
+                blending: THREE.AdditiveBlending
+            });
+            const dust = new THREE.Points(dustGeom, dustMat);
+            scene.add(dust);
+
+            // Camera focus animation
+            let focusDistance = 1.2;
+            let focusDirection = 1;
+
+            function animate() {
+                requestAnimationFrame(animate);
+                const elapsed = clock.getElapsedTime();
+
+                // Slow focus breathing
+                focusDistance += focusDirection * 0.001;
+                if (focusDistance > 1.4) focusDirection = -1;
+                if (focusDistance < 1.0) focusDirection = 1;
+
+                camera.position.z = focusDistance;
+
+                // Gentle camera drift
+                camera.position.x = Math.sin(elapsed * 0.2) * 0.05;
+                camera.position.y = 0.1 + Math.sin(elapsed * 0.15) * 0.03;
+                camera.lookAt(0, 0.05, 0);
+
+                // Dust floating
+                const dustPositions = dustGeom.attributes.position.array;
+                for (let i = 0; i < dustCount; i++) {
+                    dustPositions[i * 3] += Math.sin(elapsed + i) * 0.0005;
+                    dustPositions[i * 3 + 1] += 0.0003;
+                    if (dustPositions[i * 3 + 1] > 1) dustPositions[i * 3 + 1] = -1;
+                }
+                dustGeom.attributes.position.needsUpdate = true;
+
+                // Subtle light variation
+                keyLight.intensity = 1.4 + Math.sin(elapsed * 0.5) * 0.1;
+
+                renderer.render(scene, camera);
+            }
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+            FlowerUtils.hideLoading();
+        })();
+    </script>
+</body>
+
+</html>

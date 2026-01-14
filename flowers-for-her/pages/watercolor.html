@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Watercolor Flower | Flowers For You 🌸</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+    <div class="loading-overlay">
+        <div class="loading-flower"></div>
+        <p class="loading-text">Painting petals...</p>
+    </div>
+
+    <div class="flower-page">
+        <nav class="page-nav">
+            <a href="../index.html" class="back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Back to Garden
+            </a>
+        </nav>
+        <div id="canvas-container" class="flower-canvas"></div>
+        <div class="flower-info">
+            <h1>Watercolor Style</h1>
+            <p>Hand-painted aesthetic with soft textures and illustrated charm</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        (function () {
+            const container = document.getElementById('canvas-container');
+            const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
+                background: 0xfaf8f5
+            });
+
+            camera.position.set(0, 2, 5);
+            camera.lookAt(0, 0.5, 0);
+
+            // Soft lighting for watercolor look
+            const ambient = new THREE.AmbientLight(0xffffff, 0.8);
+            scene.add(ambient);
+
+            const softLight = new THREE.DirectionalLight(0xfff5e6, 0.6);
+            softLight.position.set(3, 5, 3);
+            scene.add(softLight);
+
+            // Create watercolor texture
+            function createWatercolorTexture(baseColor, size = 256) {
+                const canvas = document.createElement('canvas');
+                canvas.width = size;
+                canvas.height = size;
+                const ctx = canvas.getContext('2d');
+
+                // Base color
+                ctx.fillStyle = baseColor;
+                ctx.fillRect(0, 0, size, size);
+
+                // Add watercolor-like variations
+                for (let i = 0; i < 50; i++) {
+                    const x = Math.random() * size;
+                    const y = Math.random() * size;
+                    const r = Math.random() * 40 + 10;
+
+                    const gradient = ctx.createRadialGradient(x, y, 0, x, y, r);
+                    const alpha = Math.random() * 0.15;
+                    gradient.addColorStop(0, `rgba(255,255,255,${alpha})`);
+                    gradient.addColorStop(0.5, `rgba(255,255,255,${alpha * 0.5})`);
+                    gradient.addColorStop(1, 'rgba(255,255,255,0)');
+
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(0, 0, size, size);
+                }
+
+                // Add paper texture
+                for (let i = 0; i < 1000; i++) {
+                    const x = Math.random() * size;
+                    const y = Math.random() * size;
+                    const alpha = Math.random() * 0.03;
+                    ctx.fillStyle = `rgba(0,0,0,${alpha})`;
+                    ctx.fillRect(x, y, 1, 1);
+                }
+
+                const texture = new THREE.CanvasTexture(canvas);
+                return texture;
+            }
+
+            // Flower group
+            const flowerGroup = new THREE.Group();
+            scene.add(flowerGroup);
+
+            // Create soft petal shape
+            function createSoftPetal() {
+                const shape = new THREE.Shape();
+                shape.moveTo(0, 0);
+                shape.bezierCurveTo(0.15, 0.08, 0.22, 0.3, 0.18, 0.55);
+                shape.bezierCurveTo(0.12, 0.75, 0.03, 0.85, 0, 0.9);
+                shape.bezierCurveTo(-0.03, 0.85, -0.12, 0.75, -0.18, 0.55);
+                shape.bezierCurveTo(-0.22, 0.3, -0.15, 0.08, 0, 0);
+
+                return new THREE.ShapeGeometry(shape, 24);
+            }
+
+            // Watercolor palette
+            const petalColors = ['#ffb3ba', '#ffdfba', '#ffffba', '#baffc9', '#bae1ff'];
+
+            // Create multiple flowers
+            const flowers = [];
+            const flowerPositions = [
+                { x: 0, y: 0, z: 0, scale: 1 },
+                { x: -1.5, y: -0.2, z: 0.5, scale: 0.7 },
+                { x: 1.2, y: -0.1, z: 0.3, scale: 0.8 },
+                { x: -0.5, y: -0.3, z: 1, scale: 0.5 },
+                { x: 0.8, y: -0.25, z: 0.8, scale: 0.6 }
+            ];
+
+            flowerPositions.forEach((pos, fi) => {
+                const flower = new THREE.Group();
+                const colorIndex = fi % petalColors.length;
+                const texture = createWatercolorTexture(petalColors[colorIndex]);
+
+                // Outer petals
+                for (let i = 0; i < 8; i++) {
+                    const geom = createSoftPetal();
+                    const mat = new THREE.MeshBasicMaterial({
+                        map: texture,
+                        transparent: true,
+                        opacity: 0.85,
+                        side: THREE.DoubleSide
+                    });
+
+                    const petal = new THREE.Mesh(geom, mat);
+                    const angle = (i / 8) * Math.PI * 2;
+                    petal.rotation.z = angle;
+                    petal.rotation.x = -Math.PI / 2 + 0.4;
+                    petal.position.y = 0.5;
+
+                    flower.add(petal);
+                }
+
+                // Inner petals
+                for (let i = 0; i < 5; i++) {
+                    const geom = createSoftPetal();
+                    const mat = new THREE.MeshBasicMaterial({
+                        map: texture,
+                        transparent: true,
+                        opacity: 0.9,
+                        side: THREE.DoubleSide
+                    });
+
+                    const petal = new THREE.Mesh(geom, mat);
+                    const angle = (i / 5) * Math.PI * 2 + 0.3;
+                    petal.rotation.z = angle;
+                    petal.rotation.x = -Math.PI / 2 + 0.2;
+                    petal.scale.setScalar(0.6);
+                    petal.position.y = 0.55;
+
+                    flower.add(petal);
+                }
+
+                // Center
+                const centerGeom = new THREE.CircleGeometry(0.12, 16);
+                const centerTex = createWatercolorTexture('#ffd93d');
+                const centerMat = new THREE.MeshBasicMaterial({
+                    map: centerTex,
+                    transparent: true,
+                    opacity: 0.9
+                });
+                const center = new THREE.Mesh(centerGeom, centerMat);
+                center.rotation.x = -Math.PI / 2;
+                center.position.y = 0.58;
+                flower.add(center);
+
+                // Stem
+                const stemCurve = new THREE.QuadraticBezierCurve3(
+                    new THREE.Vector3(0, 0.4, 0),
+                    new THREE.Vector3(0.05, 0.1, 0.02),
+                    new THREE.Vector3(0, -0.8, 0)
+                );
+                const stemGeom = new THREE.TubeGeometry(stemCurve, 12, 0.025, 6, false);
+                const stemMat = new THREE.MeshBasicMaterial({ color: 0x7cb87c });
+                const stem = new THREE.Mesh(stemGeom, stemMat);
+                flower.add(stem);
+
+                flower.position.set(pos.x, pos.y, pos.z);
+                flower.scale.setScalar(pos.scale);
+                flowerGroup.add(flower);
+
+                flowers.push({ group: flower, phase: fi * 0.5 });
+            });
+
+            // Paper background plane
+            const bgGeom = new THREE.PlaneGeometry(20, 20);
+            const bgTex = createWatercolorTexture('#f5f0e8', 512);
+            const bgMat = new THREE.MeshBasicMaterial({ map: bgTex });
+            const bg = new THREE.Mesh(bgGeom, bgMat);
+            bg.position.z = -3;
+            scene.add(bg);
+
+            // Ground
+            const groundTex = createWatercolorTexture('#d4e6d4', 512);
+            const groundGeom = new THREE.PlaneGeometry(10, 10);
+            const groundMat = new THREE.MeshBasicMaterial({
+                map: groundTex,
+                transparent: true,
+                opacity: 0.7
+            });
+            const ground = new THREE.Mesh(groundGeom, groundMat);
+            ground.rotation.x = -Math.PI / 2;
+            ground.position.y = -0.8;
+            scene.add(ground);
+
+            function animate() {
+                requestAnimationFrame(animate);
+                const elapsed = clock.getElapsedTime();
+
+                // Gentle sway
+                flowers.forEach(f => {
+                    f.group.rotation.z = Math.sin(elapsed * 0.5 + f.phase) * 0.03;
+                    f.group.rotation.x = Math.sin(elapsed * 0.3 + f.phase) * 0.02;
+                });
+
+                // Subtle camera movement
+                camera.position.x = Math.sin(elapsed * 0.2) * 0.3;
+                camera.position.y = 2 + Math.sin(elapsed * 0.15) * 0.1;
+                camera.lookAt(0, 0.3, 0);
+
+                renderer.render(scene, camera);
+            }
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+            FlowerUtils.hideLoading();
+        })();
+    </script>
+</body>
+
+</html>

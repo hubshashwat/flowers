@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kinetic Flower | Flowers For You 🌸</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+    <div class="loading-overlay">
+        <div class="loading-flower"></div>
+        <p class="loading-text">Winding gears...</p>
+    </div>
+
+    <div class="flower-page">
+        <nav class="page-nav">
+            <a href="../index.html" class="back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Back to Garden
+            </a>
+        </nav>
+        <div id="canvas-container" class="flower-canvas"></div>
+        <div class="flower-info">
+            <h1>Kinetic Flower</h1>
+            <p>Mechanical petals driven by turning gears</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        (function () {
+            const container = document.getElementById('canvas-container');
+            const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
+                background: 0x1a1815
+            });
+
+            camera.position.set(0, 3, 5);
+            camera.lookAt(0, 0.3, 0);
+
+            // Warm industrial lighting
+            const ambient = new THREE.AmbientLight(0x554433, 0.5);
+            scene.add(ambient);
+            const mainLight = new THREE.DirectionalLight(0xffddaa, 1);
+            mainLight.position.set(3, 5, 3);
+            scene.add(mainLight);
+
+            // Materials
+            const brassmat = new THREE.MeshStandardMaterial({
+                color: 0xccaa66,
+                metalness: 0.8,
+                roughness: 0.3
+            });
+
+            const copperMat = new THREE.MeshStandardMaterial({
+                color: 0xcc7755,
+                metalness: 0.7,
+                roughness: 0.4
+            });
+
+            const steelMat = new THREE.MeshStandardMaterial({
+                color: 0x888888,
+                metalness: 0.9,
+                roughness: 0.2
+            });
+
+            // Flower group
+            const flowerGroup = new THREE.Group();
+            scene.add(flowerGroup);
+
+            // Create gear
+            function createGear(radius, teeth, thickness) {
+                const shape = new THREE.Shape();
+                const toothSize = (Math.PI * 2 * radius) / teeth / 3;
+
+                for (let i = 0; i < teeth; i++) {
+                    const angle1 = (i / teeth) * Math.PI * 2;
+                    const angle2 = ((i + 0.3) / teeth) * Math.PI * 2;
+                    const angle3 = ((i + 0.7) / teeth) * Math.PI * 2;
+                    const angle4 = ((i + 1) / teeth) * Math.PI * 2;
+
+                    const innerR = radius * 0.85;
+                    const outerR = radius;
+
+                    if (i === 0) {
+                        shape.moveTo(Math.cos(angle1) * innerR, Math.sin(angle1) * innerR);
+                    }
+                    shape.lineTo(Math.cos(angle2) * outerR, Math.sin(angle2) * outerR);
+                    shape.lineTo(Math.cos(angle3) * outerR, Math.sin(angle3) * outerR);
+                    shape.lineTo(Math.cos(angle4) * innerR, Math.sin(angle4) * innerR);
+                }
+
+                const extrudeSettings = { depth: thickness, bevelEnabled: false };
+                const geom = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+                return geom;
+            }
+
+            // Main gear (below flower)
+            const mainGear = new THREE.Mesh(createGear(0.4, 16, 0.05), brassmat);
+            mainGear.rotation.x = Math.PI / 2;
+            mainGear.position.y = 0.1;
+            flowerGroup.add(mainGear);
+
+            // Secondary gears
+            const gear2 = new THREE.Mesh(createGear(0.2, 10, 0.04), copperMat);
+            gear2.rotation.x = Math.PI / 2;
+            gear2.position.set(0.55, 0.1, 0);
+            flowerGroup.add(gear2);
+
+            const gear3 = new THREE.Mesh(createGear(0.15, 8, 0.04), copperMat);
+            gear3.rotation.x = Math.PI / 2;
+            gear3.position.set(-0.5, 0.1, 0.2);
+            flowerGroup.add(gear3);
+
+            // Petals on hinges
+            const petalCount = 6;
+            const petals = [];
+
+            function createKineticPetal() {
+                const group = new THREE.Group();
+
+                // Hinge
+                const hingeGeom = new THREE.CylinderGeometry(0.02, 0.02, 0.06, 8);
+                const hinge = new THREE.Mesh(hingeGeom, steelMat);
+                hinge.rotation.z = Math.PI / 2;
+                group.add(hinge);
+
+                // Arm
+                const armGeom = new THREE.BoxGeometry(0.02, 0.3, 0.01);
+                const arm = new THREE.Mesh(armGeom, brassmat);
+                arm.position.y = 0.15;
+                group.add(arm);
+
+                // Petal
+                const shape = new THREE.Shape();
+                shape.moveTo(0, 0);
+                shape.bezierCurveTo(0.12, 0.05, 0.15, 0.25, 0.08, 0.4);
+                shape.bezierCurveTo(0.02, 0.48, -0.02, 0.48, -0.08, 0.4);
+                shape.bezierCurveTo(-0.15, 0.25, -0.12, 0.05, 0, 0);
+
+                const petalGeom = new THREE.ShapeGeometry(shape, 16);
+                const petalMat = new THREE.MeshStandardMaterial({
+                    color: 0xffaa77,
+                    side: THREE.DoubleSide,
+                    metalness: 0.3,
+                    roughness: 0.6
+                });
+                const petal = new THREE.Mesh(petalGeom, petalMat);
+                petal.position.y = 0.28;
+                group.add(petal);
+
+                return group;
+            }
+
+            for (let i = 0; i < petalCount; i++) {
+                const petal = createKineticPetal();
+                const angle = (i / petalCount) * Math.PI * 2;
+                petal.rotation.z = angle;
+                petal.position.set(
+                    Math.cos(angle) * 0.1,
+                    0.2,
+                    Math.sin(angle) * 0.1
+                );
+                petal.userData.phase = i * (Math.PI * 2 / petalCount);
+                flowerGroup.add(petal);
+                petals.push(petal);
+            }
+
+            // Center mechanism
+            const centerGeom = new THREE.CylinderGeometry(0.08, 0.1, 0.1, 16);
+            const center = new THREE.Mesh(centerGeom, brassmat);
+            center.position.y = 0.25;
+            flowerGroup.add(center);
+
+            // Stem (pipe)
+            const stemGeom = new THREE.CylinderGeometry(0.04, 0.05, 1, 8);
+            const stem = new THREE.Mesh(stemGeom, copperMat);
+            stem.position.y = -0.4;
+            flowerGroup.add(stem);
+
+            function animate() {
+                requestAnimationFrame(animate);
+                const elapsed = clock.getElapsedTime();
+
+                const gearSpeed = elapsed * 0.5;
+
+                // Rotate gears
+                mainGear.rotation.z = gearSpeed;
+                gear2.rotation.z = -gearSpeed * 1.6;
+                gear3.rotation.z = gearSpeed * 2;
+
+                // Petals driven by gear
+                petals.forEach((petal, i) => {
+                    const petalOpen = (Math.sin(gearSpeed + petal.userData.phase) + 1) * 0.5;
+                    petal.rotation.x = -Math.PI / 2 + petalOpen * 0.8;
+                });
+
+                // Center rotates
+                center.rotation.y = gearSpeed * 0.5;
+
+                flowerGroup.rotation.y = elapsed * 0.05;
+
+                camera.position.x = Math.sin(elapsed * 0.1) * 0.5;
+                camera.lookAt(0, 0.3, 0);
+
+                renderer.render(scene, camera);
+            }
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+            FlowerUtils.hideLoading();
+        })();
+    </script>
+</body>
+
+</html>

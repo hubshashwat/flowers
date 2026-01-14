@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mirror Flower | Flowers For You 🌸</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+    <div class="loading-overlay">
+        <div class="loading-flower"></div>
+        <p class="loading-text">Reflecting...</p>
+    </div>
+
+    <div class="flower-page">
+        <nav class="page-nav">
+            <a href="../index.html" class="back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Back to Garden
+            </a>
+        </nav>
+        <div id="canvas-container" class="flower-canvas"></div>
+        <div class="flower-info">
+            <h1>Mirror Flower</h1>
+            <p>Polished petals create infinite reflections</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        (function () {
+            const container = document.getElementById('canvas-container');
+            const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
+                background: 0x111111
+            });
+
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+
+            camera.position.set(0, 2, 4);
+            camera.lookAt(0, 0.5, 0);
+
+            // Lighting
+            const ambient = new THREE.AmbientLight(0xffffff, 0.4);
+            scene.add(ambient);
+            const spotLight = new THREE.SpotLight(0xffffff, 2);
+            spotLight.position.set(2, 4, 2);
+            scene.add(spotLight);
+
+            // Mirror room (walls)
+            const mirrorMat = new THREE.MeshStandardMaterial({
+                color: 0xaaaaaa,
+                metalness: 1,
+                roughness: 0.05
+            });
+
+            // Floor mirror
+            const floorGeom = new THREE.PlaneGeometry(6, 6);
+            const floor = new THREE.Mesh(floorGeom, mirrorMat.clone());
+            floor.rotation.x = -Math.PI / 2;
+            floor.position.y = -1;
+            scene.add(floor);
+
+            // Back wall
+            const backWall = new THREE.Mesh(new THREE.PlaneGeometry(6, 4), mirrorMat.clone());
+            backWall.position.set(0, 1, -3);
+            scene.add(backWall);
+
+            // Side walls
+            const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(6, 4), mirrorMat.clone());
+            leftWall.rotation.y = Math.PI / 2;
+            leftWall.position.set(-3, 1, 0);
+            scene.add(leftWall);
+
+            const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(6, 4), mirrorMat.clone());
+            rightWall.rotation.y = -Math.PI / 2;
+            rightWall.position.set(3, 1, 0);
+            scene.add(rightWall);
+
+            // Flower group
+            const flowerGroup = new THREE.Group();
+            scene.add(flowerGroup);
+
+            // Mirror petal material
+            const petalMirrorMat = new THREE.MeshStandardMaterial({
+                color: 0xffffff,
+                metalness: 1,
+                roughness: 0,
+                side: THREE.DoubleSide
+            });
+
+            // Create mirror petal
+            function createMirrorPetal() {
+                const shape = new THREE.Shape();
+                shape.moveTo(0, 0);
+                shape.bezierCurveTo(0.15, 0.1, 0.18, 0.4, 0.1, 0.6);
+                shape.bezierCurveTo(0.03, 0.72, -0.03, 0.72, -0.1, 0.6);
+                shape.bezierCurveTo(-0.18, 0.4, -0.15, 0.1, 0, 0);
+
+                const extrudeSettings = { depth: 0.01, bevelEnabled: true, bevelThickness: 0.005, bevelSize: 0.005, bevelSegments: 2 };
+                const geom = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+                return new THREE.Mesh(geom, petalMirrorMat.clone());
+            }
+
+            // Create petals
+            const petalCount = 8;
+            const petals = [];
+            for (let i = 0; i < petalCount; i++) {
+                const petal = createMirrorPetal();
+                const angle = (i / petalCount) * Math.PI * 2;
+                petal.rotation.z = angle;
+                petal.rotation.x = -Math.PI / 2 + 0.45;
+                petal.position.y = 0.5;
+                petal.userData.phase = i * 0.4;
+                flowerGroup.add(petal);
+                petals.push(petal);
+            }
+
+            // Center (mirror ball)
+            const centerGeom = new THREE.SphereGeometry(0.1, 32, 32);
+            const center = new THREE.Mesh(centerGeom, petalMirrorMat.clone());
+            center.position.y = 0.55;
+            flowerGroup.add(center);
+
+            // Stem
+            const stemCurve = new THREE.CatmullRomCurve3([
+                new THREE.Vector3(0, 0.4, 0),
+                new THREE.Vector3(0.02, 0, 0.01),
+                new THREE.Vector3(0, -0.8, 0)
+            ]);
+            const stemGeom = new THREE.TubeGeometry(stemCurve, 16, 0.025, 8, false);
+            const stem = new THREE.Mesh(stemGeom, petalMirrorMat.clone());
+            flowerGroup.add(stem);
+
+            // Colored lights for reflections
+            const colorLights = [];
+            const colors = [0xff0000, 0x00ff00, 0x0000ff, 0xff00ff, 0xffff00];
+            colors.forEach((color, i) => {
+                const light = new THREE.PointLight(color, 0.5, 5);
+                const angle = (i / colors.length) * Math.PI * 2;
+                light.position.set(Math.cos(angle) * 2, 1, Math.sin(angle) * 2);
+                scene.add(light);
+                colorLights.push(light);
+            });
+
+            function animate() {
+                requestAnimationFrame(animate);
+                const elapsed = clock.getElapsedTime();
+
+                // Subtle petal movement
+                petals.forEach(petal => {
+                    const breathe = Math.sin(elapsed * 0.5 + petal.userData.phase) * 0.05;
+                    petal.rotation.x = -Math.PI / 2 + 0.45 + breathe;
+                });
+
+                // Rotate colored lights
+                colorLights.forEach((light, i) => {
+                    const angle = elapsed * 0.3 + (i / colorLights.length) * Math.PI * 2;
+                    light.position.x = Math.cos(angle) * 2;
+                    light.position.z = Math.sin(angle) * 2;
+                    light.intensity = 0.3 + Math.sin(elapsed * 2 + i) * 0.2;
+                });
+
+                flowerGroup.rotation.y = elapsed * 0.1;
+
+                camera.position.x = Math.sin(elapsed * 0.1) * 0.4;
+                camera.position.z = 4 + Math.sin(elapsed * 0.15) * 0.3;
+                camera.lookAt(0, 0.4, 0);
+
+                renderer.render(scene, camera);
+            }
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+            FlowerUtils.hideLoading();
+        })();
+    </script>
+</body>
+
+</html>

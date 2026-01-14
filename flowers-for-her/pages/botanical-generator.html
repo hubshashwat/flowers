@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Botanical Generator | Flowers For You 🌸</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <style>
+        .controls {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 16px;
+            color: white;
+            z-index: 50;
+            width: 220px;
+        }
+
+        .controls h3 {
+            margin: 0 0 15px 0;
+            font-size: 14px;
+            color: #ffb6c1;
+        }
+
+        .control-group {
+            margin-bottom: 12px;
+        }
+
+        .control-group label {
+            display: block;
+            font-size: 12px;
+            margin-bottom: 4px;
+            opacity: 0.8;
+        }
+
+        .control-group input[type="range"] {
+            width: 100%;
+            accent-color: #ff6b8a;
+        }
+
+        .control-group input[type="color"] {
+            width: 100%;
+            height: 30px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .generate-btn {
+            width: 100%;
+            padding: 10px;
+            background: linear-gradient(135deg, #ff6b8a, #ff8fab);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .generate-btn:hover {
+            opacity: 0.9;
+        }
+
+        @media (max-width: 768px) {
+            .controls {
+                top: auto;
+                bottom: 140px;
+                right: 10px;
+                left: 10px;
+                width: auto;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="loading-overlay">
+        <div class="loading-flower"></div>
+        <p class="loading-text">Preparing lab...</p>
+    </div>
+
+    <div class="flower-page">
+        <nav class="page-nav">
+            <a href="../index.html" class="back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Back to Garden
+            </a>
+        </nav>
+
+        <div class="controls">
+            <h3>🧬 Customize Your Flower</h3>
+            <div class="control-group">
+                <label>Petal Count: <span id="petalCountValue">8</span></label>
+                <input type="range" id="petalCount" min="3" max="20" value="8">
+            </div>
+            <div class="control-group">
+                <label>Petal Length: <span id="petalLengthValue">1.0</span></label>
+                <input type="range" id="petalLength" min="0.5" max="2" step="0.1" value="1">
+            </div>
+            <div class="control-group">
+                <label>Curvature: <span id="curvatureValue">0.5</span></label>
+                <input type="range" id="curvature" min="0" max="1" step="0.1" value="0.5">
+            </div>
+            <div class="control-group">
+                <label>Petal Color</label>
+                <input type="color" id="petalColor" value="#ff6b8a">
+            </div>
+            <div class="control-group">
+                <label>Center Color</label>
+                <input type="color" id="centerColor" value="#ffd700">
+            </div>
+            <button class="generate-btn" id="generateBtn">✨ Generate Flower</button>
+        </div>
+
+        <div id="canvas-container" class="flower-canvas"></div>
+        <div class="flower-info">
+            <h1>Botanical Generator</h1>
+            <p>Create your own unique flower with custom parameters</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        (function () {
+            const container = document.getElementById('canvas-container');
+            const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
+                background: 0x1a1a24
+            });
+
+            camera.position.set(0, 2, 5);
+            camera.lookAt(0, 0.5, 0);
+
+            // Lighting
+            const ambient = new THREE.AmbientLight(0xffffff, 0.4);
+            scene.add(ambient);
+            const mainLight = new THREE.DirectionalLight(0xffffff, 1);
+            mainLight.position.set(5, 8, 5);
+            scene.add(mainLight);
+
+            // Flower group
+            let flowerGroup = new THREE.Group();
+            scene.add(flowerGroup);
+
+            // Ground
+            const groundGeom = new THREE.CircleGeometry(5, 64);
+            const groundMat = new THREE.MeshStandardMaterial({ color: 0x111118, roughness: 0.9 });
+            const ground = new THREE.Mesh(groundGeom, groundMat);
+            ground.rotation.x = -Math.PI / 2;
+            ground.position.y = -1;
+            scene.add(ground);
+
+            // Parameters
+            const params = {
+                petalCount: 8,
+                petalLength: 1,
+                curvature: 0.5,
+                petalColor: '#ff6b8a',
+                centerColor: '#ffd700'
+            };
+
+            // Create petal geometry
+            function createPetalGeom(length, curvature) {
+                const width = 0.15 * length;
+                const shape = new THREE.Shape();
+                shape.moveTo(0, 0);
+                shape.bezierCurveTo(width, 0.1 * length, width * 1.2, 0.4 * length, width * 0.8, 0.7 * length);
+                shape.bezierCurveTo(width * 0.3, 0.95 * length, -width * 0.3, 0.95 * length, -width * 0.8, 0.7 * length);
+                shape.bezierCurveTo(-width * 1.2, 0.4 * length, -width, 0.1 * length, 0, 0);
+
+                const geom = new THREE.ShapeGeometry(shape, 24);
+                const positions = geom.attributes.position;
+                for (let i = 0; i < positions.count; i++) {
+                    const y = positions.getY(i);
+                    const normalizedY = y / length;
+                    positions.setZ(i, Math.sin(normalizedY * Math.PI * 0.7) * curvature * 0.3);
+                }
+                positions.needsUpdate = true;
+                geom.computeVertexNormals();
+                return geom;
+            }
+
+            // Generate flower
+            function generateFlower() {
+                // Clear existing
+                while (flowerGroup.children.length > 0) {
+                    const child = flowerGroup.children[0];
+                    flowerGroup.remove(child);
+                    if (child.geometry) child.geometry.dispose();
+                    if (child.material) child.material.dispose();
+                }
+
+                const petalGeom = createPetalGeom(params.petalLength, params.curvature);
+                const petalMat = new THREE.MeshStandardMaterial({
+                    color: params.petalColor,
+                    side: THREE.DoubleSide,
+                    roughness: 0.5
+                });
+
+                // Outer petals
+                for (let i = 0; i < params.petalCount; i++) {
+                    const petal = new THREE.Mesh(petalGeom, petalMat.clone());
+                    const angle = (i / params.petalCount) * Math.PI * 2;
+                    petal.rotation.z = angle;
+                    petal.rotation.x = -Math.PI / 2 + 0.4;
+                    petal.position.y = 0.5;
+                    petal.userData = { phase: i * 0.3 };
+                    flowerGroup.add(petal);
+                }
+
+                // Inner petals (half count)
+                const innerCount = Math.max(3, Math.floor(params.petalCount / 2));
+                const innerGeom = createPetalGeom(params.petalLength * 0.6, params.curvature * 0.8);
+                for (let i = 0; i < innerCount; i++) {
+                    const petal = new THREE.Mesh(innerGeom, petalMat.clone());
+                    const angle = (i / innerCount) * Math.PI * 2 + Math.PI / params.petalCount;
+                    petal.rotation.z = angle;
+                    petal.rotation.x = -Math.PI / 2 + 0.25;
+                    petal.position.y = 0.52;
+                    petal.userData = { phase: i * 0.4 + 1 };
+                    flowerGroup.add(petal);
+                }
+
+                // Center
+                const centerGeom = new THREE.SphereGeometry(0.1, 32, 32);
+                const centerMat = new THREE.MeshStandardMaterial({
+                    color: params.centerColor,
+                    roughness: 0.6
+                });
+                const center = new THREE.Mesh(centerGeom, centerMat);
+                center.position.y = 0.55;
+                flowerGroup.add(center);
+
+                // Stem
+                const stemCurve = new THREE.CatmullRomCurve3([
+                    new THREE.Vector3(0, 0.4, 0),
+                    new THREE.Vector3(0.02, 0, 0.01),
+                    new THREE.Vector3(-0.01, -0.5, -0.01),
+                    new THREE.Vector3(0, -1, 0)
+                ]);
+                const stemGeom = new THREE.TubeGeometry(stemCurve, 16, 0.025, 8, false);
+                const stemMat = new THREE.MeshStandardMaterial({ color: 0x2d5a27 });
+                const stem = new THREE.Mesh(stemGeom, stemMat);
+                flowerGroup.add(stem);
+            }
+
+            // UI Controls
+            const petalCountEl = document.getElementById('petalCount');
+            const petalLengthEl = document.getElementById('petalLength');
+            const curvatureEl = document.getElementById('curvature');
+            const petalColorEl = document.getElementById('petalColor');
+            const centerColorEl = document.getElementById('centerColor');
+            const generateBtn = document.getElementById('generateBtn');
+
+            function updateValues() {
+                document.getElementById('petalCountValue').textContent = petalCountEl.value;
+                document.getElementById('petalLengthValue').textContent = petalLengthEl.value;
+                document.getElementById('curvatureValue').textContent = curvatureEl.value;
+            }
+
+            petalCountEl.addEventListener('input', updateValues);
+            petalLengthEl.addEventListener('input', updateValues);
+            curvatureEl.addEventListener('input', updateValues);
+
+            generateBtn.addEventListener('click', () => {
+                params.petalCount = parseInt(petalCountEl.value);
+                params.petalLength = parseFloat(petalLengthEl.value);
+                params.curvature = parseFloat(curvatureEl.value);
+                params.petalColor = petalColorEl.value;
+                params.centerColor = centerColorEl.value;
+                generateFlower();
+            });
+
+            // Initial generation
+            generateFlower();
+
+            function animate() {
+                requestAnimationFrame(animate);
+                const elapsed = clock.getElapsedTime();
+
+                // Animate petals
+                flowerGroup.children.forEach(child => {
+                    if (child.userData && child.userData.phase !== undefined) {
+                        const wave = Math.sin(elapsed * 0.8 + child.userData.phase) * 0.02;
+                        child.rotation.x += wave * 0.01;
+                    }
+                });
+
+                flowerGroup.rotation.y = elapsed * 0.15;
+
+                camera.position.x = Math.sin(elapsed * 0.1) * 0.5;
+                camera.lookAt(0, 0.3, 0);
+
+                renderer.render(scene, camera);
+            }
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+            FlowerUtils.hideLoading();
+        })();
+    </script>
+</body>
+
+</html>

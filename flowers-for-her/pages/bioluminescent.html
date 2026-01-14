@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bioluminescent Deep-Sea Flower | Flowers For You 🌸</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+    <div class="loading-overlay">
+        <div class="loading-flower"></div>
+        <p class="loading-text">Descending...</p>
+    </div>
+
+    <div class="flower-page">
+        <nav class="page-nav">
+            <a href="../index.html" class="back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Back to Garden
+            </a>
+        </nav>
+        <div id="canvas-container" class="flower-canvas"></div>
+        <div class="flower-info">
+            <h1>Bioluminescent Deep-Sea Flower</h1>
+            <p>Glowing in darkness with orbiting creatures</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        (function () {
+            const container = document.getElementById('canvas-container');
+            const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
+                background: 0x000508
+            });
+
+            camera.position.set(0, 2, 5);
+            camera.lookAt(0, 0.5, 0);
+
+            // Minimal ambient (deep sea darkness)
+            const ambient = new THREE.AmbientLight(0x001122, 0.2);
+            scene.add(ambient);
+
+            // Flower group
+            const flowerGroup = new THREE.Group();
+            scene.add(flowerGroup);
+
+            // Bioluminescent material
+            function createBioMaterial(color) {
+                return new THREE.MeshBasicMaterial({
+                    color: color,
+                    transparent: true,
+                    opacity: 0.8,
+                    side: THREE.DoubleSide
+                });
+            }
+
+            // Create glowing petal
+            function createBioPetal() {
+                const group = new THREE.Group();
+
+                const shape = new THREE.Shape();
+                shape.moveTo(0, 0);
+                shape.bezierCurveTo(0.15, 0.1, 0.18, 0.4, 0.1, 0.6);
+                shape.bezierCurveTo(0.03, 0.72, -0.03, 0.72, -0.1, 0.6);
+                shape.bezierCurveTo(-0.18, 0.4, -0.15, 0.1, 0, 0);
+
+                const geom = new THREE.ShapeGeometry(shape, 16);
+                const petal = new THREE.Mesh(geom, createBioMaterial(0x00aaff));
+                group.add(petal);
+
+                // Glowing veins
+                const veinMat = new THREE.LineBasicMaterial({ color: 0x00ffff });
+                for (let v = 0; v < 3; v++) {
+                    const points = [
+                        new THREE.Vector3(0, 0, 0.001),
+                        new THREE.Vector3((v - 1) * 0.03, 0.3, 0.001),
+                        new THREE.Vector3((v - 1) * 0.05, 0.6, 0.001)
+                    ];
+                    const curve = new THREE.CatmullRomCurve3(points);
+                    const veinGeom = new THREE.BufferGeometry().setFromPoints(curve.getPoints(10));
+                    const vein = new THREE.Line(veinGeom, veinMat.clone());
+                    group.add(vein);
+                }
+
+                // Add point light for glow
+                const light = new THREE.PointLight(0x00aaff, 0.3, 1);
+                light.position.set(0, 0.3, 0);
+                group.add(light);
+
+                return group;
+            }
+
+            // Create petals
+            const petalCount = 6;
+            const petals = [];
+            for (let i = 0; i < petalCount; i++) {
+                const petal = createBioPetal();
+                const angle = (i / petalCount) * Math.PI * 2;
+                petal.rotation.z = angle;
+                petal.rotation.x = -Math.PI / 2 + 0.5;
+                petal.position.y = 0.5;
+                petal.userData.phase = i * 0.5;
+                flowerGroup.add(petal);
+                petals.push(petal);
+            }
+
+            // Glowing center
+            const centerGeom = new THREE.SphereGeometry(0.1, 32, 32);
+            const centerMat = createBioMaterial(0x00ffaa);
+            const center = new THREE.Mesh(centerGeom, centerMat);
+            center.position.y = 0.55;
+            flowerGroup.add(center);
+
+            const centerLight = new THREE.PointLight(0x00ffaa, 1, 3);
+            centerLight.position.y = 0.55;
+            flowerGroup.add(centerLight);
+
+            // Stem
+            const stemCurve = new THREE.CatmullRomCurve3([
+                new THREE.Vector3(0, 0.4, 0),
+                new THREE.Vector3(0.02, 0, 0.01),
+                new THREE.Vector3(0, -0.8, 0)
+            ]);
+            const stemGeom = new THREE.TubeGeometry(stemCurve, 16, 0.025, 8, false);
+            const stemMat = createBioMaterial(0x004466);
+            const stem = new THREE.Mesh(stemGeom, stemMat);
+            flowerGroup.add(stem);
+
+            // Orbiting creatures (small glowing organisms)
+            const creatures = [];
+            for (let i = 0; i < 12; i++) {
+                const creatureGeom = new THREE.SphereGeometry(0.02 + Math.random() * 0.02, 8, 8);
+                const creatureMat = new THREE.MeshBasicMaterial({
+                    color: new THREE.Color().setHSL(0.5 + Math.random() * 0.2, 1, 0.6),
+                    transparent: true,
+                    opacity: 0.8
+                });
+                const creature = new THREE.Mesh(creatureGeom, creatureMat);
+
+                const creatureLight = new THREE.PointLight(creatureMat.color, 0.2, 0.5);
+                creature.add(creatureLight);
+
+                creature.userData = {
+                    orbitRadius: 0.6 + Math.random() * 0.8,
+                    orbitSpeed: 0.5 + Math.random() * 0.5,
+                    orbitOffset: Math.random() * Math.PI * 2,
+                    yOffset: (Math.random() - 0.5) * 1,
+                    verticalSpeed: 0.3 + Math.random() * 0.3
+                };
+
+                scene.add(creature);
+                creatures.push(creature);
+            }
+
+            // Floating particles (plankton)
+            const planktonCount = 100;
+            const planktonGeom = new THREE.BufferGeometry();
+            const planktonPos = new Float32Array(planktonCount * 3);
+            for (let i = 0; i < planktonCount; i++) {
+                planktonPos[i * 3] = (Math.random() - 0.5) * 4;
+                planktonPos[i * 3 + 1] = Math.random() * 3 - 0.5;
+                planktonPos[i * 3 + 2] = (Math.random() - 0.5) * 4;
+            }
+            planktonGeom.setAttribute('position', new THREE.BufferAttribute(planktonPos, 3));
+            const planktonMat = new THREE.PointsMaterial({
+                color: 0x00ffff,
+                size: 0.02,
+                transparent: true,
+                opacity: 0.4
+            });
+            const plankton = new THREE.Points(planktonGeom, planktonMat);
+            scene.add(plankton);
+
+            function animate() {
+                requestAnimationFrame(animate);
+                const elapsed = clock.getElapsedTime();
+
+                // Petal glow pulse
+                petals.forEach((petal, i) => {
+                    const pulse = Math.sin(elapsed * 2 + petal.userData.phase) * 0.5 + 0.5;
+                    petal.children[0].material.opacity = 0.5 + pulse * 0.4;
+
+                    // Sway
+                    petal.rotation.x = -Math.PI / 2 + 0.5 + Math.sin(elapsed + petal.userData.phase) * 0.05;
+                });
+
+                // Center pulse
+                const centerPulse = Math.sin(elapsed * 3) * 0.5 + 0.5;
+                centerLight.intensity = 0.5 + centerPulse * 0.8;
+                center.scale.setScalar(1 + centerPulse * 0.1);
+
+                // Creatures orbit
+                creatures.forEach(creature => {
+                    const angle = elapsed * creature.userData.orbitSpeed + creature.userData.orbitOffset;
+                    creature.position.x = Math.cos(angle) * creature.userData.orbitRadius;
+                    creature.position.z = Math.sin(angle) * creature.userData.orbitRadius;
+                    creature.position.y = 0.5 + creature.userData.yOffset + Math.sin(elapsed * creature.userData.verticalSpeed) * 0.2;
+                });
+
+                // Plankton drift
+                const pPos = planktonGeom.attributes.position.array;
+                for (let i = 0; i < planktonCount; i++) {
+                    pPos[i * 3 + 1] += 0.002;
+                    if (pPos[i * 3 + 1] > 2.5) {
+                        pPos[i * 3 + 1] = -0.5;
+                    }
+                }
+                planktonGeom.attributes.position.needsUpdate = true;
+
+                flowerGroup.rotation.y = elapsed * 0.05;
+
+                camera.position.x = Math.sin(elapsed * 0.1) * 0.5;
+                camera.lookAt(0, 0.5, 0);
+
+                renderer.render(scene, camera);
+            }
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+            FlowerUtils.hideLoading();
+        })();
+    </script>
+</body>
+
+</html>

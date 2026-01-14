@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frozen Ice Flower | Flowers For You 🌸</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+    <div class="loading-overlay">
+        <div class="loading-flower"></div>
+        <p class="loading-text">Crystallizing...</p>
+    </div>
+
+    <div class="flower-page">
+        <nav class="page-nav">
+            <a href="../index.html" class="back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Back to Garden
+            </a>
+        </nav>
+        <div id="canvas-container" class="flower-canvas"></div>
+        <div class="flower-info">
+            <h1>Frozen Ice Flower</h1>
+            <p>Crystallizes from vapor with spreading frost patterns</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        (function () {
+            const container = document.getElementById('canvas-container');
+            const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
+                background: 0x0a1520
+            });
+
+            camera.position.set(0, 2, 4.5);
+            camera.lookAt(0, 0.5, 0);
+
+            // Cold lighting
+            const ambient = new THREE.AmbientLight(0x88aacc, 0.4);
+            scene.add(ambient);
+            const mainLight = new THREE.DirectionalLight(0xaaccff, 1.2);
+            mainLight.position.set(3, 5, 3);
+            scene.add(mainLight);
+            const backLight = new THREE.DirectionalLight(0x6688aa, 0.5);
+            backLight.position.set(-2, 3, -3);
+            scene.add(backLight);
+
+            // Flower group
+            const flowerGroup = new THREE.Group();
+            scene.add(flowerGroup);
+
+            // Ice material
+            const iceMat = new THREE.MeshPhysicalMaterial({
+                color: 0xccddff,
+                metalness: 0.1,
+                roughness: 0.15,
+                transmission: 0.6,
+                thickness: 0.3,
+                transparent: true,
+                opacity: 0.85
+            });
+
+            // Create ice petal
+            function createIcePetal() {
+                const shape = new THREE.Shape();
+                shape.moveTo(0, 0);
+                shape.bezierCurveTo(0.15, 0.08, 0.2, 0.4, 0.12, 0.65);
+                shape.bezierCurveTo(0.05, 0.8, -0.05, 0.8, -0.12, 0.65);
+                shape.bezierCurveTo(-0.2, 0.4, -0.15, 0.08, 0, 0);
+
+                const geom = new THREE.ShapeGeometry(shape, 24);
+                const positions = geom.attributes.position;
+                for (let i = 0; i < positions.count; i++) {
+                    const y = positions.getY(i);
+                    positions.setZ(i, Math.sin(y * Math.PI * 0.7) * 0.06);
+                }
+                positions.needsUpdate = true;
+                geom.computeVertexNormals();
+
+                const petal = new THREE.Mesh(geom, iceMat.clone());
+                return petal;
+            }
+
+            // Create petals
+            const petalCount = 8;
+            const petals = [];
+            for (let i = 0; i < petalCount; i++) {
+                const petal = createIcePetal();
+                const angle = (i / petalCount) * Math.PI * 2;
+                petal.rotation.z = angle;
+                petal.rotation.x = -Math.PI / 2 + 0.45;
+                petal.position.y = 0.5;
+                petal.scale.setScalar(0);
+                petal.userData.targetScale = 1;
+                petal.userData.delay = i * 0.3;
+                petal.userData.phase = i * 0.4;
+                flowerGroup.add(petal);
+                petals.push(petal);
+            }
+
+            // Center crystal
+            const centerGeom = new THREE.OctahedronGeometry(0.1, 0);
+            const center = new THREE.Mesh(centerGeom, iceMat.clone());
+            center.position.y = 0.55;
+            center.scale.setScalar(0);
+            flowerGroup.add(center);
+
+            // Frost particles
+            const frostCount = 200;
+            const frostGeom = new THREE.BufferGeometry();
+            const frostPos = new Float32Array(frostCount * 3);
+            const frostVel = [];
+            for (let i = 0; i < frostCount; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const radius = Math.random() * 2;
+                frostPos[i * 3] = Math.cos(angle) * radius;
+                frostPos[i * 3 + 1] = Math.random() * 3 - 0.5;
+                frostPos[i * 3 + 2] = Math.sin(angle) * radius;
+                frostVel.push({ x: (Math.random() - 0.5) * 0.01, y: -0.005 - Math.random() * 0.01, z: (Math.random() - 0.5) * 0.01 });
+            }
+            frostGeom.setAttribute('position', new THREE.BufferAttribute(frostPos, 3));
+            const frostMat = new THREE.PointsMaterial({
+                color: 0xccddff,
+                size: 0.03,
+                transparent: true,
+                opacity: 0.6
+            });
+            const frost = new THREE.Points(frostGeom, frostMat);
+            scene.add(frost);
+
+            // Crack lines (appear later)
+            const cracks = [];
+            for (let i = 0; i < 5; i++) {
+                const crackPoints = [
+                    new THREE.Vector3(0, 0.55, 0),
+                    new THREE.Vector3((Math.random() - 0.5) * 0.3, 0.55 + Math.random() * 0.2, (Math.random() - 0.5) * 0.3)
+                ];
+                const crackGeom = new THREE.BufferGeometry().setFromPoints(crackPoints);
+                const crackMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 });
+                const crack = new THREE.Line(crackGeom, crackMat);
+                flowerGroup.add(crack);
+                cracks.push(crack);
+            }
+
+            // Stem
+            const stemCurve = new THREE.CatmullRomCurve3([
+                new THREE.Vector3(0, 0.4, 0),
+                new THREE.Vector3(0.01, 0, 0.01),
+                new THREE.Vector3(0, -0.8, 0)
+            ]);
+            const stemGeom = new THREE.TubeGeometry(stemCurve, 16, 0.025, 8, false);
+            const stem = new THREE.Mesh(stemGeom, iceMat.clone());
+            stem.material.color.set(0x88aacc);
+            stem.scale.y = 0;
+            flowerGroup.add(stem);
+
+            const cycleDuration = 12;
+
+            function animate() {
+                requestAnimationFrame(animate);
+                const elapsed = clock.getElapsedTime();
+                const cycleTime = elapsed % cycleDuration;
+
+                // Growing phase (0-6s)
+                if (cycleTime < 6) {
+                    const growProgress = cycleTime / 6;
+                    stem.scale.y = Math.min(1, growProgress * 2);
+                    center.scale.setScalar(Math.max(0, (growProgress - 0.3) * 1.5));
+
+                    petals.forEach((petal, i) => {
+                        const petalProgress = Math.max(0, (growProgress - 0.2 - i * 0.05) * 2);
+                        petal.scale.setScalar(Math.min(1, petalProgress));
+                    });
+
+                    cracks.forEach(c => c.material.opacity = 0);
+                }
+                // Cracking phase (6-8s)
+                else if (cycleTime < 8) {
+                    const crackProgress = (cycleTime - 6) / 2;
+                    cracks.forEach((crack, i) => {
+                        crack.material.opacity = Math.min(0.8, crackProgress * 2 - i * 0.2);
+                    });
+                }
+                // Reset phase (10-12s)
+                else if (cycleTime > 10) {
+                    const resetProgress = (cycleTime - 10) / 2;
+                    petals.forEach(petal => {
+                        petal.scale.setScalar(Math.max(0, 1 - resetProgress));
+                    });
+                    center.scale.setScalar(Math.max(0, 1 - resetProgress));
+                    stem.scale.y = Math.max(0, 1 - resetProgress);
+                }
+
+                // Frost particles
+                const fPos = frostGeom.attributes.position.array;
+                for (let i = 0; i < frostCount; i++) {
+                    fPos[i * 3] += frostVel[i].x;
+                    fPos[i * 3 + 1] += frostVel[i].y;
+                    fPos[i * 3 + 2] += frostVel[i].z;
+                    if (fPos[i * 3 + 1] < -0.5) {
+                        fPos[i * 3 + 1] = 2.5;
+                        fPos[i * 3] = (Math.random() - 0.5) * 3;
+                        fPos[i * 3 + 2] = (Math.random() - 0.5) * 3;
+                    }
+                }
+                frostGeom.attributes.position.needsUpdate = true;
+
+                flowerGroup.rotation.y = elapsed * 0.1;
+
+                camera.position.x = Math.sin(elapsed * 0.08) * 0.4;
+                camera.lookAt(0, 0.4, 0);
+
+                renderer.render(scene, camera);
+            }
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+            FlowerUtils.hideLoading();
+        })();
+    </script>
+</body>
+
+</html>

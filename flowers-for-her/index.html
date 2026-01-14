@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flowers For You</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300&family=Inter:wght@300;400&display=swap"
+        rel="stylesheet">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000;
+            color: #fff;
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 30px 50px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .logo {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.3rem;
+            font-weight: 300;
+            letter-spacing: 0.1em;
+            opacity: 0.7;
+        }
+
+        .nav-count {
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.4);
+            letter-spacing: 0.1em;
+        }
+
+        /* Main Layout */
+        .main-view {
+            min-height: 100vh;
+            display: grid;
+            grid-template-columns: 1fr 50% 1fr;
+            padding: 100px 50px 80px;
+        }
+
+        /* Left Panel */
+        .left-panel {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding-right: 40px;
+        }
+
+        .flower-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: clamp(2.5rem, 6vw, 5rem);
+            font-weight: 300;
+            font-style: italic;
+            line-height: 1.1;
+            margin-bottom: 25px;
+        }
+
+        .flower-desc {
+            font-size: 0.85rem;
+            line-height: 1.8;
+            color: rgba(255, 255, 255, 0.5);
+            max-width: 280px;
+            margin-bottom: 35px;
+        }
+
+        .meta-info {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .meta-item {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .meta-label {
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            color: rgba(255, 255, 255, 0.25);
+        }
+
+        .meta-value {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 0.95rem;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        /* Center - Main Image */
+        .center-panel {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .main-flower {
+            width: 100%;
+            max-width: 420px;
+            aspect-ratio: 1;
+            background: radial-gradient(ellipse at center, rgba(183, 110, 121, 0.1) 0%, #000 70%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10rem;
+            position: relative;
+            overflow: visible;
+            cursor: pointer;
+            transition: transform 0.5s ease, opacity 0.3s;
+            animation: float 4s ease-in-out infinite;
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-15px);
+            }
+        }
+
+        .main-flower:hover {
+            animation-play-state: paused;
+            transform: scale(1.05);
+        }
+
+        /* Glow effect */
+        .main-flower::before {
+            content: '';
+            position: absolute;
+            width: 250px;
+            height: 250px;
+            background: radial-gradient(circle, rgba(183, 110, 121, 0.3) 0%, transparent 70%);
+            border-radius: 50%;
+            animation: pulse-glow 3s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        @keyframes pulse-glow {
+
+            0%,
+            100% {
+                transform: scale(1);
+                opacity: 0.5;
+            }
+
+            50% {
+                transform: scale(1.2);
+                opacity: 0.8;
+            }
+        }
+
+        /* Particle ring */
+        .main-flower::after {
+            content: '✨ · ✨ · ✨ · ✨ · ✨ · ✨ ·';
+            position: absolute;
+            width: 350px;
+            height: 350px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.3);
+            letter-spacing: 8px;
+            border-radius: 50%;
+            animation: rotate-ring 20s linear infinite;
+            pointer-events: none;
+        }
+
+        @keyframes rotate-ring {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .view-btn {
+            position: fixed;
+            bottom: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 35px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            font-size: 0.7rem;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            z-index: 100;
+        }
+
+        .view-btn:hover {
+            background: #fff;
+            color: #000;
+        }
+
+        /* Right Panel - Thumbnails */
+        .right-panel {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: flex-end;
+            padding-left: 30px;
+        }
+
+        .thumb-scroll {
+            max-height: 400px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+        }
+
+        .thumb-scroll::-webkit-scrollbar {
+            width: 3px;
+        }
+
+        .thumb-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .thumb-scroll::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+        }
+
+        .thumb-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding-right: 10px;
+        }
+
+        .thumb {
+            width: 40px;
+            height: 40px;
+            background: transparent;
+            border: none;
+            border-radius: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            opacity: 0.4;
+        }
+
+        .thumb:hover {
+            opacity: 0.8;
+            transform: scale(1.1);
+        }
+
+        .thumb.active {
+            opacity: 1;
+            transform: scale(1.15);
+        }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 25px;
+            left: 50px;
+            right: 50px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            pointer-events: none;
+        }
+
+        .bottom-nav>* {
+            pointer-events: auto;
+        }
+
+        .nav-arrow {
+            width: 45px;
+            height: 45px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: transparent;
+            color: #fff;
+        }
+
+        .nav-arrow:hover {
+            border-color: rgba(255, 255, 255, 0.4);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .nav-arrow svg {
+            width: 18px;
+            height: 18px;
+            stroke: currentColor;
+        }
+
+        .progress-bar {
+            position: absolute;
+            left: 80px;
+            width: 100px;
+            height: 2px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 1px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: rgba(255, 255, 255, 0.6);
+            transition: width 0.3s;
+        }
+
+        /* Mobile */
+        @media (max-width: 900px) {
+            nav {
+                padding: 20px 20px;
+            }
+
+            .main-view {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                padding: 90px 20px 120px;
+                gap: 25px;
+                min-height: 100vh;
+            }
+
+            .left-panel {
+                padding: 0;
+                text-align: center;
+                align-items: center;
+                order: 1;
+            }
+
+            .flower-title {
+                font-size: 2.5rem;
+                margin-bottom: 15px;
+            }
+
+            .flower-desc {
+                max-width: 90%;
+                margin-bottom: 20px;
+            }
+
+            .meta-info {
+                flex-direction: row;
+                gap: 30px;
+            }
+
+            .center-panel {
+                order: 2;
+            }
+
+            .main-flower {
+                font-size: 5rem;
+                width: 200px;
+                height: 200px;
+                max-width: none;
+            }
+
+            .right-panel {
+                display: none;
+            }
+
+            .view-btn {
+                padding: 10px 25px;
+                font-size: 0.6rem;
+            }
+
+            .bottom-nav {
+                left: 20px;
+                right: 20px;
+                bottom: 20px;
+            }
+
+            .nav-arrow {
+                width: 40px;
+                height: 40px;
+            }
+
+            .progress-bar {
+                left: 60px;
+                width: 80px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav>
+        <div class="logo">Flowers</div>
+        <div class="nav-count"><span id="currentNum">01</span> / 50</div>
+    </nav>
+
+    <!-- Main View -->
+    <main class="main-view">
+        <div class="left-panel">
+            <h1 class="flower-title" id="flowerTitle">Rose</h1>
+            <p class="flower-desc" id="flowerDesc">Layered petals catching light like silk, rendered with care.</p>
+            <div class="meta-info">
+                <div class="meta-item">
+                    <span class="meta-label">Type</span>
+                    <span class="meta-value" id="flowerType">Photorealistic</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">Experience</span>
+                    <span class="meta-value" id="flowerExp">Interactive 3D</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="center-panel">
+            <div class="main-flower" id="mainFlower">🌹</div>
+            <a href="pages/photorealistic-rose.html" class="view-btn" id="viewBtn">Enter</a>
+        </div>
+
+        <div class="right-panel">
+            <div class="thumb-scroll">
+                <div class="thumb-list" id="thumbList"></div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Bottom Navigation -->
+    <div class="bottom-nav">
+        <button class="nav-arrow" id="prevBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5">
+                <path d="M15 19l-7-7 7-7" />
+            </svg>
+        </button>
+
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+
+        <button class="nav-arrow" id="nextBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5">
+                <path d="M9 5l7 7-7 7" />
+            </svg>
+        </button>
+    </div>
+
+    <script>
+        // All 50 flowers
+        const flowers = [
+            { title: 'Rose', emoji: '🌹', desc: 'Layered petals catching light like silk, rendered with care.', type: 'Photorealistic', exp: 'Interactive 3D', link: 'pages/photorealistic-rose.html' },
+            { title: 'Bloom', emoji: '🌺', desc: 'Petals generated from mathematical curves, growing organically.', type: 'Procedural', exp: 'Animated Growth', link: 'pages/procedural-bloom.html' },
+            { title: 'Tulip', emoji: '🌷', desc: 'A bud unfurling at sunrise, petals stretching toward light.', type: 'Time-lapse', exp: 'Cinematic', link: 'pages/timelapse-bloom.html' },
+            { title: 'Field', emoji: '🌼', desc: 'Thousands of flowers swaying together in gentle wind.', type: 'Infinite', exp: 'Immersive', link: 'pages/infinite-field.html' },
+            { title: 'Machine', emoji: '⚙️', desc: 'Metallic petals with mechanical hinges and glowing core.', type: 'Biomechanical', exp: 'Industrial', link: 'pages/biomechanical.html' },
+            { title: 'Cosmic', emoji: '✨', desc: 'Nebula-formed petals drifting among distant stars.', type: 'Abstract', exp: 'Space', link: 'pages/cosmic-flower.html' },
+            { title: 'Painted', emoji: '🎨', desc: 'Soft watercolor textures on delicate petals.', type: 'Watercolor', exp: 'Artistic', link: 'pages/watercolor.html' },
+            { title: 'Garden', emoji: '👆', desc: 'Click flowers to watch them bloom and release pollen.', type: 'Interactive', exp: 'Touch', link: 'pages/interactive-garden.html' },
+            { title: 'Fibonacci', emoji: '🔢', desc: 'Petals arranged in perfect golden ratio spirals.', type: 'Mathematical', exp: 'Geometric', link: 'pages/golden-ratio.html' },
+            { title: 'Moonflower', emoji: '🌙', desc: 'Bioluminescent veins pulse gently in darkness.', type: 'Night Bloom', exp: 'Atmospheric', link: 'pages/night-blooming.html' },
+            { title: 'Silk', emoji: '🌊', desc: 'Petals rippling like fabric in a gentle breeze.', type: 'Shader', exp: 'Fluid Motion', link: 'pages/shader-motion.html' },
+            { title: 'Glass', emoji: '💎', desc: 'Light passing through translucent, delicate petals.', type: 'Translucent', exp: 'Backlit', link: 'pages/translucent-petals.html' },
+            { title: 'Warmth', emoji: '🔥', desc: 'Colors shift based on proximity to heat.', type: 'Reactive', exp: 'Touch-based', link: 'pages/heat-reactive.html' },
+            { title: 'Fractal', emoji: '🔄', desc: 'Infinite recursive structures within each petal.', type: 'Recursive', exp: 'Zoom', link: 'pages/fractal-flower.html' },
+            { title: 'Emotion', emoji: '💗', desc: 'Responds to your movement with color and energy.', type: 'Emotional', exp: 'Responsive', link: 'pages/emotion-driven.html' },
+            { title: 'Zen', emoji: '☯️', desc: 'Single white flower. Nothing more, nothing less.', type: 'Minimal', exp: 'Calm', link: 'pages/minimal-zen.html' },
+            { title: 'Seasons', emoji: '🍂', desc: 'Spring bloom through winter decay, cycling endlessly.', type: 'Seasonal', exp: 'Time-based', link: 'pages/seasonal-cycle.html' },
+            { title: 'Create', emoji: '🧬', desc: 'Design your own flower with custom parameters.', type: 'Generator', exp: 'Creative', link: 'pages/botanical-generator.html' },
+            { title: 'Macro', emoji: '📷', desc: 'Extreme close-up of pollen grains and fiber detail.', type: 'Photography', exp: 'Detail', link: 'pages/macro-photography.html' },
+            { title: 'Magic', emoji: '🔮', desc: 'Glowing runes and orbiting particles of light.', type: 'Mythical', exp: 'Fantasy', link: 'pages/mythical-flower.html' },
+            { title: 'Magnetic', emoji: '🧲', desc: 'Petals respond to invisible magnetic field forces.', type: 'Physics', exp: 'Magnetic', link: 'pages/magnetic-flower.html' },
+            { title: 'Glassblown', emoji: '🫧', desc: 'Transparent glass petals with refraction and bubbles.', type: 'Glass Art', exp: 'Prismatic', link: 'pages/glassblown-flower.html' },
+            { title: 'Frozen', emoji: '❄️', desc: 'Crystallizes from vapor with spreading frost patterns.', type: 'Ice Crystal', exp: 'Freezing', link: 'pages/frozen-ice.html' },
+            { title: 'Mercury', emoji: '🪞', desc: 'Liquid metal petals morphing and reflecting light.', type: 'Liquid Metal', exp: 'Morphing', link: 'pages/liquid-metal.html' },
+            { title: 'Wind', emoji: '💨', desc: 'Petals deform in wind tunnel with visible streamlines.', type: 'Aerodynamic', exp: 'Scientific', link: 'pages/wind-tunnel.html' },
+            { title: 'Quantum', emoji: '⚛️', desc: 'Exists in multiple states until observed.', type: 'Quantum', exp: 'Superposition', link: 'pages/quantum-flower.html' },
+            { title: 'Origami', emoji: '📄', desc: 'Paper petals unfold with crisp crease animations.', type: 'Paper Art', exp: 'Folding', link: 'pages/origami-flower.html' },
+            { title: 'Geode', emoji: '💜', desc: 'Rocky shell cracks to reveal crystalline petals.', type: 'Crystal', exp: 'Geologic', link: 'pages/crystal-geode.html' },
+            { title: 'Kinetic', emoji: '🔧', desc: 'Mechanical petals driven by turning brass gears.', type: 'Clockwork', exp: 'Mechanical', link: 'pages/kinetic-flower.html' },
+            { title: 'Cloud', emoji: '☁️', desc: 'Volumetric puffs that dissipate and reform.', type: 'Atmospheric', exp: 'Ethereal', link: 'pages/cloud-flower.html' },
+            { title: 'Neon', emoji: '🌃', desc: 'Holographic petals with glitch effects and data streams.', type: 'Cyberpunk', exp: 'Digital', link: 'pages/neon-cyberpunk.html' },
+            { title: 'Sound', emoji: '🎵', desc: 'Petals deform to simulated audio frequencies.', type: 'Audio', exp: 'Reactive', link: 'pages/sound-wave.html' },
+            { title: 'Mirror', emoji: '🪞', desc: 'Polished petals create infinite reflections.', type: 'Reflective', exp: 'Kaleidoscopic', link: 'pages/mirror-flower.html' },
+            { title: 'Abyss', emoji: '🐙', desc: 'Bioluminescent deep-sea bloom with orbiting creatures.', type: 'Deep Sea', exp: 'Oceanic', link: 'pages/bioluminescent.html' },
+            { title: 'Clockwork', emoji: '⏰', desc: 'Petals mark time like clock hands.', type: 'Temporal', exp: 'Steampunk', link: 'pages/clockwork-flower.html' },
+            { title: 'Ink', emoji: '🖋️', desc: 'Petals emerge from spreading ink patterns.', type: 'Artistic', exp: 'Calligraphy', link: 'pages/ink-spread.html' },
+            { title: 'Gravity', emoji: '🌌', desc: 'Petals float independently while maintaining form.', type: 'Anti-gravity', exp: 'Floating', link: 'pages/gravity-defying.html' },
+            { title: 'Chameleon', emoji: '🦎', desc: 'Colors shift to match the environment.', type: 'Adaptive', exp: 'Camouflage', link: 'pages/chameleon-flower.html' },
+            { title: 'Pixel', emoji: '👾', desc: 'Blocky voxels that smooth into organic form.', type: 'Retro', exp: '8-bit', link: 'pages/pixelated-flower.html' },
+            { title: 'Thermal', emoji: '🌡️', desc: 'Infrared visualization with radiating heat gradients.', type: 'Heat Map', exp: 'Scientific', link: 'pages/thermal-flower.html' },
+            { title: 'Shadow', emoji: '🎭', desc: 'Simple silhouette with complex layered shadows.', type: 'Paper-cut', exp: 'Theatre', link: 'pages/paper-cut-shadow.html' },
+            { title: 'Kaleidoscope', emoji: '🔮', desc: 'Mirrored petals forming evolving patterns.', type: 'Fractal', exp: 'Hypnotic', link: 'pages/fractal-kaleidoscope.html' },
+            { title: 'Wireframe', emoji: '📐', desc: 'Glowing mesh with flowing data points.', type: 'Technical', exp: 'Blueprint', link: 'pages/wireframe-botanical.html' },
+            { title: 'Rewind', emoji: '⏪', desc: 'Bloom plays forward then rewinds perfectly.', type: 'Temporal', exp: 'Loop', link: 'pages/time-reversed.html' },
+            { title: 'Underwater', emoji: '🫧', desc: 'Petals sway with currents under shimmering caustics.', type: 'Aquatic', exp: 'Submerged', link: 'pages/underwater-flower.html' },
+            { title: 'Molecular', emoji: '⚗️', desc: 'Atoms and bonds forming a lattice bloom.', type: 'Chemistry', exp: 'Scientific', link: 'pages/molecular-flower.html' },
+            { title: 'Fabric', emoji: '🧵', desc: 'Silk petals with realistic flutter physics.', type: 'Textile', exp: 'Tactile', link: 'pages/torn-fabric.html' },
+            { title: 'Phoenix', emoji: '🔥', desc: 'Ignites into flames and reborn from embers.', type: 'Fire', exp: 'Rebirth', link: 'pages/burning-phoenix.html' },
+            { title: 'Meteor', emoji: '☄️', desc: 'Cosmic bloom streaking through space with trail.', type: 'Space', exp: 'Celestial', link: 'pages/meteor-flower.html' },
+            { title: 'Mycelium', emoji: '🍄', desc: 'Connected to glowing underground root network.', type: 'Organic', exp: 'Network', link: 'pages/mycelium-network.html' }
+        ];
+
+        let currentIndex = 0;
+
+        const flowerTitle = document.getElementById('flowerTitle');
+        const flowerDesc = document.getElementById('flowerDesc');
+        const flowerType = document.getElementById('flowerType');
+        const flowerExp = document.getElementById('flowerExp');
+        const mainFlower = document.getElementById('mainFlower');
+        const viewBtn = document.getElementById('viewBtn');
+        const thumbList = document.getElementById('thumbList');
+        const progressFill = document.getElementById('progressFill');
+        const currentNum = document.getElementById('currentNum');
+
+        // Create thumbnails for all 20 flowers
+        flowers.forEach((flower, i) => {
+            const thumb = document.createElement('div');
+            thumb.className = 'thumb' + (i === 0 ? ' active' : '');
+            thumb.textContent = flower.emoji;
+            thumb.dataset.index = i;
+            thumb.addEventListener('click', () => updateFlower(i));
+            thumbList.appendChild(thumb);
+        });
+
+        const thumbs = document.querySelectorAll('.thumb');
+
+        function updateFlower(index) {
+            currentIndex = index;
+            const flower = flowers[index];
+
+            // Animate out
+            mainFlower.style.opacity = '0';
+            mainFlower.style.transform = 'scale(0.95)';
+
+            setTimeout(() => {
+                flowerTitle.textContent = flower.title;
+                flowerDesc.textContent = flower.desc;
+                flowerType.textContent = flower.type;
+                flowerExp.textContent = flower.exp;
+                mainFlower.textContent = flower.emoji;
+                viewBtn.href = flower.link;
+                currentNum.textContent = String(index + 1).padStart(2, '0');
+
+                // Update progress
+                progressFill.style.width = ((index + 1) / flowers.length * 100) + '%';
+
+                // Update active states
+                thumbs.forEach((t, i) => t.classList.toggle('active', i === index));
+
+                // Scroll thumbnail into view
+                thumbs[index].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+                // Animate in
+                mainFlower.style.opacity = '1';
+                mainFlower.style.transform = 'scale(1)';
+            }, 150);
+        }
+
+        // Arrow navigation
+        document.getElementById('prevBtn').addEventListener('click', () => {
+            const newIndex = currentIndex === 0 ? flowers.length - 1 : currentIndex - 1;
+            updateFlower(newIndex);
+        });
+
+        document.getElementById('nextBtn').addEventListener('click', () => {
+            const newIndex = currentIndex === flowers.length - 1 ? 0 : currentIndex + 1;
+            updateFlower(newIndex);
+        });
+
+        // Click main flower to enter
+        mainFlower.addEventListener('click', () => {
+            window.location.href = flowers[currentIndex].link;
+        });
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+                const newIndex = currentIndex === flowers.length - 1 ? 0 : currentIndex + 1;
+                updateFlower(newIndex);
+            } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                const newIndex = currentIndex === 0 ? flowers.length - 1 : currentIndex - 1;
+                updateFlower(newIndex);
+            } else if (e.key === 'Enter') {
+                window.location.href = flowers[currentIndex].link;
+            }
+        });
+
+        // Initialize
+        progressFill.style.width = (1 / flowers.length * 100) + '%';
+    </script>
+</body>
+
+</html>

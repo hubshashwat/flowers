@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Origami Flower | Flowers For You 🌸</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+    <div class="loading-overlay">
+        <div class="loading-flower"></div>
+        <p class="loading-text">Folding paper...</p>
+    </div>
+
+    <div class="flower-page">
+        <nav class="page-nav">
+            <a href="../index.html" class="back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Back to Garden
+            </a>
+        </nav>
+        <div id="canvas-container" class="flower-canvas"></div>
+        <div class="flower-info">
+            <h1>Origami Flower</h1>
+            <p>Paper petals unfold with crisp crease animations</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        (function () {
+            const container = document.getElementById('canvas-container');
+            const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
+                background: 0xf5f0e8
+            });
+
+            camera.position.set(0, 2, 4);
+            camera.lookAt(0, 0.5, 0);
+
+            // Soft lighting
+            const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambient);
+            const mainLight = new THREE.DirectionalLight(0xffeedd, 0.8);
+            mainLight.position.set(3, 5, 3);
+            scene.add(mainLight);
+
+            // Flower group
+            const flowerGroup = new THREE.Group();
+            scene.add(flowerGroup);
+
+            // Paper material
+            const paperMat = new THREE.MeshStandardMaterial({
+                color: 0xff8899,
+                side: THREE.DoubleSide,
+                roughness: 0.8,
+                metalness: 0
+            });
+
+            // Create origami petal (two triangular halves with a fold)
+            function createOrigamiPetal() {
+                const group = new THREE.Group();
+
+                // Left half
+                const leftShape = new THREE.Shape();
+                leftShape.moveTo(0, 0);
+                leftShape.lineTo(-0.15, 0.5);
+                leftShape.lineTo(0, 0.7);
+                leftShape.lineTo(0, 0);
+
+                const leftGeom = new THREE.ShapeGeometry(leftShape);
+                const left = new THREE.Mesh(leftGeom, paperMat.clone());
+                left.userData.isFold = true;
+                group.add(left);
+
+                // Right half
+                const rightShape = new THREE.Shape();
+                rightShape.moveTo(0, 0);
+                rightShape.lineTo(0, 0.7);
+                rightShape.lineTo(0.15, 0.5);
+                rightShape.lineTo(0, 0);
+
+                const rightGeom = new THREE.ShapeGeometry(rightShape);
+                const right = new THREE.Mesh(rightGeom, paperMat.clone());
+                right.userData.isFold = true;
+                group.add(right);
+
+                // Crease line (glowing edge)
+                const creaseMat = new THREE.LineBasicMaterial({ color: 0xffccdd, transparent: true, opacity: 0.8 });
+                const creaseGeom = new THREE.BufferGeometry().setFromPoints([
+                    new THREE.Vector3(0, 0, 0),
+                    new THREE.Vector3(0, 0.7, 0)
+                ]);
+                const crease = new THREE.Line(creaseGeom, creaseMat);
+                crease.position.z = 0.001;
+                group.add(crease);
+
+                group.userData.left = left;
+                group.userData.right = right;
+                group.userData.foldAngle = Math.PI * 0.4; // Start folded
+
+                return group;
+            }
+
+            // Create petals
+            const petalCount = 8;
+            const petals = [];
+            for (let i = 0; i < petalCount; i++) {
+                const petal = createOrigamiPetal();
+                const angle = (i / petalCount) * Math.PI * 2;
+                petal.rotation.z = angle;
+                petal.rotation.x = -Math.PI / 2;
+                petal.position.y = 0.5;
+                petal.userData.delay = i * 0.15;
+                flowerGroup.add(petal);
+                petals.push(petal);
+            }
+
+            // Inner petals
+            for (let i = 0; i < 5; i++) {
+                const petal = createOrigamiPetal();
+                petal.scale.setScalar(0.6);
+                const angle = (i / 5) * Math.PI * 2 + 0.3;
+                petal.rotation.z = angle;
+                petal.rotation.x = -Math.PI / 2;
+                petal.position.y = 0.52;
+                petal.userData.delay = i * 0.12 + 1;
+                petal.children.forEach(c => {
+                    if (c.material) c.material = paperMat.clone();
+                    c.material.color.set(0xffaabb);
+                });
+                flowerGroup.add(petal);
+                petals.push(petal);
+            }
+
+            // Center (folded paper ball)
+            const centerGeom = new THREE.IcosahedronGeometry(0.08, 0);
+            const center = new THREE.Mesh(centerGeom, paperMat.clone());
+            center.material.color.set(0xffdd88);
+            center.position.y = 0.55;
+            flowerGroup.add(center);
+
+            // Stem (green paper)
+            const stemGeom = new THREE.CylinderGeometry(0.02, 0.03, 1, 6);
+            const stemMat = new THREE.MeshStandardMaterial({ color: 0x88aa77, roughness: 0.8 });
+            const stem = new THREE.Mesh(stemGeom, stemMat);
+            stem.position.y = 0;
+            flowerGroup.add(stem);
+
+            let unfoldProgress = 0;
+            let unfoldDirection = 1;
+
+            function animate() {
+                requestAnimationFrame(animate);
+                const elapsed = clock.getElapsedTime();
+
+                // Unfold animation
+                unfoldProgress += unfoldDirection * 0.003;
+                if (unfoldProgress > 1) { unfoldProgress = 1; unfoldDirection = -1; }
+                if (unfoldProgress < 0) { unfoldProgress = 0; unfoldDirection = 1; }
+
+                // Animate petals unfolding
+                petals.forEach(petal => {
+                    const delay = petal.userData.delay || 0;
+                    const localProgress = Math.max(0, Math.min(1, (unfoldProgress * 2) - delay * 0.3));
+
+                    // Fold angle (from closed to open)
+                    const foldAngle = (1 - localProgress) * Math.PI * 0.4;
+
+                    // Rotate halves
+                    if (petal.userData.left) {
+                        petal.userData.left.rotation.y = foldAngle;
+                    }
+                    if (petal.userData.right) {
+                        petal.userData.right.rotation.y = -foldAngle;
+                    }
+
+                    // Open outward
+                    petal.rotation.x = -Math.PI / 2 + localProgress * 0.5;
+                });
+
+                // Center pulses
+                center.scale.setScalar(1 + Math.sin(elapsed * 2) * 0.05);
+
+                flowerGroup.rotation.y = elapsed * 0.1;
+
+                camera.position.x = Math.sin(elapsed * 0.1) * 0.3;
+                camera.lookAt(0, 0.5, 0);
+
+                renderer.render(scene, camera);
+            }
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+            FlowerUtils.hideLoading();
+        })();
+    </script>
+</body>
+
+</html>

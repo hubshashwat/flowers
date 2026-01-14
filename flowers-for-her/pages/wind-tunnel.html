@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wind-Tunnel Flower | Flowers For You 🌸</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+    <div class="loading-overlay">
+        <div class="loading-flower"></div>
+        <p class="loading-text">Generating airflow...</p>
+    </div>
+
+    <div class="flower-page">
+        <nav class="page-nav">
+            <a href="../index.html" class="back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Back to Garden
+            </a>
+        </nav>
+        <div id="canvas-container" class="flower-canvas"></div>
+        <div class="flower-info">
+            <h1>Wind-Tunnel Flower</h1>
+            <p>Petals deform with visible airflow streamlines</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        (function () {
+            const container = document.getElementById('canvas-container');
+            const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
+                background: 0x101820
+            });
+
+            camera.position.set(0, 2, 5);
+            camera.lookAt(0, 0.5, 0);
+
+            // Lighting
+            const ambient = new THREE.AmbientLight(0x334455, 0.5);
+            scene.add(ambient);
+            const mainLight = new THREE.DirectionalLight(0xffffff, 1);
+            mainLight.position.set(3, 5, 3);
+            scene.add(mainLight);
+
+            // Flower group
+            const flowerGroup = new THREE.Group();
+            scene.add(flowerGroup);
+
+            // Wind parameters
+            let windAngle = 0;
+            let windSpeed = 1;
+
+            // Create flexible petal
+            function createFlexiblePetal() {
+                const shape = new THREE.Shape();
+                shape.moveTo(0, 0);
+                shape.bezierCurveTo(0.18, 0.1, 0.22, 0.45, 0.12, 0.7);
+                shape.bezierCurveTo(0.04, 0.85, -0.04, 0.85, -0.12, 0.7);
+                shape.bezierCurveTo(-0.22, 0.45, -0.18, 0.1, 0, 0);
+
+                const geom = new THREE.ShapeGeometry(shape, 32);
+                const mat = new THREE.MeshStandardMaterial({
+                    color: 0x88aa88,
+                    side: THREE.DoubleSide,
+                    roughness: 0.6
+                });
+
+                const petal = new THREE.Mesh(geom, mat);
+                petal.userData.originalPositions = geom.attributes.position.array.slice();
+                return petal;
+            }
+
+            // Create petals
+            const petalCount = 8;
+            const petals = [];
+            for (let i = 0; i < petalCount; i++) {
+                const petal = createFlexiblePetal();
+                const angle = (i / petalCount) * Math.PI * 2;
+                petal.rotation.z = angle;
+                petal.rotation.x = -Math.PI / 2 + 0.4;
+                petal.position.y = 0.5;
+                petal.userData.baseAngle = angle;
+                flowerGroup.add(petal);
+                petals.push(petal);
+            }
+
+            // Center
+            const centerGeom = new THREE.SphereGeometry(0.1, 32, 32);
+            const centerMat = new THREE.MeshStandardMaterial({ color: 0xaacc88, roughness: 0.5 });
+            const center = new THREE.Mesh(centerGeom, centerMat);
+            center.position.y = 0.55;
+            flowerGroup.add(center);
+
+            // Stem
+            const stemCurve = new THREE.CatmullRomCurve3([
+                new THREE.Vector3(0, 0.4, 0),
+                new THREE.Vector3(0.02, 0, 0.01),
+                new THREE.Vector3(0, -0.8, 0)
+            ]);
+            const stemGeom = new THREE.TubeGeometry(stemCurve, 16, 0.025, 8, false);
+            const stemMat = new THREE.MeshStandardMaterial({ color: 0x556644 });
+            const stem = new THREE.Mesh(stemGeom, stemMat);
+            flowerGroup.add(stem);
+
+            // Streamlines
+            const streamlines = [];
+            const streamlineCount = 30;
+            for (let i = 0; i < streamlineCount; i++) {
+                const points = [];
+                const startY = (i / streamlineCount) * 2 - 0.5;
+                const startZ = (Math.random() - 0.5) * 2;
+                for (let j = 0; j < 20; j++) {
+                    points.push(new THREE.Vector3(-3 + j * 0.3, startY, startZ));
+                }
+
+                const curve = new THREE.CatmullRomCurve3(points);
+                const geom = new THREE.TubeGeometry(curve, 20, 0.005, 4, false);
+                const mat = new THREE.MeshBasicMaterial({
+                    color: 0x66aaff,
+                    transparent: true,
+                    opacity: 0.15
+                });
+                const streamline = new THREE.Mesh(geom, mat);
+                streamline.userData.points = points;
+                streamline.userData.phase = i * 0.2;
+                scene.add(streamline);
+                streamlines.push(streamline);
+            }
+
+            // Wind particles
+            const particleCount = 100;
+            const particleGeom = new THREE.BufferGeometry();
+            const particlePos = new Float32Array(particleCount * 3);
+            for (let i = 0; i < particleCount; i++) {
+                particlePos[i * 3] = (Math.random() - 0.5) * 6 - 2;
+                particlePos[i * 3 + 1] = Math.random() * 2;
+                particlePos[i * 3 + 2] = (Math.random() - 0.5) * 3;
+            }
+            particleGeom.setAttribute('position', new THREE.BufferAttribute(particlePos, 3));
+            const particleMat = new THREE.PointsMaterial({
+                color: 0xaaddff,
+                size: 0.02,
+                transparent: true,
+                opacity: 0.4
+            });
+            const particles = new THREE.Points(particleGeom, particleMat);
+            scene.add(particles);
+
+            function animate() {
+                requestAnimationFrame(animate);
+                const elapsed = clock.getElapsedTime();
+
+                windAngle = Math.sin(elapsed * 0.5) * Math.PI * 0.3;
+                windSpeed = 0.8 + Math.sin(elapsed * 0.3) * 0.4;
+
+                // Deform petals based on wind
+                petals.forEach((petal, i) => {
+                    const angleToWind = petal.userData.baseAngle - windAngle;
+                    const windEffect = Math.cos(angleToWind) * windSpeed;
+
+                    // Bend petal
+                    petal.rotation.x = -Math.PI / 2 + 0.4 - windEffect * 0.3;
+
+                    // Deform geometry
+                    const positions = petal.geometry.attributes.position;
+                    const original = petal.userData.originalPositions;
+                    for (let j = 0; j < positions.count; j++) {
+                        const y = original[j * 3 + 1];
+                        const deform = y * windEffect * 0.1;
+                        positions.setZ(j, original[j * 3 + 2] + deform);
+                    }
+                    positions.needsUpdate = true;
+                });
+
+                // Animate streamlines
+                streamlines.forEach((stream, i) => {
+                    stream.position.x = Math.sin(elapsed * 2 + stream.userData.phase) * 0.1;
+                    stream.material.opacity = 0.1 + Math.abs(Math.sin(elapsed + stream.userData.phase)) * 0.1;
+                });
+
+                // Move wind particles
+                const pPos = particleGeom.attributes.position.array;
+                for (let i = 0; i < particleCount; i++) {
+                    pPos[i * 3] += 0.05 * windSpeed;
+                    pPos[i * 3 + 1] += Math.sin(elapsed + i) * 0.002;
+                    if (pPos[i * 3] > 4) {
+                        pPos[i * 3] = -4;
+                        pPos[i * 3 + 1] = Math.random() * 2;
+                        pPos[i * 3 + 2] = (Math.random() - 0.5) * 3;
+                    }
+                }
+                particleGeom.attributes.position.needsUpdate = true;
+
+                flowerGroup.rotation.y = windAngle * 0.2;
+
+                camera.position.x = Math.sin(elapsed * 0.1) * 0.5;
+                camera.lookAt(0, 0.5, 0);
+
+                renderer.render(scene, camera);
+            }
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+            FlowerUtils.hideLoading();
+        })();
+    </script>
+</body>
+
+</html>

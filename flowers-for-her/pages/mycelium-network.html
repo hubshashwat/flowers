@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mycelium Network Flower | Flowers For You 🌸</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+    <div class="loading-overlay">
+        <div class="loading-flower"></div>
+        <p class="loading-text">Growing network...</p>
+    </div>
+
+    <div class="flower-page">
+        <nav class="page-nav">
+            <a href="../index.html" class="back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Back to Garden
+            </a>
+        </nav>
+        <div id="canvas-container" class="flower-canvas"></div>
+        <div class="flower-info">
+            <h1>Mycelium Network Flower</h1>
+            <p>Connected to glowing underground roots with traveling pulses</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        (function () {
+            const container = document.getElementById('canvas-container');
+            const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
+                background: 0x0a0808
+            });
+
+            camera.position.set(0, 1, 5);
+            camera.lookAt(0, 0, 0);
+
+            // Underground ambient
+            const ambient = new THREE.AmbientLight(0x221111, 0.3);
+            scene.add(ambient);
+
+            // Ground plane (semi-transparent)
+            const groundGeom = new THREE.PlaneGeometry(8, 8);
+            const groundMat = new THREE.MeshBasicMaterial({
+                color: 0x1a1010,
+                transparent: true,
+                opacity: 0.8
+            });
+            const ground = new THREE.Mesh(groundGeom, groundMat);
+            ground.rotation.x = -Math.PI / 2;
+            ground.position.y = 0;
+            scene.add(ground);
+
+            // Mycelium network (underground roots)
+            const roots = [];
+            const rootMat = new THREE.MeshBasicMaterial({ color: 0x886644, transparent: true, opacity: 0.6 });
+
+            function createRoot(startPoint, direction, depth) {
+                if (depth > 4) return;
+
+                const length = 0.3 + Math.random() * 0.4;
+                const endPoint = startPoint.clone().add(direction.clone().multiplyScalar(length));
+
+                const curve = new THREE.CatmullRomCurve3([
+                    startPoint,
+                    startPoint.clone().lerp(endPoint, 0.5).add(new THREE.Vector3(
+                        (Math.random() - 0.5) * 0.1,
+                        (Math.random() - 0.5) * 0.05,
+                        (Math.random() - 0.5) * 0.1
+                    )),
+                    endPoint
+                ]);
+
+                const thickness = 0.015 * Math.pow(0.7, depth);
+                const rootGeom = new THREE.TubeGeometry(curve, 8, thickness, 6, false);
+                const root = new THREE.Mesh(rootGeom, rootMat.clone());
+                root.userData = { startPoint: startPoint.clone(), endPoint: endPoint.clone() };
+                scene.add(root);
+                roots.push(root);
+
+                // Branch
+                if (Math.random() > 0.3) {
+                    const branchDir = direction.clone().applyAxisAngle(
+                        new THREE.Vector3(0, 1, 0),
+                        (Math.random() - 0.5) * Math.PI * 0.5
+                    );
+                    branchDir.y -= 0.2;
+                    branchDir.normalize();
+                    createRoot(endPoint, branchDir, depth + 1);
+                }
+
+                // Continue
+                if (Math.random() > 0.4) {
+                    const continueDir = direction.clone().applyAxisAngle(
+                        new THREE.Vector3(0, 1, 0),
+                        (Math.random() - 0.5) * 0.3
+                    );
+                    continueDir.y -= 0.1;
+                    continueDir.normalize();
+                    createRoot(endPoint, continueDir, depth + 1);
+                }
+            }
+
+            // Create root network
+            const rootStarts = 6;
+            for (let i = 0; i < rootStarts; i++) {
+                const angle = (i / rootStarts) * Math.PI * 2;
+                const startPoint = new THREE.Vector3(0, -0.1, 0);
+                const direction = new THREE.Vector3(Math.cos(angle), -0.5, Math.sin(angle)).normalize();
+                createRoot(startPoint, direction, 0);
+            }
+
+            // Traveling pulses
+            const pulses = [];
+            for (let i = 0; i < 15; i++) {
+                const pulseGeom = new THREE.SphereGeometry(0.02, 8, 8);
+                const pulseMat = new THREE.MeshBasicMaterial({ color: 0xaaffaa, transparent: true, opacity: 0.8 });
+                const pulse = new THREE.Mesh(pulseGeom, pulseMat);
+                pulse.userData = {
+                    rootIndex: Math.floor(Math.random() * roots.length),
+                    progress: Math.random(),
+                    speed: 0.005 + Math.random() * 0.01,
+                    direction: Math.random() > 0.5 ? 1 : -1
+                };
+                scene.add(pulse);
+                pulses.push(pulse);
+
+                // Pulse light
+                const pulseLight = new THREE.PointLight(0x88ff88, 0.3, 0.5);
+                pulse.add(pulseLight);
+            }
+
+            // Flower above ground
+            const flowerGroup = new THREE.Group();
+            flowerGroup.position.y = 0.3;
+            scene.add(flowerGroup);
+
+            // Organic mushroom-like flower
+            const petalMat = new THREE.MeshStandardMaterial({
+                color: 0xddccaa,
+                side: THREE.DoubleSide,
+                roughness: 0.8
+            });
+
+            // Petals (cap-like)
+            const petalCount = 8;
+            const petals = [];
+            for (let i = 0; i < petalCount; i++) {
+                const shape = new THREE.Shape();
+                shape.moveTo(0, 0);
+                shape.bezierCurveTo(0.15, 0.05, 0.18, 0.2, 0.1, 0.35);
+                shape.bezierCurveTo(0.03, 0.42, -0.03, 0.42, -0.1, 0.35);
+                shape.bezierCurveTo(-0.18, 0.2, -0.15, 0.05, 0, 0);
+
+                const geom = new THREE.ShapeGeometry(shape, 12);
+                const petal = new THREE.Mesh(geom, petalMat.clone());
+                const angle = (i / petalCount) * Math.PI * 2;
+                petal.rotation.z = angle;
+                petal.rotation.x = -Math.PI / 2 + 0.6;
+                petal.userData.phase = i * 0.4;
+                flowerGroup.add(petal);
+                petals.push(petal);
+            }
+
+            // Stem
+            const stemCurve = new THREE.CatmullRomCurve3([
+                new THREE.Vector3(0, 0.1, 0),
+                new THREE.Vector3(0.02, -0.1, 0.01),
+                new THREE.Vector3(0, -0.3, 0)
+            ]);
+            const stemGeom = new THREE.TubeGeometry(stemCurve, 12, 0.03, 8, false);
+            const stemMat = new THREE.MeshStandardMaterial({ color: 0x998877, roughness: 0.8 });
+            const stem = new THREE.Mesh(stemGeom, stemMat);
+            flowerGroup.add(stem);
+
+            // Center (spore-like)
+            const centerGeom = new THREE.SphereGeometry(0.06, 16, 16);
+            const centerMat = new THREE.MeshBasicMaterial({ color: 0xffeecc });
+            const center = new THREE.Mesh(centerGeom, centerMat);
+            center.position.y = 0.12;
+            flowerGroup.add(center);
+
+            // Lighting
+            const flowerLight = new THREE.PointLight(0xffeeaa, 0.5, 2);
+            flowerLight.position.y = 0.5;
+            scene.add(flowerLight);
+
+            function animate() {
+                requestAnimationFrame(animate);
+                const elapsed = clock.getElapsedTime();
+
+                // Pulses travel along roots
+                pulses.forEach(pulse => {
+                    const root = roots[pulse.userData.rootIndex];
+                    if (!root) return;
+
+                    pulse.userData.progress += pulse.userData.speed * pulse.userData.direction;
+
+                    if (pulse.userData.progress > 1 || pulse.userData.progress < 0) {
+                        // Jump to another root or reverse
+                        if (Math.random() > 0.5) {
+                            pulse.userData.rootIndex = Math.floor(Math.random() * roots.length);
+                            pulse.userData.progress = pulse.userData.direction > 0 ? 0 : 1;
+                        } else {
+                            pulse.userData.direction *= -1;
+                        }
+                    }
+
+                    const t = pulse.userData.progress;
+                    const start = root.userData.startPoint;
+                    const end = root.userData.endPoint;
+                    pulse.position.lerpVectors(start, end, t);
+                });
+
+                // Flower glows when pulse arrives at base
+                let nearFlower = false;
+                pulses.forEach(pulse => {
+                    if (pulse.position.y > -0.2 && pulse.position.length() < 0.3) {
+                        nearFlower = true;
+                    }
+                });
+                flowerLight.intensity = nearFlower ? 1 : 0.3 + Math.sin(elapsed * 2) * 0.1;
+
+                // Petals breathe
+                petals.forEach(petal => {
+                    const breathe = Math.sin(elapsed * 0.5 + petal.userData.phase) * 0.03;
+                    petal.rotation.x = -Math.PI / 2 + 0.6 + breathe;
+                });
+
+                // Center pulses
+                center.scale.setScalar(1 + (nearFlower ? 0.3 : 0) + Math.sin(elapsed * 3) * 0.05);
+
+                camera.position.x = Math.sin(elapsed * 0.08) * 0.5;
+                camera.lookAt(0, 0, 0);
+
+                renderer.render(scene, camera);
+            }
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+            FlowerUtils.hideLoading();
+        })();
+    </script>
+</body>
+
+</html>

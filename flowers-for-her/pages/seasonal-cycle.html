@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seasonal Cycle | Flowers For You 🌸</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <style>
+        .season-indicator {
+            position: fixed;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 8px 20px;
+            border-radius: 20px;
+            color: white;
+            font-size: 14px;
+            z-index: 50;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="loading-overlay">
+        <div class="loading-flower"></div>
+        <p class="loading-text">Turning seasons...</p>
+    </div>
+
+    <div class="flower-page">
+        <nav class="page-nav">
+            <a href="../index.html" class="back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Back to Garden
+            </a>
+        </nav>
+        <div id="canvas-container" class="flower-canvas"></div>
+        <div class="season-indicator" id="season">🌸 Spring</div>
+        <div class="flower-info">
+            <h1>Seasonal Cycle</h1>
+            <p>Same flower transitions through spring bloom, summer, autumn decay, and winter</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        (function () {
+            const container = document.getElementById('canvas-container');
+            const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
+                background: 0x87ceeb
+            });
+
+            camera.position.set(0, 2, 5);
+            camera.lookAt(0, 0.5, 0);
+
+            // Season colors
+            const seasons = {
+                spring: {
+                    sky: new THREE.Color(0x87ceeb),
+                    ground: new THREE.Color(0x4a7c4a),
+                    petal: new THREE.Color(0xffb6c1),
+                    stem: new THREE.Color(0x228b22),
+                    light: 1.0,
+                    label: '🌸 Spring'
+                },
+                summer: {
+                    sky: new THREE.Color(0x4a90d9),
+                    ground: new THREE.Color(0x2d5a2d),
+                    petal: new THREE.Color(0xff6b8a),
+                    stem: new THREE.Color(0x1a5a1a),
+                    light: 1.2,
+                    label: '☀️ Summer'
+                },
+                autumn: {
+                    sky: new THREE.Color(0xd4a574),
+                    ground: new THREE.Color(0x8b6914),
+                    petal: new THREE.Color(0xd4763c),
+                    stem: new THREE.Color(0x5a4a2a),
+                    light: 0.8,
+                    label: '🍂 Autumn'
+                },
+                winter: {
+                    sky: new THREE.Color(0x8899aa),
+                    ground: new THREE.Color(0xcccccc),
+                    petal: new THREE.Color(0x888888),
+                    stem: new THREE.Color(0x4a3a2a),
+                    light: 0.5,
+                    label: '❄️ Winter'
+                }
+            };
+
+            const seasonOrder = ['spring', 'summer', 'autumn', 'winter'];
+            const seasonDuration = 5; // seconds per season
+
+            // Lighting
+            const ambient = new THREE.AmbientLight(0xffffff, 0.4);
+            scene.add(ambient);
+
+            const sunLight = new THREE.DirectionalLight(0xffffff, 1);
+            sunLight.position.set(5, 10, 5);
+            scene.add(sunLight);
+
+            // Flower group
+            const flowerGroup = new THREE.Group();
+            scene.add(flowerGroup);
+
+            // Create petal
+            function createPetal() {
+                const shape = new THREE.Shape();
+                shape.moveTo(0, 0);
+                shape.bezierCurveTo(0.15, 0.08, 0.2, 0.35, 0.12, 0.6);
+                shape.bezierCurveTo(0.05, 0.75, -0.05, 0.75, -0.12, 0.6);
+                shape.bezierCurveTo(-0.2, 0.35, -0.15, 0.08, 0, 0);
+
+                const geom = new THREE.ShapeGeometry(shape, 24);
+                const positions = geom.attributes.position;
+                for (let i = 0; i < positions.count; i++) {
+                    const y = positions.getY(i);
+                    positions.setZ(i, Math.sin(y * Math.PI * 0.6) * 0.1);
+                }
+                positions.needsUpdate = true;
+                geom.computeVertexNormals();
+                return geom;
+            }
+
+            // Petals
+            const petalCount = 8;
+            const petals = [];
+            const petalMat = new THREE.MeshStandardMaterial({
+                color: seasons.spring.petal,
+                side: THREE.DoubleSide,
+                roughness: 0.5
+            });
+
+            for (let i = 0; i < petalCount; i++) {
+                const geom = createPetal();
+                const petal = new THREE.Mesh(geom, petalMat.clone());
+                const angle = (i / petalCount) * Math.PI * 2;
+
+                petal.rotation.z = angle;
+                petal.rotation.x = -Math.PI / 2 + 0.5;
+                petal.position.y = 0.5;
+
+                flowerGroup.add(petal);
+                petals.push({
+                    mesh: petal,
+                    baseRotX: -Math.PI / 2 + 0.5,
+                    phase: i * 0.3
+                });
+            }
+
+            // Center
+            const centerGeom = new THREE.SphereGeometry(0.1, 32, 32);
+            const centerMat = new THREE.MeshStandardMaterial({
+                color: 0xffd700,
+                roughness: 0.6
+            });
+            const center = new THREE.Mesh(centerGeom, centerMat);
+            center.position.y = 0.55;
+            flowerGroup.add(center);
+
+            // Stem
+            const stemCurve = new THREE.CatmullRomCurve3([
+                new THREE.Vector3(0, 0.4, 0),
+                new THREE.Vector3(0.02, 0, 0.01),
+                new THREE.Vector3(-0.01, -0.5, -0.01),
+                new THREE.Vector3(0, -1, 0)
+            ]);
+            const stemGeom = new THREE.TubeGeometry(stemCurve, 16, 0.025, 8, false);
+            const stemMat = new THREE.MeshStandardMaterial({ color: seasons.spring.stem });
+            const stem = new THREE.Mesh(stemGeom, stemMat);
+            flowerGroup.add(stem);
+
+            // Ground
+            const groundGeom = new THREE.PlaneGeometry(20, 20);
+            const groundMat = new THREE.MeshStandardMaterial({
+                color: seasons.spring.ground,
+                roughness: 0.9
+            });
+            const ground = new THREE.Mesh(groundGeom, groundMat);
+            ground.rotation.x = -Math.PI / 2;
+            ground.position.y = -1;
+            scene.add(ground);
+
+            // Falling leaves/snow particles
+            const particleCount = 50;
+            const particleGeom = new THREE.BufferGeometry();
+            const particlePos = new Float32Array(particleCount * 3);
+            for (let i = 0; i < particleCount; i++) {
+                particlePos[i * 3] = (Math.random() - 0.5) * 10;
+                particlePos[i * 3 + 1] = Math.random() * 5;
+                particlePos[i * 3 + 2] = (Math.random() - 0.5) * 10;
+            }
+            particleGeom.setAttribute('position', new THREE.BufferAttribute(particlePos, 3));
+            const particleMat = new THREE.PointsMaterial({
+                size: 0.1,
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0
+            });
+            const particles = new THREE.Points(particleGeom, particleMat);
+            scene.add(particles);
+
+            const seasonIndicator = document.getElementById('season');
+
+            function animate() {
+                requestAnimationFrame(animate);
+                const elapsed = clock.getElapsedTime();
+
+                // Calculate current season
+                const totalCycle = seasonDuration * 4;
+                const cycleTime = elapsed % totalCycle;
+                const seasonIndex = Math.floor(cycleTime / seasonDuration);
+                const seasonProgress = (cycleTime % seasonDuration) / seasonDuration;
+
+                const currentSeason = seasonOrder[seasonIndex];
+                const nextSeason = seasonOrder[(seasonIndex + 1) % 4];
+
+                const current = seasons[currentSeason];
+                const next = seasons[nextSeason];
+
+                // Update season label
+                seasonIndicator.textContent = current.label;
+
+                // Interpolate colors
+                const skyColor = new THREE.Color().lerpColors(current.sky, next.sky, seasonProgress);
+                const groundColor = new THREE.Color().lerpColors(current.ground, next.ground, seasonProgress);
+                const petalColor = new THREE.Color().lerpColors(current.petal, next.petal, seasonProgress);
+                const stemColor = new THREE.Color().lerpColors(current.stem, next.stem, seasonProgress);
+                const lightIntensity = current.light + (next.light - current.light) * seasonProgress;
+
+                scene.background = skyColor;
+                groundMat.color.copy(groundColor);
+                stemMat.color.copy(stemColor);
+                sunLight.intensity = lightIntensity;
+
+                // Update petals
+                petals.forEach((p, i) => {
+                    p.mesh.material.color.copy(petalColor);
+
+                    // Droop in autumn/winter
+                    let droop = 0;
+                    if (currentSeason === 'autumn') droop = seasonProgress * 0.3;
+                    else if (currentSeason === 'winter') droop = 0.3 + seasonProgress * 0.2;
+                    else if (currentSeason === 'spring') droop = 0.5 - seasonProgress * 0.5;
+
+                    // Scale down in winter
+                    let scale = 1;
+                    if (currentSeason === 'winter') scale = 1 - seasonProgress * 0.3;
+                    else if (currentSeason === 'spring') scale = 0.7 + seasonProgress * 0.3;
+
+                    p.mesh.scale.setScalar(scale);
+                    p.mesh.rotation.x = p.baseRotX - droop + Math.sin(elapsed + p.phase) * 0.02;
+                });
+
+                // Particles (leaves in autumn, snow in winter)
+                if (currentSeason === 'autumn' || currentSeason === 'winter') {
+                    particleMat.opacity = 0.6;
+                    particleMat.color.setHex(currentSeason === 'winter' ? 0xffffff : 0xcc8844);
+
+                    const pPos = particleGeom.attributes.position.array;
+                    for (let i = 0; i < particleCount; i++) {
+                        pPos[i * 3 + 1] -= 0.02;
+                        pPos[i * 3] += Math.sin(elapsed + i) * 0.005;
+                        if (pPos[i * 3 + 1] < -1) pPos[i * 3 + 1] = 5;
+                    }
+                    particleGeom.attributes.position.needsUpdate = true;
+                } else {
+                    particleMat.opacity = 0;
+                }
+
+                // Camera
+                camera.position.x = Math.sin(elapsed * 0.1) * 0.5;
+                camera.lookAt(0, 0.3, 0);
+
+                renderer.render(scene, camera);
+            }
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+            FlowerUtils.hideLoading();
+        })();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chameleon Flower | Flowers For You 🌸</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+    <div class="loading-overlay">
+        <div class="loading-flower"></div>
+        <p class="loading-text">Adapting colors...</p>
+    </div>
+
+    <div class="flower-page">
+        <nav class="page-nav">
+            <a href="../index.html" class="back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Back to Garden
+            </a>
+        </nav>
+        <div id="canvas-container" class="flower-canvas"></div>
+        <div class="flower-info">
+            <h1>Chameleon Flower</h1>
+            <p>Colors shift to match the environment</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        (function () {
+            const container = document.getElementById('canvas-container');
+            const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
+                background: 0x000000
+            });
+
+            camera.position.set(0, 2, 4.5);
+            camera.lookAt(0, 0.5, 0);
+
+            // Dynamic background colors
+            const bgColors = [
+                new THREE.Color(0xff6644),
+                new THREE.Color(0x44aaff),
+                new THREE.Color(0x66ff88),
+                new THREE.Color(0xaa44ff),
+                new THREE.Color(0xffaa44)
+            ];
+            let currentBg = 0;
+            let bgTransition = 0;
+
+            // Lighting
+            const ambient = new THREE.AmbientLight(0xffffff, 0.4);
+            scene.add(ambient);
+            const mainLight = new THREE.DirectionalLight(0xffffff, 1);
+            mainLight.position.set(3, 5, 3);
+            scene.add(mainLight);
+
+            // Flower group
+            const flowerGroup = new THREE.Group();
+            scene.add(flowerGroup);
+
+            // Create chameleon petal
+            function createPetal() {
+                const shape = new THREE.Shape();
+                shape.moveTo(0, 0);
+                shape.bezierCurveTo(0.15, 0.1, 0.18, 0.4, 0.1, 0.6);
+                shape.bezierCurveTo(0.03, 0.72, -0.03, 0.72, -0.1, 0.6);
+                shape.bezierCurveTo(-0.18, 0.4, -0.15, 0.1, 0, 0);
+
+                const geom = new THREE.ShapeGeometry(shape, 16);
+                const mat = new THREE.MeshStandardMaterial({
+                    color: 0xffffff,
+                    side: THREE.DoubleSide,
+                    roughness: 0.4,
+                    metalness: 0.1
+                });
+                return new THREE.Mesh(geom, mat);
+            }
+
+            // Create petals
+            const petalCount = 8;
+            const petals = [];
+            for (let i = 0; i < petalCount; i++) {
+                const petal = createPetal();
+                const angle = (i / petalCount) * Math.PI * 2;
+                petal.rotation.z = angle;
+                petal.rotation.x = -Math.PI / 2 + 0.4;
+                petal.position.y = 0.5;
+                petal.userData.phase = i * 0.3;
+                flowerGroup.add(petal);
+                petals.push(petal);
+            }
+
+            // Inner petals
+            for (let i = 0; i < 5; i++) {
+                const petal = createPetal();
+                petal.scale.setScalar(0.6);
+                const angle = (i / 5) * Math.PI * 2 + 0.3;
+                petal.rotation.z = angle;
+                petal.rotation.x = -Math.PI / 2 + 0.3;
+                petal.position.y = 0.52;
+                petal.userData.phase = i * 0.4 + 1;
+                flowerGroup.add(petal);
+                petals.push(petal);
+            }
+
+            // Center
+            const centerGeom = new THREE.SphereGeometry(0.1, 32, 32);
+            const centerMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 });
+            const center = new THREE.Mesh(centerGeom, centerMat);
+            center.position.y = 0.55;
+            flowerGroup.add(center);
+
+            // Stem
+            const stemCurve = new THREE.CatmullRomCurve3([
+                new THREE.Vector3(0, 0.4, 0),
+                new THREE.Vector3(0.02, 0, 0.01),
+                new THREE.Vector3(0, -0.8, 0)
+            ]);
+            const stemGeom = new THREE.TubeGeometry(stemCurve, 16, 0.025, 8, false);
+            const stemMat = new THREE.MeshStandardMaterial({ color: 0x557755 });
+            const stem = new THREE.Mesh(stemGeom, stemMat);
+            flowerGroup.add(stem);
+
+            // Color transition particles
+            const particleCount = 80;
+            const particleGeom = new THREE.BufferGeometry();
+            const particlePos = new Float32Array(particleCount * 3);
+            const particleColors = new Float32Array(particleCount * 3);
+            for (let i = 0; i < particleCount; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const radius = 1 + Math.random() * 1.5;
+                particlePos[i * 3] = Math.cos(angle) * radius;
+                particlePos[i * 3 + 1] = Math.random() * 2;
+                particlePos[i * 3 + 2] = Math.sin(angle) * radius;
+                particleColors[i * 3] = 1;
+                particleColors[i * 3 + 1] = 1;
+                particleColors[i * 3 + 2] = 1;
+            }
+            particleGeom.setAttribute('position', new THREE.BufferAttribute(particlePos, 3));
+            particleGeom.setAttribute('color', new THREE.BufferAttribute(particleColors, 3));
+            const particleMat = new THREE.PointsMaterial({
+                size: 0.04,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.6
+            });
+            const particles = new THREE.Points(particleGeom, particleMat);
+            scene.add(particles);
+
+            function animate() {
+                requestAnimationFrame(animate);
+                const elapsed = clock.getElapsedTime();
+
+                // Background color transition
+                bgTransition += 0.005;
+                if (bgTransition >= 1) {
+                    bgTransition = 0;
+                    currentBg = (currentBg + 1) % bgColors.length;
+                }
+                const nextBg = (currentBg + 1) % bgColors.length;
+                const currentColor = bgColors[currentBg].clone();
+                const targetColor = bgColors[nextBg];
+                currentColor.lerp(targetColor, bgTransition);
+
+                renderer.setClearColor(currentColor.clone().multiplyScalar(0.3));
+
+                // Petals adapt to background
+                petals.forEach((petal, i) => {
+                    const delay = petal.userData.phase * 0.1;
+                    const adaptedColor = currentColor.clone();
+                    adaptedColor.lerp(new THREE.Color(0xffffff), 0.3);
+                    petal.material.color.lerp(adaptedColor, 0.05);
+
+                    // Subtle breathing
+                    petal.rotation.x = -Math.PI / 2 + 0.4 + Math.sin(elapsed + petal.userData.phase) * 0.03;
+                });
+
+                // Center adapts
+                center.material.color.lerp(currentColor.clone().lerp(new THREE.Color(0xffffff), 0.5), 0.05);
+
+                // Stem darkens relative to background
+                const stemColor = currentColor.clone().multiplyScalar(0.4);
+                stemMat.color.lerp(stemColor.lerp(new THREE.Color(0x557755), 0.5), 0.05);
+
+                // Particles match background
+                const pColors = particleGeom.attributes.color.array;
+                for (let i = 0; i < particleCount; i++) {
+                    pColors[i * 3] = currentColor.r;
+                    pColors[i * 3 + 1] = currentColor.g;
+                    pColors[i * 3 + 2] = currentColor.b;
+                }
+                particleGeom.attributes.color.needsUpdate = true;
+
+                flowerGroup.rotation.y = elapsed * 0.1;
+
+                camera.position.x = Math.sin(elapsed * 0.1) * 0.4;
+                camera.lookAt(0, 0.4, 0);
+
+                renderer.render(scene, camera);
+            }
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+            FlowerUtils.hideLoading();
+        })();
+    </script>
+</body>
+
+</html>

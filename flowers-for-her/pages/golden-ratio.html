@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Golden Ratio Flower | Flowers For You 🌸</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+    <div class="loading-overlay">
+        <div class="loading-flower"></div>
+        <p class="loading-text">Calculating spirals...</p>
+    </div>
+
+    <div class="flower-page">
+        <nav class="page-nav">
+            <a href="../index.html" class="back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Back to Garden
+            </a>
+        </nav>
+        <div id="canvas-container" class="flower-canvas"></div>
+        <div class="flower-info">
+            <h1>Golden Ratio Flower</h1>
+            <p>Petals arranged using Fibonacci spiral and the golden angle (137.5°)</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        (function () {
+            const container = document.getElementById('canvas-container');
+            const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
+                background: 0x0f1419
+            });
+
+            camera.position.set(0, 3, 5);
+            camera.lookAt(0, 0, 0);
+
+            // Lighting
+            const ambient = new THREE.AmbientLight(0xffffff, 0.4);
+            scene.add(ambient);
+
+            const mainLight = new THREE.DirectionalLight(0xfff5e6, 1);
+            mainLight.position.set(3, 8, 5);
+            scene.add(mainLight);
+
+            // Golden angle in radians
+            const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
+
+            // Flower group
+            const flowerGroup = new THREE.Group();
+            scene.add(flowerGroup);
+
+            // Create small floret/seed
+            function createFloret(size) {
+                const geom = new THREE.CircleGeometry(size, 12);
+                return geom;
+            }
+
+            // Create petal
+            function createPetal() {
+                const shape = new THREE.Shape();
+                shape.moveTo(0, 0);
+                shape.bezierCurveTo(0.08, 0.1, 0.1, 0.25, 0.06, 0.4);
+                shape.bezierCurveTo(0.02, 0.48, -0.02, 0.48, -0.06, 0.4);
+                shape.bezierCurveTo(-0.1, 0.25, -0.08, 0.1, 0, 0);
+                return new THREE.ShapeGeometry(shape, 16);
+            }
+
+            // Generate center florets using Fibonacci spiral
+            const floretCount = 200;
+            const florets = [];
+
+            for (let i = 0; i < floretCount; i++) {
+                const angle = i * GOLDEN_ANGLE;
+                const radius = 0.05 * Math.sqrt(i);
+                const x = radius * Math.cos(angle);
+                const z = radius * Math.sin(angle);
+
+                const size = 0.015 + (i / floretCount) * 0.01;
+                const geom = createFloret(size);
+
+                // Color gradient from center
+                const hue = 0.1 + (i / floretCount) * 0.05;
+                const sat = 0.8;
+                const light = 0.4 + (i / floretCount) * 0.2;
+                const color = new THREE.Color().setHSL(hue, sat, light);
+
+                const mat = new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide });
+                const floret = new THREE.Mesh(geom, mat);
+
+                floret.position.set(x, 0.01, z);
+                floret.rotation.x = -Math.PI / 2;
+                floret.scale.setScalar(0); // Start invisible for animation
+
+                flowerGroup.add(floret);
+                florets.push({ mesh: floret, index: i, delay: i * 0.01 });
+            }
+
+            // Generate petals using golden angle
+            const petalCount = 21; // Fibonacci number
+            const petals = [];
+
+            for (let i = 0; i < petalCount; i++) {
+                const angle = i * GOLDEN_ANGLE;
+                const geom = createPetal();
+
+                // Gradient color
+                const hue = 0.9 + (i / petalCount) * 0.1;
+                const color = new THREE.Color().setHSL(hue % 1, 0.7, 0.65);
+
+                const mat = new THREE.MeshStandardMaterial({
+                    color,
+                    side: THREE.DoubleSide,
+                    roughness: 0.6
+                });
+
+                const petal = new THREE.Mesh(geom, mat);
+                const layer = Math.floor(i / 8);
+                const radius = 0.7 + layer * 0.1;
+
+                petal.position.set(
+                    Math.cos(angle) * radius,
+                    0,
+                    Math.sin(angle) * radius
+                );
+                petal.rotation.z = angle;
+                petal.rotation.x = -Math.PI / 2 + 0.3 + layer * 0.1;
+                petal.scale.setScalar(0.8 + layer * 0.15);
+
+                flowerGroup.add(petal);
+                petals.push({ mesh: petal, index: i });
+            }
+
+            // Golden spiral visualization (optional guide)
+            const spiralPoints = [];
+            for (let t = 0; t < 10; t += 0.05) {
+                const angle = t * 2;
+                const r = 0.1 * Math.exp(0.2 * t);
+                spiralPoints.push(new THREE.Vector3(
+                    r * Math.cos(angle),
+                    0.02,
+                    r * Math.sin(angle)
+                ));
+            }
+
+            const spiralCurve = new THREE.CatmullRomCurve3(spiralPoints);
+            const spiralGeom = new THREE.TubeGeometry(spiralCurve, 100, 0.005, 8, false);
+            const spiralMat = new THREE.MeshBasicMaterial({
+                color: 0xffd700,
+                transparent: true,
+                opacity: 0.3
+            });
+            const spiral = new THREE.Mesh(spiralGeom, spiralMat);
+            flowerGroup.add(spiral);
+
+            // Ground
+            const groundGeom = new THREE.CircleGeometry(3, 64);
+            const groundMat = new THREE.MeshStandardMaterial({
+                color: 0x1a1a24,
+                roughness: 0.9
+            });
+            const ground = new THREE.Mesh(groundGeom, groundMat);
+            ground.rotation.x = -Math.PI / 2;
+            ground.position.y = -0.01;
+            scene.add(ground);
+
+            // Animation
+            let animationStarted = false;
+            let startTime = 0;
+
+            function animate() {
+                requestAnimationFrame(animate);
+                const elapsed = clock.getElapsedTime();
+
+                if (!animationStarted) {
+                    animationStarted = true;
+                    startTime = elapsed;
+                }
+
+                const animTime = elapsed - startTime;
+
+                // Animate florets appearing
+                florets.forEach(f => {
+                    const t = Math.max(0, Math.min(1, (animTime - f.delay) / 0.5));
+                    f.mesh.scale.setScalar(FlowerUtils.easing.easeOutBack(t));
+                });
+
+                // Gentle petal movement
+                petals.forEach((p, i) => {
+                    const wave = Math.sin(elapsed * 0.5 + i * 0.3) * 0.02;
+                    p.mesh.rotation.x = -Math.PI / 2 + 0.3 + wave;
+                });
+
+                // Rotate flower slowly
+                flowerGroup.rotation.y = elapsed * 0.1;
+
+                // Pulse spiral
+                spiral.material.opacity = 0.2 + Math.sin(elapsed * 2) * 0.1;
+
+                // Camera orbit
+                camera.position.x = Math.sin(elapsed * 0.15) * 3;
+                camera.position.z = Math.cos(elapsed * 0.15) * 5;
+                camera.position.y = 3 + Math.sin(elapsed * 0.2) * 0.5;
+                camera.lookAt(0, 0, 0);
+
+                renderer.render(scene, camera);
+            }
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+            FlowerUtils.hideLoading();
+        })();
+    </script>
+</body>
+
+</html>

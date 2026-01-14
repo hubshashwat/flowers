@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fractal Flower | Flowers For You 🌸</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+    <div class="loading-overlay">
+        <div class="loading-flower"></div>
+        <p class="loading-text">Generating fractals...</p>
+    </div>
+
+    <div class="flower-page">
+        <nav class="page-nav">
+            <a href="../index.html" class="back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Back to Garden
+            </a>
+        </nav>
+        <div id="canvas-container" class="flower-canvas"></div>
+        <div class="flower-info">
+            <h1>Fractal Flower</h1>
+            <p>Petals recursively generate smaller structures—infinite complexity</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        (function () {
+            const container = document.getElementById('canvas-container');
+            const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
+                background: 0x050508
+            });
+
+            camera.position.set(0, 0, 4);
+            camera.lookAt(0, 0, 0);
+
+            // Lighting
+            const ambient = new THREE.AmbientLight(0xffffff, 0.4);
+            scene.add(ambient);
+
+            const light1 = new THREE.DirectionalLight(0xff88aa, 0.8);
+            light1.position.set(3, 5, 3);
+            scene.add(light1);
+
+            const light2 = new THREE.DirectionalLight(0x88aaff, 0.5);
+            light2.position.set(-3, 3, -2);
+            scene.add(light2);
+
+            // Fractal flower group
+            const flowerGroup = new THREE.Group();
+            scene.add(flowerGroup);
+
+            // Petal geometry
+            function createPetalGeom() {
+                const shape = new THREE.Shape();
+                shape.moveTo(0, 0);
+                shape.bezierCurveTo(0.12, 0.05, 0.15, 0.2, 0.1, 0.35);
+                shape.bezierCurveTo(0.05, 0.45, -0.05, 0.45, -0.1, 0.35);
+                shape.bezierCurveTo(-0.15, 0.2, -0.12, 0.05, 0, 0);
+                return new THREE.ShapeGeometry(shape, 16);
+            }
+
+            const petalGeom = createPetalGeom();
+
+            // Color palette
+            const colors = [0xff6b8a, 0xff8fab, 0xffb3c6, 0xffd6e0, 0xffeef2];
+
+            // Recursive fractal generation
+            function createFractalPetal(depth, maxDepth, parentGroup, scale, angle) {
+                if (depth > maxDepth) return;
+
+                const colorIndex = Math.min(depth, colors.length - 1);
+                const mat = new THREE.MeshStandardMaterial({
+                    color: colors[colorIndex],
+                    side: THREE.DoubleSide,
+                    transparent: true,
+                    opacity: 1 - depth * 0.15
+                });
+
+                const petal = new THREE.Mesh(petalGeom, mat);
+                petal.rotation.z = angle;
+                petal.scale.setScalar(scale);
+
+                const pivot = new THREE.Group();
+                pivot.add(petal);
+                parentGroup.add(pivot);
+
+                // Store for animation
+                petal.userData = { depth, phase: angle };
+
+                // Create child petals at the tip
+                const childCount = depth === 0 ? 5 : 3;
+                const childScale = scale * 0.5;
+
+                for (let i = 0; i < childCount; i++) {
+                    const childAngle = (i / childCount) * Math.PI * 2 - Math.PI / 2;
+                    const childPivot = new THREE.Group();
+                    childPivot.position.y = 0.35 * scale;
+                    childPivot.rotation.z = childAngle * 0.3;
+                    petal.add(childPivot);
+
+                    createFractalPetal(depth + 1, maxDepth, childPivot, childScale, 0);
+                }
+
+                return petal;
+            }
+
+            // Create main flower with fractal petals
+            const mainCount = 8;
+            const fractalDepth = 3;
+
+            for (let i = 0; i < mainCount; i++) {
+                const angle = (i / mainCount) * Math.PI * 2;
+                const pivot = new THREE.Group();
+                pivot.rotation.x = -Math.PI / 2 + 0.5;
+                pivot.rotation.z = angle;
+                flowerGroup.add(pivot);
+
+                createFractalPetal(0, fractalDepth, pivot, 1, 0);
+            }
+
+            // Center
+            const centerGeom = new THREE.SphereGeometry(0.15, 32, 32);
+            const centerMat = new THREE.MeshStandardMaterial({
+                color: 0xffdd88,
+                roughness: 0.5,
+                metalness: 0.2
+            });
+            const center = new THREE.Mesh(centerGeom, centerMat);
+            flowerGroup.add(center);
+
+            // Inner glow
+            const glowGeom = new THREE.SphereGeometry(0.25, 16, 16);
+            const glowMat = new THREE.MeshBasicMaterial({
+                color: 0xffaa66,
+                transparent: true,
+                opacity: 0.3
+            });
+            const glow = new THREE.Mesh(glowGeom, glowMat);
+            flowerGroup.add(glow);
+
+            // Zoom animation
+            let zoomLevel = 1;
+            let zoomDirection = 1;
+            const minZoom = 0.8;
+            const maxZoom = 2.5;
+            const zoomSpeed = 0.2;
+
+            function animate() {
+                requestAnimationFrame(animate);
+                const elapsed = clock.getElapsedTime();
+                const delta = clock.getDelta();
+
+                // Gentle zoom in and out
+                zoomLevel += delta * zoomSpeed * zoomDirection;
+                if (zoomLevel > maxZoom) zoomDirection = -1;
+                if (zoomLevel < minZoom) zoomDirection = 1;
+
+                camera.position.z = 4 / zoomLevel;
+
+                // Rotation
+                flowerGroup.rotation.z = elapsed * 0.1;
+                flowerGroup.rotation.x = Math.sin(elapsed * 0.2) * 0.1;
+
+                // Pulsing glow
+                glow.scale.setScalar(1 + Math.sin(elapsed * 2) * 0.1);
+
+                // Gentle breathing of petals
+                flowerGroup.traverse(obj => {
+                    if (obj.isMesh && obj.userData.depth !== undefined) {
+                        const breathe = Math.sin(elapsed * 1.5 + obj.userData.phase) * 0.02;
+                        obj.rotation.x = breathe;
+                    }
+                });
+
+                renderer.render(scene, camera);
+            }
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+            FlowerUtils.hideLoading();
+        })();
+    </script>
+</body>
+
+</html>

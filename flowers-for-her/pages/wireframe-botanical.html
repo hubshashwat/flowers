@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wireframe Botanical Flower | Flowers For You 🌸</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+    <div class="loading-overlay">
+        <div class="loading-flower"></div>
+        <p class="loading-text">Rendering mesh...</p>
+    </div>
+
+    <div class="flower-page">
+        <nav class="page-nav">
+            <a href="../index.html" class="back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Back to Garden
+            </a>
+        </nav>
+        <div id="canvas-container" class="flower-canvas"></div>
+        <div class="flower-info">
+            <h1>Wireframe Botanical Flower</h1>
+            <p>Glowing wireframe with flowing data points</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        (function () {
+            const container = document.getElementById('canvas-container');
+            const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
+                background: 0x0a0510
+            });
+
+            camera.position.set(0, 2, 4.5);
+            camera.lookAt(0, 0.5, 0);
+
+            // Minimal ambient
+            const ambient = new THREE.AmbientLight(0x222233, 0.3);
+            scene.add(ambient);
+
+            // Flower group
+            const flowerGroup = new THREE.Group();
+            scene.add(flowerGroup);
+
+            // Wireframe material
+            const wireMat = new THREE.LineBasicMaterial({ color: 0x00ffaa, transparent: true, opacity: 0.8 });
+
+            // Create wireframe petal
+            function createWireframePetal() {
+                const group = new THREE.Group();
+
+                // Petal outline
+                const points = [];
+                const segments = 20;
+                for (let i = 0; i <= segments; i++) {
+                    const t = i / segments;
+                    const x = Math.sin(t * Math.PI) * 0.15 * Math.sin(t * Math.PI * 0.5);
+                    const y = t * 0.6;
+                    points.push(new THREE.Vector3(x, y, 0));
+                }
+                for (let i = segments; i >= 0; i--) {
+                    const t = i / segments;
+                    const x = -Math.sin(t * Math.PI) * 0.15 * Math.sin(t * Math.PI * 0.5);
+                    const y = t * 0.6;
+                    points.push(new THREE.Vector3(x, y, 0));
+                }
+
+                const outlineGeom = new THREE.BufferGeometry().setFromPoints(points);
+                const outline = new THREE.Line(outlineGeom, wireMat.clone());
+                group.add(outline);
+
+                // Internal veins
+                for (let v = 0; v < 3; v++) {
+                    const veinPoints = [];
+                    for (let i = 0; i <= 10; i++) {
+                        const t = i / 10;
+                        const x = (v - 1) * 0.04;
+                        const y = t * 0.55;
+                        veinPoints.push(new THREE.Vector3(x, y, 0));
+                    }
+                    const veinGeom = new THREE.BufferGeometry().setFromPoints(veinPoints);
+                    const vein = new THREE.Line(veinGeom, wireMat.clone());
+                    group.add(vein);
+                }
+
+                return group;
+            }
+
+            // Create petals
+            const petalCount = 8;
+            const petals = [];
+            for (let i = 0; i < petalCount; i++) {
+                const petal = createWireframePetal();
+                const angle = (i / petalCount) * Math.PI * 2;
+                petal.rotation.z = angle;
+                petal.rotation.x = -Math.PI / 2 + 0.4;
+                petal.position.y = 0.5;
+                flowerGroup.add(petal);
+                petals.push(petal);
+            }
+
+            // Center wireframe sphere
+            const centerGeom = new THREE.IcosahedronGeometry(0.1, 1);
+            const centerMat = new THREE.MeshBasicMaterial({ color: 0x00ffaa, wireframe: true });
+            const center = new THREE.Mesh(centerGeom, centerMat);
+            center.position.y = 0.55;
+            flowerGroup.add(center);
+
+            // Stem wireframe
+            const stemPoints = [];
+            for (let i = 0; i <= 20; i++) {
+                const t = i / 20;
+                stemPoints.push(new THREE.Vector3(
+                    Math.sin(t * Math.PI * 2) * 0.02,
+                    0.4 - t * 1.2,
+                    Math.cos(t * Math.PI * 2) * 0.02
+                ));
+            }
+            const stemGeom = new THREE.BufferGeometry().setFromPoints(stemPoints);
+            const stem = new THREE.Line(stemGeom, wireMat.clone());
+            flowerGroup.add(stem);
+
+            // Flowing data points
+            const dataPoints = [];
+            const dataCount = 50;
+            for (let i = 0; i < dataCount; i++) {
+                const pointGeom = new THREE.SphereGeometry(0.015, 4, 4);
+                const pointMat = new THREE.MeshBasicMaterial({ color: 0x00ffaa });
+                const point = new THREE.Mesh(pointGeom, pointMat);
+
+                // Assign to a petal
+                const petalIndex = Math.floor(Math.random() * petalCount);
+                point.userData = {
+                    petalIndex: petalIndex,
+                    progress: Math.random(),
+                    speed: 0.005 + Math.random() * 0.01
+                };
+
+                scene.add(point);
+                dataPoints.push(point);
+            }
+
+            function animate() {
+                requestAnimationFrame(animate);
+                const elapsed = clock.getElapsedTime();
+
+                // Animate data points flowing along petals
+                dataPoints.forEach(point => {
+                    point.userData.progress += point.userData.speed;
+                    if (point.userData.progress > 1) point.userData.progress = 0;
+
+                    const petal = petals[point.userData.petalIndex];
+                    const angle = (point.userData.petalIndex / petalCount) * Math.PI * 2;
+                    const t = point.userData.progress;
+
+                    // Calculate position along petal
+                    const localY = t * 0.6;
+                    const localX = Math.sin(t * Math.PI) * 0.1 * Math.sin(t * Math.PI * 0.5);
+
+                    // Transform to world coordinates
+                    const radius = 0.05 + t * 0.25;
+                    point.position.set(
+                        Math.cos(angle) * radius + localX * Math.cos(angle),
+                        0.5 + localY * 0.6 - t * 0.1,
+                        Math.sin(angle) * radius + localX * Math.sin(angle)
+                    );
+
+                    // Pulse
+                    point.scale.setScalar(1 + Math.sin(elapsed * 5 + t * Math.PI * 2) * 0.3);
+                });
+
+                // Wire pulse
+                const pulse = Math.sin(elapsed * 3) * 0.3 + 0.7;
+                petals.forEach(petal => {
+                    petal.children.forEach(child => {
+                        if (child.material) child.material.opacity = pulse;
+                    });
+                });
+
+                // Center rotates
+                center.rotation.x = elapsed;
+                center.rotation.y = elapsed * 0.7;
+
+                flowerGroup.rotation.y = elapsed * 0.1;
+
+                camera.position.x = Math.sin(elapsed * 0.1) * 0.4;
+                camera.lookAt(0, 0.5, 0);
+
+                renderer.render(scene, camera);
+            }
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+            FlowerUtils.hideLoading();
+        })();
+    </script>
+</body>
+
+</html>

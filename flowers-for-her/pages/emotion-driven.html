@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emotion-Driven Flower | Flowers For You 🌸</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <style>
+        .hint {
+            position: fixed;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 10px 20px;
+            border-radius: 20px;
+            color: white;
+            font-size: 14px;
+            z-index: 50;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="loading-overlay">
+        <div class="loading-flower"></div>
+        <p class="loading-text">Sensing emotions...</p>
+    </div>
+
+    <div class="flower-page">
+        <nav class="page-nav">
+            <a href="../index.html" class="back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Back to Garden
+            </a>
+        </nav>
+        <div id="canvas-container" class="flower-canvas"></div>
+        <div class="hint">💗 Move your mouse to affect the flower's emotions!</div>
+        <div class="flower-info">
+            <h1>Emotion Driven</h1>
+            <p>Color, size, and animation respond to your mouse movements</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        (function () {
+            const container = document.getElementById('canvas-container');
+            const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
+                background: 0x0a0a15
+            });
+
+            camera.position.set(0, 2, 5);
+            camera.lookAt(0, 0.5, 0);
+
+            // Lighting
+            const ambient = new THREE.AmbientLight(0xffffff, 0.3);
+            scene.add(ambient);
+
+            const mainLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            mainLight.position.set(5, 8, 5);
+            scene.add(mainLight);
+
+            // Emotion state (affected by mouse)
+            const emotion = {
+                energy: 0.5,      // 0 = calm, 1 = excited
+                warmth: 0.5,      // 0 = cool, 1 = warm
+                speed: 0,         // Movement speed
+                targetEnergy: 0.5,
+                targetWarmth: 0.5
+            };
+
+            // Mouse tracking
+            let lastMouseX = 0;
+            let lastMouseY = 0;
+            let mouseVelocity = 0;
+
+            function onMouseMove(event) {
+                const dx = event.clientX - lastMouseX;
+                const dy = event.clientY - lastMouseY;
+                mouseVelocity = Math.sqrt(dx * dx + dy * dy);
+
+                // Horizontal position affects warmth
+                emotion.targetWarmth = event.clientX / window.innerWidth;
+
+                // Velocity affects energy
+                emotion.targetEnergy = Math.min(mouseVelocity / 50, 1);
+                emotion.speed = mouseVelocity;
+
+                lastMouseX = event.clientX;
+                lastMouseY = event.clientY;
+            }
+
+            window.addEventListener('mousemove', onMouseMove);
+            window.addEventListener('touchmove', (e) => {
+                if (e.touches.length > 0) {
+                    onMouseMove({ clientX: e.touches[0].clientX, clientY: e.touches[0].clientY });
+                }
+            });
+
+            // Color spectrum based on emotion
+            const calmColor = new THREE.Color(0x6688ff);
+            const excitedColor = new THREE.Color(0xff6688);
+            const coolColor = new THREE.Color(0x88aaff);
+            const warmColor = new THREE.Color(0xffaa44);
+
+            // Flower group
+            const flowerGroup = new THREE.Group();
+            scene.add(flowerGroup);
+
+            // Create petal
+            function createPetal() {
+                const shape = new THREE.Shape();
+                shape.moveTo(0, 0);
+                shape.bezierCurveTo(0.15, 0.08, 0.2, 0.35, 0.12, 0.6);
+                shape.bezierCurveTo(0.05, 0.75, -0.05, 0.75, -0.12, 0.6);
+                shape.bezierCurveTo(-0.2, 0.35, -0.15, 0.08, 0, 0);
+
+                const geom = new THREE.ShapeGeometry(shape, 24);
+                const positions = geom.attributes.position;
+                for (let i = 0; i < positions.count; i++) {
+                    const y = positions.getY(i);
+                    positions.setZ(i, Math.sin(y * Math.PI * 0.6) * 0.1);
+                }
+                positions.needsUpdate = true;
+                geom.computeVertexNormals();
+                return geom;
+            }
+
+            // Create flower petals
+            const petalCount = 12;
+            const petals = [];
+
+            for (let i = 0; i < petalCount; i++) {
+                const geom = createPetal();
+                const mat = new THREE.MeshStandardMaterial({
+                    color: 0xff6b8a,
+                    side: THREE.DoubleSide,
+                    roughness: 0.5
+                });
+
+                const petal = new THREE.Mesh(geom, mat);
+                const angle = (i / petalCount) * Math.PI * 2;
+                const layer = Math.floor(i / 6);
+
+                petal.rotation.z = angle;
+                petal.rotation.x = -Math.PI / 2 + 0.4 + layer * 0.15;
+                petal.position.y = 0.5;
+                petal.scale.setScalar(1 - layer * 0.2);
+
+                flowerGroup.add(petal);
+                petals.push({
+                    mesh: petal,
+                    baseScale: 1 - layer * 0.2,
+                    angle,
+                    phase: i * 0.3
+                });
+            }
+
+            // Center
+            const centerGeom = new THREE.SphereGeometry(0.12, 32, 32);
+            const centerMat = new THREE.MeshStandardMaterial({
+                color: 0xffdd88,
+                roughness: 0.5,
+                emissive: 0x442200,
+                emissiveIntensity: 0.3
+            });
+            const center = new THREE.Mesh(centerGeom, centerMat);
+            center.position.y = 0.55;
+            flowerGroup.add(center);
+
+            // Glow
+            const glowGeom = new THREE.SphereGeometry(0.25, 16, 16);
+            const glowMat = new THREE.MeshBasicMaterial({
+                color: 0xffaa66,
+                transparent: true,
+                opacity: 0.2
+            });
+            const glow = new THREE.Mesh(glowGeom, glowMat);
+            glow.position.y = 0.55;
+            flowerGroup.add(glow);
+
+            // Stem
+            const stemCurve = new THREE.CatmullRomCurve3([
+                new THREE.Vector3(0, 0.4, 0),
+                new THREE.Vector3(0.02, 0, 0.01),
+                new THREE.Vector3(-0.01, -0.5, -0.01),
+                new THREE.Vector3(0, -1, 0)
+            ]);
+            const stemGeom = new THREE.TubeGeometry(stemCurve, 16, 0.025, 8, false);
+            const stemMat = new THREE.MeshStandardMaterial({ color: 0x2d5a27 });
+            const stem = new THREE.Mesh(stemGeom, stemMat);
+            flowerGroup.add(stem);
+
+            // Particles that respond to energy
+            const particleCount = 50;
+            const particleGeom = new THREE.BufferGeometry();
+            const particlePos = new Float32Array(particleCount * 3);
+            const particleVel = [];
+
+            for (let i = 0; i < particleCount; i++) {
+                particlePos[i * 3] = (Math.random() - 0.5) * 3;
+                particlePos[i * 3 + 1] = Math.random() * 2;
+                particlePos[i * 3 + 2] = (Math.random() - 0.5) * 3;
+                particleVel.push({
+                    x: (Math.random() - 0.5) * 0.02,
+                    y: Math.random() * 0.02,
+                    z: (Math.random() - 0.5) * 0.02
+                });
+            }
+
+            particleGeom.setAttribute('position', new THREE.BufferAttribute(particlePos, 3));
+            const particleMat = new THREE.PointsMaterial({
+                size: 0.04,
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0.6,
+                blending: THREE.AdditiveBlending
+            });
+            const particles = new THREE.Points(particleGeom, particleMat);
+            scene.add(particles);
+
+            // Ground
+            const groundGeom = new THREE.CircleGeometry(5, 64);
+            const groundMat = new THREE.MeshStandardMaterial({ color: 0x111118, roughness: 0.9 });
+            const ground = new THREE.Mesh(groundGeom, groundMat);
+            ground.rotation.x = -Math.PI / 2;
+            ground.position.y = -1;
+            scene.add(ground);
+
+            function animate() {
+                requestAnimationFrame(animate);
+                const elapsed = clock.getElapsedTime();
+                const delta = clock.getDelta();
+
+                // Smooth emotion transitions
+                emotion.energy += (emotion.targetEnergy - emotion.energy) * delta * 3;
+                emotion.warmth += (emotion.targetWarmth - emotion.warmth) * delta * 2;
+
+                // Decay target energy
+                emotion.targetEnergy *= 0.98;
+
+                // Calculate current color
+                const energyColor = new THREE.Color().lerpColors(calmColor, excitedColor, emotion.energy);
+                const warmthColor = new THREE.Color().lerpColors(coolColor, warmColor, emotion.warmth);
+                const currentColor = new THREE.Color().lerpColors(energyColor, warmthColor, 0.5);
+
+                // Animation speed based on energy
+                const animSpeed = 1 + emotion.energy * 3;
+
+                // Update petals
+                petals.forEach(p => {
+                    p.mesh.material.color.lerp(currentColor, delta * 2);
+
+                    // Scale based on energy
+                    const targetScale = p.baseScale * (1 + emotion.energy * 0.3);
+                    const s = p.mesh.scale.x + (targetScale - p.mesh.scale.x) * delta * 3;
+                    p.mesh.scale.setScalar(s);
+
+                    // Movement based on energy
+                    const wave = Math.sin(elapsed * animSpeed + p.phase) * 0.05 * (0.5 + emotion.energy);
+                    p.mesh.rotation.x = -Math.PI / 2 + 0.4 + wave;
+                });
+
+                // Center color and glow
+                centerMat.emissiveIntensity = 0.3 + emotion.energy * 0.7;
+                glowMat.opacity = 0.2 + emotion.energy * 0.4;
+                glow.scale.setScalar(1 + emotion.energy * 0.5);
+
+                // Particle movement based on energy
+                const pPos = particleGeom.attributes.position.array;
+                for (let i = 0; i < particleCount; i++) {
+                    const speed = 1 + emotion.energy * 3;
+                    pPos[i * 3] += particleVel[i].x * speed;
+                    pPos[i * 3 + 1] += particleVel[i].y * speed;
+                    pPos[i * 3 + 2] += particleVel[i].z * speed;
+
+                    if (pPos[i * 3 + 1] > 3) {
+                        pPos[i * 3 + 1] = 0;
+                        pPos[i * 3] = (Math.random() - 0.5) * 2;
+                        pPos[i * 3 + 2] = (Math.random() - 0.5) * 2;
+                    }
+                }
+                particleGeom.attributes.position.needsUpdate = true;
+                particleMat.opacity = 0.3 + emotion.energy * 0.5;
+                particleMat.color.copy(currentColor);
+
+                // Flower rotation based on warmth
+                flowerGroup.rotation.y = elapsed * 0.1 + Math.sin(elapsed * animSpeed * 0.5) * emotion.energy * 0.2;
+
+                renderer.render(scene, camera);
+            }
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+            FlowerUtils.hideLoading();
+        })();
+    </script>
+</body>
+
+</html>

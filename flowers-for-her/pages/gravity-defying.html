@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gravity-Defying Flower | Flowers For You 🌸</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+    <div class="loading-overlay">
+        <div class="loading-flower"></div>
+        <p class="loading-text">Defying physics...</p>
+    </div>
+
+    <div class="flower-page">
+        <nav class="page-nav">
+            <a href="../index.html" class="back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Back to Garden
+            </a>
+        </nav>
+        <div id="canvas-container" class="flower-canvas"></div>
+        <div class="flower-info">
+            <h1>Gravity-Defying Flower</h1>
+            <p>Petals float independently while maintaining form</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        (function () {
+            const container = document.getElementById('canvas-container');
+            const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
+                background: 0x0a0a15
+            });
+
+            camera.position.set(0, 2, 5);
+            camera.lookAt(0, 0.5, 0);
+
+            // Soft lighting
+            const ambient = new THREE.AmbientLight(0x334455, 0.5);
+            scene.add(ambient);
+            const mainLight = new THREE.DirectionalLight(0xffffff, 1);
+            mainLight.position.set(3, 5, 3);
+            scene.add(mainLight);
+
+            // Floating petals (each independent)
+            const petals = [];
+            const petalMat = new THREE.MeshStandardMaterial({
+                color: 0xffaa88,
+                side: THREE.DoubleSide,
+                roughness: 0.5
+            });
+
+            function createFloatingPetal() {
+                const shape = new THREE.Shape();
+                shape.moveTo(0, 0);
+                shape.bezierCurveTo(0.15, 0.1, 0.18, 0.4, 0.1, 0.6);
+                shape.bezierCurveTo(0.03, 0.72, -0.03, 0.72, -0.1, 0.6);
+                shape.bezierCurveTo(-0.18, 0.4, -0.15, 0.1, 0, 0);
+
+                const geom = new THREE.ShapeGeometry(shape, 16);
+                const petal = new THREE.Mesh(geom, petalMat.clone());
+                return petal;
+            }
+
+            // Create floating petals in loose flower formation
+            const petalCount = 8;
+            for (let i = 0; i < petalCount; i++) {
+                const petal = createFloatingPetal();
+                const angle = (i / petalCount) * Math.PI * 2;
+
+                // Base position (flower-like)
+                petal.userData = {
+                    baseAngle: angle,
+                    baseY: 0.5,
+                    driftX: 0,
+                    driftY: 0,
+                    driftZ: 0,
+                    phase: i * 0.5,
+                    rotSpeed: 0.5 + Math.random() * 0.5
+                };
+
+                petal.rotation.z = angle;
+                scene.add(petal);
+                petals.push(petal);
+            }
+
+            // Inner petals
+            for (let i = 0; i < 5; i++) {
+                const petal = createFloatingPetal();
+                petal.material = petalMat.clone();
+                petal.material.color.set(0xffccaa);
+                petal.scale.setScalar(0.6);
+
+                const angle = (i / 5) * Math.PI * 2 + 0.3;
+                petal.userData = {
+                    baseAngle: angle,
+                    baseY: 0.55,
+                    driftX: 0,
+                    driftY: 0,
+                    driftZ: 0,
+                    phase: i * 0.4 + 3,
+                    rotSpeed: 0.3 + Math.random() * 0.4
+                };
+
+                petal.rotation.z = angle;
+                scene.add(petal);
+                petals.push(petal);
+            }
+
+            // Floating center
+            const centerGeom = new THREE.SphereGeometry(0.1, 32, 32);
+            const centerMat = new THREE.MeshStandardMaterial({ color: 0xffdd88 });
+            const center = new THREE.Mesh(centerGeom, centerMat);
+            center.userData = { phase: 0, driftY: 0 };
+            scene.add(center);
+
+            // Floating stem segments
+            const stemSegments = [];
+            for (let i = 0; i < 8; i++) {
+                const segGeom = new THREE.CylinderGeometry(0.02, 0.025, 0.15, 8);
+                const segMat = new THREE.MeshStandardMaterial({ color: 0x557755 });
+                const segment = new THREE.Mesh(segGeom, segMat);
+                segment.userData = {
+                    baseY: -i * 0.12,
+                    phase: i * 0.3,
+                    driftX: 0,
+                    driftZ: 0
+                };
+                scene.add(segment);
+                stemSegments.push(segment);
+            }
+
+            // Floating particles (gravity field visualization)
+            const particleCount = 50;
+            const particleGeom = new THREE.BufferGeometry();
+            const particlePos = new Float32Array(particleCount * 3);
+            for (let i = 0; i < particleCount; i++) {
+                particlePos[i * 3] = (Math.random() - 0.5) * 3;
+                particlePos[i * 3 + 1] = Math.random() * 3 - 0.5;
+                particlePos[i * 3 + 2] = (Math.random() - 0.5) * 3;
+            }
+            particleGeom.setAttribute('position', new THREE.BufferAttribute(particlePos, 3));
+            const particleMat = new THREE.PointsMaterial({
+                color: 0x8888ff,
+                size: 0.02,
+                transparent: true,
+                opacity: 0.4
+            });
+            const particles = new THREE.Points(particleGeom, particleMat);
+            scene.add(particles);
+
+            function animate() {
+                requestAnimationFrame(animate);
+                const elapsed = clock.getElapsedTime();
+
+                // Petals drift independently but stay in formation
+                petals.forEach(petal => {
+                    const data = petal.userData;
+
+                    // Slow drift
+                    data.driftX = Math.sin(elapsed * 0.3 + data.phase) * 0.15;
+                    data.driftY = Math.cos(elapsed * 0.4 + data.phase * 0.7) * 0.1;
+                    data.driftZ = Math.sin(elapsed * 0.25 + data.phase * 1.2) * 0.15;
+
+                    // Position
+                    const baseRadius = petal.scale.x < 0.8 ? 0.15 : 0.25;
+                    petal.position.set(
+                        Math.cos(data.baseAngle) * baseRadius + data.driftX,
+                        data.baseY + data.driftY,
+                        Math.sin(data.baseAngle) * baseRadius + data.driftZ
+                    );
+
+                    // Rotation
+                    petal.rotation.z = data.baseAngle + Math.sin(elapsed * data.rotSpeed) * 0.1;
+                    petal.rotation.x = -0.5 + Math.sin(elapsed * 0.5 + data.phase) * 0.1;
+                });
+
+                // Center floats
+                center.position.y = 0.55 + Math.sin(elapsed * 0.5) * 0.1;
+                center.position.x = Math.sin(elapsed * 0.3) * 0.05;
+
+                // Stem segments drift
+                stemSegments.forEach((seg, i) => {
+                    seg.position.set(
+                        Math.sin(elapsed * 0.3 + seg.userData.phase) * 0.05,
+                        seg.userData.baseY + Math.cos(elapsed * 0.4 + seg.userData.phase) * 0.02,
+                        Math.cos(elapsed * 0.35 + seg.userData.phase) * 0.05
+                    );
+                });
+
+                // Particles float upward
+                const pPos = particleGeom.attributes.position.array;
+                for (let i = 0; i < particleCount; i++) {
+                    pPos[i * 3 + 1] += 0.003;
+                    if (pPos[i * 3 + 1] > 2.5) pPos[i * 3 + 1] = -0.5;
+                }
+                particleGeom.attributes.position.needsUpdate = true;
+
+                camera.position.x = Math.sin(elapsed * 0.1) * 0.5;
+                camera.lookAt(0, 0.3, 0);
+
+                renderer.render(scene, camera);
+            }
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+            FlowerUtils.hideLoading();
+        })();
+    </script>
+</body>
+
+</html>

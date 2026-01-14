@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Time-Lapse Bloom | Flowers For You 🌸</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+    <div class="loading-overlay">
+        <div class="loading-flower"></div>
+        <p class="loading-text">Preparing sunrise...</p>
+    </div>
+
+    <div class="flower-page">
+        <nav class="page-nav">
+            <a href="../index.html" class="back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Back to Garden
+            </a>
+        </nav>
+
+        <div id="canvas-container" class="flower-canvas"></div>
+
+        <div class="flower-info">
+            <h1>Time-Lapse Bloom</h1>
+            <p>Watch a closed bud slowly bloom into full flower as dawn transitions to daylight</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="../js/utils.js"></script>
+
+    <script>
+        // Time-Lapse Flower Bloom - 10 second growth animation
+        (function () {
+            const container = document.getElementById('canvas-container');
+            const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
+                background: 0x0d1117
+            });
+
+            camera.position.set(0, 1.5, 4);
+            camera.lookAt(0, 0.5, 0);
+
+            // Dynamic sky color (will transition)
+            let skyTopColor = new THREE.Color(0x0d1117);
+            let skyBottomColor = new THREE.Color(0x1a1f29);
+
+            // Gradient background
+            const skyCanvas = document.createElement('canvas');
+            skyCanvas.width = 2;
+            skyCanvas.height = 512;
+            const skyCtx = skyCanvas.getContext('2d');
+
+            function updateSky(progress) {
+                // Dawn colors
+                const dawnTop = new THREE.Color(0x1a1535);
+                const dawnBottom = new THREE.Color(0x4a3050);
+
+                // Day colors
+                const dayTop = new THREE.Color(0x87ceeb);
+                const dayBottom = new THREE.Color(0xffe4b5);
+
+                skyTopColor.lerpColors(dawnTop, dayTop, progress);
+                skyBottomColor.lerpColors(dawnBottom, dayBottom, progress);
+
+                const gradient = skyCtx.createLinearGradient(0, 0, 0, 512);
+                gradient.addColorStop(0, '#' + skyTopColor.getHexString());
+                gradient.addColorStop(1, '#' + skyBottomColor.getHexString());
+                skyCtx.fillStyle = gradient;
+                skyCtx.fillRect(0, 0, 2, 512);
+
+                if (scene.background && scene.background.isTexture) {
+                    scene.background.needsUpdate = true;
+                }
+            }
+
+            const skyTexture = new THREE.CanvasTexture(skyCanvas);
+            skyTexture.minFilter = THREE.LinearFilter;
+            scene.background = skyTexture;
+            updateSky(0);
+
+            // Lighting that transitions with time
+            const ambient = new THREE.AmbientLight(0x404080, 0.3);
+            scene.add(ambient);
+
+            const sunLight = new THREE.DirectionalLight(0xffeedd, 0.2);
+            sunLight.position.set(-5, 2, 5);
+            sunLight.castShadow = true;
+            scene.add(sunLight);
+
+            const fillLight = new THREE.DirectionalLight(0xffe0bd, 0.1);
+            fillLight.position.set(5, 3, -2);
+            scene.add(fillLight);
+
+            // Flower group
+            const flowerGroup = new THREE.Group();
+            flowerGroup.position.y = -0.5;
+            scene.add(flowerGroup);
+
+            // Petal creation
+            const petalCount = 12;
+            const petals = [];
+            const petalMaterial = new THREE.MeshStandardMaterial({
+                color: 0xffb6c1,
+                roughness: 0.5,
+                metalness: 0.05,
+                side: THREE.DoubleSide
+            });
+
+            function createPetalGeometry() {
+                const shape = new THREE.Shape();
+                shape.moveTo(0, 0);
+                shape.bezierCurveTo(0.15, 0.2, 0.2, 0.5, 0.1, 0.8);
+                shape.bezierCurveTo(0.05, 0.95, -0.05, 0.95, -0.1, 0.8);
+                shape.bezierCurveTo(-0.2, 0.5, -0.15, 0.2, 0, 0);
+
+                return new THREE.ShapeGeometry(shape, 24);
+            }
+
+            // Create bud (closed petals)
+            for (let i = 0; i < petalCount; i++) {
+                const geometry = createPetalGeometry();
+                const material = petalMaterial.clone();
+
+                // Vary color slightly
+                const hue = 0.92 + (i / petalCount) * 0.05;
+                material.color.setHSL(hue, 0.6, 0.75);
+
+                const petal = new THREE.Mesh(geometry, material);
+                const angle = (i / petalCount) * Math.PI * 2;
+
+                // Initial bud state - petals wrapped tightly
+                petal.userData = {
+                    angle: angle,
+                    layer: Math.floor(i / 4),
+                    closedRotationX: -0.2,
+                    openRotationX: Math.PI * 0.35 + Math.floor(i / 4) * 0.15,
+                    closedScale: 0.5,
+                    openScale: 1.0 + Math.floor(i / 4) * 0.1
+                };
+
+                petal.rotation.z = angle;
+                petal.rotation.x = petal.userData.closedRotationX;
+                petal.scale.setScalar(petal.userData.closedScale);
+                petal.position.y = 0.6;
+
+                flowerGroup.add(petal);
+                petals.push(petal);
+            }
+
+            // Flower center
+            const centerGeometry = new THREE.SphereGeometry(0.1, 32, 32);
+            const centerMaterial = new THREE.MeshStandardMaterial({
+                color: 0xffd700,
+                roughness: 0.7,
+                metalness: 0.1
+            });
+            const center = new THREE.Mesh(centerGeometry, centerMaterial);
+            center.position.y = 0.65;
+            center.scale.setScalar(0.5);
+            flowerGroup.add(center);
+
+            // Stem
+            const stemCurve = new THREE.CatmullRomCurve3([
+                new THREE.Vector3(0, 0.5, 0),
+                new THREE.Vector3(0.02, 0.25, 0.01),
+                new THREE.Vector3(-0.01, 0, -0.01),
+                new THREE.Vector3(0, -0.5, 0)
+            ]);
+            const stemGeometry = new THREE.TubeGeometry(stemCurve, 16, 0.03, 8, false);
+            const stemMaterial = new THREE.MeshStandardMaterial({
+                color: 0x228b22,
+                roughness: 0.9
+            });
+            const stem = new THREE.Mesh(stemGeometry, stemMaterial);
+            flowerGroup.add(stem);
+
+            // Leaves
+            function createLeaf() {
+                const shape = new THREE.Shape();
+                shape.moveTo(0, 0);
+                shape.bezierCurveTo(0.15, 0.1, 0.2, 0.3, 0.1, 0.5);
+                shape.bezierCurveTo(0.05, 0.55, -0.05, 0.55, -0.1, 0.5);
+                shape.bezierCurveTo(-0.2, 0.3, -0.15, 0.1, 0, 0);
+                return new THREE.ShapeGeometry(shape, 16);
+            }
+
+            const leafMaterial = new THREE.MeshStandardMaterial({
+                color: 0x228b22,
+                roughness: 0.8,
+                side: THREE.DoubleSide
+            });
+
+            const leaf1 = new THREE.Mesh(createLeaf(), leafMaterial);
+            leaf1.position.set(0.15, 0.1, 0);
+            leaf1.rotation.set(-0.3, 0.5, 0.3);
+            leaf1.scale.setScalar(0.6);
+            flowerGroup.add(leaf1);
+
+            const leaf2 = new THREE.Mesh(createLeaf(), leafMaterial);
+            leaf2.position.set(-0.12, -0.1, 0.05);
+            leaf2.rotation.set(-0.2, -0.6, -0.2);
+            leaf2.scale.setScalar(0.5);
+            flowerGroup.add(leaf2);
+
+            // Ground
+            const groundGeometry = new THREE.PlaneGeometry(20, 20);
+            const groundMaterial = new THREE.MeshStandardMaterial({
+                color: 0x3d5c3d,
+                roughness: 1
+            });
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            ground.position.y = -1;
+            scene.add(ground);
+
+            // Bloom animation
+            const bloomDuration = 10; // 10 seconds
+            let bloomStartTime = null;
+
+            function animate() {
+                requestAnimationFrame(animate);
+                const elapsed = clock.getElapsedTime();
+
+                if (bloomStartTime === null) {
+                    bloomStartTime = elapsed;
+                }
+
+                const bloomTime = elapsed - bloomStartTime;
+                const bloomProgress = Math.min(bloomTime / bloomDuration, 1);
+                const eased = FlowerUtils.easing.easeInOutCubic(bloomProgress);
+
+                // Update sky
+                updateSky(eased);
+
+                // Update lighting (dawn to day)
+                ambient.intensity = 0.3 + eased * 0.5;
+                ambient.color.setHSL(0.15, 0.3, 0.5 + eased * 0.3);
+                sunLight.intensity = 0.2 + eased * 1.0;
+                sunLight.position.y = 2 + eased * 8;
+                fillLight.intensity = 0.1 + eased * 0.5;
+
+                // Bloom petals
+                petals.forEach((petal, i) => {
+                    const data = petal.userData;
+                    const delay = data.layer * 0.15;
+                    const petalProgress = Math.max(0, Math.min((bloomProgress - delay) / (1 - delay), 1));
+                    const petalEased = FlowerUtils.easing.easeOutBack(petalProgress);
+
+                    petal.rotation.x = data.closedRotationX + (data.openRotationX - data.closedRotationX) * petalEased;
+                    petal.scale.setScalar(data.closedScale + (data.openScale - data.closedScale) * petalEased);
+
+                    // Gentle sway after bloomed
+                    if (bloomProgress > 0.5) {
+                        const swayAmount = (bloomProgress - 0.5) * 2;
+                        petal.rotation.x += Math.sin(elapsed * 2 + i) * 0.02 * swayAmount;
+                    }
+                });
+
+                // Center grows
+                center.scale.setScalar(0.5 + eased * 0.5);
+
+                // Camera slowly pulls back and orbits
+                const cameraRadius = 4 + bloomProgress * 1;
+                const cameraAngle = elapsed * 0.1;
+                camera.position.x = Math.sin(cameraAngle) * cameraRadius * 0.3;
+                camera.position.z = Math.cos(cameraAngle) * cameraRadius;
+                camera.position.y = 1.5 + bloomProgress * 0.5;
+                camera.lookAt(0, 0.3 + bloomProgress * 0.2, 0);
+
+                renderer.render(scene, camera);
+            }
+
+            // Handle resize
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+            FlowerUtils.hideLoading();
+        })();
+    </script>
+</body>
+
+</html>

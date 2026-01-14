@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Glassblown Flower | Flowers For You 🌸</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+    <div class="loading-overlay">
+        <div class="loading-flower"></div>
+        <p class="loading-text">Blowing glass...</p>
+    </div>
+
+    <div class="flower-page">
+        <nav class="page-nav">
+            <a href="../index.html" class="back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Back to Garden
+            </a>
+        </nav>
+        <div id="canvas-container" class="flower-canvas"></div>
+        <div class="flower-info">
+            <h1>Glassblown Flower</h1>
+            <p>Transparent petals with bubbles and prismatic light refraction</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        (function () {
+            const container = document.getElementById('canvas-container');
+            const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
+                background: 0x1a1a1a
+            });
+
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.5;
+
+            camera.position.set(0, 2, 4);
+            camera.lookAt(0, 0.5, 0);
+
+            // Studio lighting for glass
+            const keyLight = new THREE.DirectionalLight(0xffffff, 2);
+            keyLight.position.set(3, 5, 3);
+            scene.add(keyLight);
+
+            const fillLight = new THREE.DirectionalLight(0xaaccff, 0.8);
+            fillLight.position.set(-3, 3, -2);
+            scene.add(fillLight);
+
+            const rimLight = new THREE.PointLight(0xffccaa, 1, 10);
+            rimLight.position.set(0, 2, -3);
+            scene.add(rimLight);
+
+            const ambient = new THREE.AmbientLight(0xffffff, 0.3);
+            scene.add(ambient);
+
+            // Flower group
+            const flowerGroup = new THREE.Group();
+            scene.add(flowerGroup);
+
+            // Glass material
+            const glassMat = new THREE.MeshPhysicalMaterial({
+                color: 0xffffff,
+                metalness: 0,
+                roughness: 0.05,
+                transmission: 0.95,
+                thickness: 0.5,
+                ior: 1.5,
+                transparent: true,
+                opacity: 0.9
+            });
+
+            // Create glass petal
+            function createGlassPetal() {
+                const shape = new THREE.Shape();
+                shape.moveTo(0, 0);
+                shape.bezierCurveTo(0.18, 0.1, 0.22, 0.45, 0.12, 0.7);
+                shape.bezierCurveTo(0.04, 0.85, -0.04, 0.85, -0.12, 0.7);
+                shape.bezierCurveTo(-0.22, 0.45, -0.18, 0.1, 0, 0);
+
+                const extrudeSettings = { depth: 0.02, bevelEnabled: true, bevelThickness: 0.01, bevelSize: 0.01, bevelSegments: 3 };
+                const geom = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+
+                const petal = new THREE.Mesh(geom, glassMat.clone());
+                petal.material.color.setHSL(Math.random() * 0.1 + 0.55, 0.3, 0.9);
+
+                // Add bubbles (imperfections)
+                const bubbleCount = 3 + Math.floor(Math.random() * 4);
+                for (let b = 0; b < bubbleCount; b++) {
+                    const bubbleGeom = new THREE.SphereGeometry(0.01 + Math.random() * 0.015, 8, 8);
+                    const bubbleMat = new THREE.MeshPhysicalMaterial({
+                        color: 0xffffff,
+                        transmission: 1,
+                        roughness: 0,
+                        metalness: 0,
+                        transparent: true,
+                        opacity: 0.3
+                    });
+                    const bubble = new THREE.Mesh(bubbleGeom, bubbleMat);
+                    bubble.position.set(
+                        (Math.random() - 0.5) * 0.15,
+                        0.2 + Math.random() * 0.4,
+                        0.01
+                    );
+                    petal.add(bubble);
+                }
+
+                return petal;
+            }
+
+            // Create petals
+            const petalCount = 7;
+            const petals = [];
+            for (let i = 0; i < petalCount; i++) {
+                const petal = createGlassPetal();
+                const angle = (i / petalCount) * Math.PI * 2;
+                petal.rotation.z = angle;
+                petal.rotation.x = -Math.PI / 2 + 0.4;
+                petal.position.y = 0.5;
+                petal.userData.phase = i * 0.3;
+                flowerGroup.add(petal);
+                petals.push(petal);
+            }
+
+            // Inner petals
+            for (let i = 0; i < 5; i++) {
+                const petal = createGlassPetal();
+                petal.scale.setScalar(0.6);
+                const angle = (i / 5) * Math.PI * 2 + 0.3;
+                petal.rotation.z = angle;
+                petal.rotation.x = -Math.PI / 2 + 0.25;
+                petal.position.y = 0.52;
+                petal.userData.phase = i * 0.4 + 2;
+                flowerGroup.add(petal);
+                petals.push(petal);
+            }
+
+            // Center (glass orb)
+            const centerGeom = new THREE.SphereGeometry(0.12, 32, 32);
+            const center = new THREE.Mesh(centerGeom, glassMat.clone());
+            center.material.color.set(0xffffcc);
+            center.position.y = 0.55;
+            flowerGroup.add(center);
+
+            // Stem (green glass)
+            const stemCurve = new THREE.CatmullRomCurve3([
+                new THREE.Vector3(0, 0.4, 0),
+                new THREE.Vector3(0.02, 0, 0.01),
+                new THREE.Vector3(0, -0.8, 0)
+            ]);
+            const stemGeom = new THREE.TubeGeometry(stemCurve, 16, 0.03, 8, false);
+            const stemMat = glassMat.clone();
+            stemMat.color.set(0x88cc88);
+            stemMat.transmission = 0.7;
+            const stem = new THREE.Mesh(stemGeom, stemMat);
+            flowerGroup.add(stem);
+
+            // Prismatic shadow plane
+            const shadowGeom = new THREE.PlaneGeometry(4, 4);
+            const shadowMat = new THREE.MeshStandardMaterial({
+                color: 0x222222,
+                roughness: 0.8
+            });
+            const shadow = new THREE.Mesh(shadowGeom, shadowMat);
+            shadow.rotation.x = -Math.PI / 2;
+            shadow.position.y = -0.8;
+            scene.add(shadow);
+
+            function animate() {
+                requestAnimationFrame(animate);
+                const elapsed = clock.getElapsedTime();
+
+                // Subtle petal movement
+                petals.forEach(petal => {
+                    const breathe = Math.sin(elapsed * 0.5 + petal.userData.phase) * 0.02;
+                    petal.rotation.x += breathe * 0.01;
+                });
+
+                // Rotate light for prismatic effect
+                keyLight.position.x = Math.sin(elapsed * 0.3) * 4;
+                keyLight.position.z = Math.cos(elapsed * 0.3) * 4;
+
+                flowerGroup.rotation.y = elapsed * 0.15;
+
+                camera.position.x = Math.sin(elapsed * 0.1) * 0.3;
+                camera.lookAt(0, 0.4, 0);
+
+                renderer.render(scene, camera);
+            }
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+            FlowerUtils.hideLoading();
+        })();
+    </script>
+</body>
+
+</html>

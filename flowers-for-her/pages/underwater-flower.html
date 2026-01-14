@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Underwater Flower | Flowers For You 🌸</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+    <div class="loading-overlay">
+        <div class="loading-flower"></div>
+        <p class="loading-text">Submerging...</p>
+    </div>
+
+    <div class="flower-page">
+        <nav class="page-nav">
+            <a href="../index.html" class="back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Back to Garden
+            </a>
+        </nav>
+        <div id="canvas-container" class="flower-canvas"></div>
+        <div class="flower-info">
+            <h1>Underwater Flower</h1>
+            <p>Petals sway with currents under shimmering caustics</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        (function () {
+            const container = document.getElementById('canvas-container');
+            const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
+                background: 0x0a2030
+            });
+
+            // Fog for underwater atmosphere
+            scene.fog = new THREE.FogExp2(0x0a2030, 0.15);
+
+            camera.position.set(0, 2, 4.5);
+            camera.lookAt(0, 0.5, 0);
+
+            // Underwater lighting
+            const ambient = new THREE.AmbientLight(0x226688, 0.4);
+            scene.add(ambient);
+            const sunLight = new THREE.DirectionalLight(0x88ccff, 0.8);
+            sunLight.position.set(2, 10, 3);
+            scene.add(sunLight);
+
+            // Caustic light rays
+            const causticLights = [];
+            for (let i = 0; i < 3; i++) {
+                const light = new THREE.SpotLight(0x88ddff, 0.5, 10, Math.PI / 6);
+                light.position.set((i - 1) * 2, 5, 0);
+                scene.add(light);
+                causticLights.push(light);
+            }
+
+            // Flower group
+            const flowerGroup = new THREE.Group();
+            scene.add(flowerGroup);
+
+            // Create underwater petal
+            const petalMat = new THREE.MeshStandardMaterial({
+                color: 0x66bbcc,
+                side: THREE.DoubleSide,
+                roughness: 0.6,
+                transparent: true,
+                opacity: 0.85
+            });
+
+            function createPetal() {
+                const shape = new THREE.Shape();
+                shape.moveTo(0, 0);
+                shape.bezierCurveTo(0.18, 0.1, 0.22, 0.5, 0.12, 0.75);
+                shape.bezierCurveTo(0.04, 0.9, -0.04, 0.9, -0.12, 0.75);
+                shape.bezierCurveTo(-0.22, 0.5, -0.18, 0.1, 0, 0);
+
+                const geom = new THREE.ShapeGeometry(shape, 16);
+                return new THREE.Mesh(geom, petalMat.clone());
+            }
+
+            // Create petals
+            const petalCount = 8;
+            const petals = [];
+            for (let i = 0; i < petalCount; i++) {
+                const petal = createPetal();
+                const angle = (i / petalCount) * Math.PI * 2;
+                petal.rotation.z = angle;
+                petal.rotation.x = -Math.PI / 2 + 0.5;
+                petal.position.y = 0.5;
+                petal.userData.phase = i * 0.4;
+                petal.userData.baseRotX = petal.rotation.x;
+                flowerGroup.add(petal);
+                petals.push(petal);
+            }
+
+            // Center (anemone-like)
+            const centerGeom = new THREE.SphereGeometry(0.12, 32, 32);
+            const centerMat = new THREE.MeshStandardMaterial({ color: 0x88ddaa, roughness: 0.7 });
+            const center = new THREE.Mesh(centerGeom, centerMat);
+            center.position.y = 0.55;
+            flowerGroup.add(center);
+
+            // Stem (seaweed-like)
+            const stemCurve = new THREE.CatmullRomCurve3([
+                new THREE.Vector3(0, 0.4, 0),
+                new THREE.Vector3(0.05, 0, 0.02),
+                new THREE.Vector3(-0.03, -0.4, 0.01),
+                new THREE.Vector3(0.02, -0.8, 0)
+            ]);
+            const stemGeom = new THREE.TubeGeometry(stemCurve, 20, 0.025, 8, false);
+            const stemMat = new THREE.MeshStandardMaterial({ color: 0x447755 });
+            const stem = new THREE.Mesh(stemGeom, stemMat);
+            flowerGroup.add(stem);
+
+            // Bubbles
+            const bubbles = [];
+            for (let i = 0; i < 20; i++) {
+                const bubbleGeom = new THREE.SphereGeometry(0.02 + Math.random() * 0.03, 8, 8);
+                const bubbleMat = new THREE.MeshStandardMaterial({
+                    color: 0xaaddff,
+                    transparent: true,
+                    opacity: 0.4,
+                    roughness: 0.1
+                });
+                const bubble = new THREE.Mesh(bubbleGeom, bubbleMat);
+                bubble.position.set(
+                    (Math.random() - 0.5) * 2,
+                    -1 + Math.random() * 3,
+                    (Math.random() - 0.5) * 2
+                );
+                bubble.userData.speed = 0.01 + Math.random() * 0.02;
+                bubble.userData.sway = Math.random() * Math.PI * 2;
+                scene.add(bubble);
+                bubbles.push(bubble);
+            }
+
+            // Caustic pattern on floor
+            const floorGeom = new THREE.PlaneGeometry(6, 6);
+            const floorMat = new THREE.MeshStandardMaterial({ color: 0x1a3040, roughness: 0.9 });
+            const floor = new THREE.Mesh(floorGeom, floorMat);
+            floor.rotation.x = -Math.PI / 2;
+            floor.position.y = -1;
+            scene.add(floor);
+
+            // Light rays (god rays)
+            const rayGeom = new THREE.CylinderGeometry(0.02, 0.1, 4, 4);
+            const rayMat = new THREE.MeshBasicMaterial({
+                color: 0x88ccff,
+                transparent: true,
+                opacity: 0.1
+            });
+            const rays = [];
+            for (let i = 0; i < 5; i++) {
+                const ray = new THREE.Mesh(rayGeom, rayMat.clone());
+                ray.position.set((i - 2) * 0.8, 1, -1);
+                ray.rotation.z = (Math.random() - 0.5) * 0.2;
+                scene.add(ray);
+                rays.push(ray);
+            }
+
+            function animate() {
+                requestAnimationFrame(animate);
+                const elapsed = clock.getElapsedTime();
+
+                // Petals sway with current
+                petals.forEach(petal => {
+                    const sway = Math.sin(elapsed * 0.8 + petal.userData.phase) * 0.1;
+                    petal.rotation.x = petal.userData.baseRotX + sway;
+                    petal.rotation.y = Math.sin(elapsed * 0.5 + petal.userData.phase * 0.5) * 0.05;
+                });
+
+                // Stem sways
+                flowerGroup.rotation.z = Math.sin(elapsed * 0.4) * 0.05;
+                flowerGroup.rotation.x = Math.sin(elapsed * 0.3) * 0.03;
+
+                // Bubbles rise
+                bubbles.forEach(bubble => {
+                    bubble.position.y += bubble.userData.speed;
+                    bubble.position.x += Math.sin(elapsed * 2 + bubble.userData.sway) * 0.002;
+                    if (bubble.position.y > 3) {
+                        bubble.position.y = -1;
+                        bubble.position.x = (Math.random() - 0.5) * 2;
+                    }
+                });
+
+                // Caustic lights shimmer
+                causticLights.forEach((light, i) => {
+                    light.intensity = 0.3 + Math.sin(elapsed * 3 + i * 2) * 0.2;
+                    light.position.x = (i - 1) * 2 + Math.sin(elapsed + i) * 0.5;
+                });
+
+                // Light rays opacity
+                rays.forEach((ray, i) => {
+                    ray.material.opacity = 0.05 + Math.sin(elapsed * 2 + i) * 0.05;
+                });
+
+                camera.position.x = Math.sin(elapsed * 0.1) * 0.3;
+                camera.position.y = 2 + Math.sin(elapsed * 0.15) * 0.1;
+                camera.lookAt(0, 0.5, 0);
+
+                renderer.render(scene, camera);
+            }
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+            FlowerUtils.hideLoading();
+        })();
+    </script>
+</body>
+
+</html>

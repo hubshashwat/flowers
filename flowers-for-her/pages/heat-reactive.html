@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heat Reactive Flower | Flowers For You 🌸</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <style>
+        .hint {
+            position: fixed;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 100, 50, 0.2);
+            backdrop-filter: blur(10px);
+            padding: 10px 20px;
+            border-radius: 20px;
+            color: white;
+            font-size: 14px;
+            z-index: 50;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="loading-overlay">
+        <div class="loading-flower"></div>
+        <p class="loading-text">Heating up...</p>
+    </div>
+
+    <div class="flower-page">
+        <nav class="page-nav">
+            <a href="../index.html" class="back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Back to Garden
+            </a>
+        </nav>
+        <div id="canvas-container" class="flower-canvas"></div>
+        <div class="hint">🔥 Move your mouse near the flower to warm it up!</div>
+        <div class="flower-info">
+            <h1>Heat Reactive</h1>
+            <p>Petals change color based on proximity to a glowing heat source</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        (function () {
+            const container = document.getElementById('canvas-container');
+            const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
+                background: 0x0a0a12
+            });
+
+            camera.position.set(0, 2, 5);
+            camera.lookAt(0, 0.5, 0);
+
+            // Lighting
+            const ambient = new THREE.AmbientLight(0x404060, 0.4);
+            scene.add(ambient);
+
+            const mainLight = new THREE.DirectionalLight(0xffffff, 0.6);
+            mainLight.position.set(5, 8, 5);
+            scene.add(mainLight);
+
+            // Heat source (follows mouse)
+            const heatGeom = new THREE.SphereGeometry(0.15, 32, 32);
+            const heatMat = new THREE.MeshBasicMaterial({
+                color: 0xff4400,
+                transparent: true,
+                opacity: 0.8
+            });
+            const heatSphere = new THREE.Mesh(heatGeom, heatMat);
+            heatSphere.position.set(2, 1, 1);
+            scene.add(heatSphere);
+
+            // Heat glow
+            const heatGlowGeom = new THREE.SphereGeometry(0.4, 16, 16);
+            const heatGlowMat = new THREE.MeshBasicMaterial({
+                color: 0xff6600,
+                transparent: true,
+                opacity: 0.3
+            });
+            const heatGlow = new THREE.Mesh(heatGlowGeom, heatGlowMat);
+            heatSphere.add(heatGlow);
+
+            // Heat light
+            const heatLight = new THREE.PointLight(0xff4400, 2, 5);
+            heatSphere.add(heatLight);
+
+            // Mouse tracking
+            const mouse = new THREE.Vector2();
+            const raycaster = new THREE.Raycaster();
+            const targetPos = new THREE.Vector3(2, 1, 1);
+
+            // Invisible plane for raycast
+            const planeGeom = new THREE.PlaneGeometry(20, 20);
+            const planeMat = new THREE.MeshBasicMaterial({ visible: false });
+            const plane = new THREE.Mesh(planeGeom, planeMat);
+            plane.position.z = 0;
+            scene.add(plane);
+
+            function onMouseMove(event) {
+                const rect = renderer.domElement.getBoundingClientRect();
+                mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+                mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObject(plane);
+                if (intersects.length > 0) {
+                    targetPos.copy(intersects[0].point);
+                    targetPos.z = Math.max(targetPos.z, 0.5);
+                }
+            }
+
+            window.addEventListener('mousemove', onMouseMove);
+            window.addEventListener('touchmove', (e) => {
+                if (e.touches.length > 0) {
+                    onMouseMove({ clientX: e.touches[0].clientX, clientY: e.touches[0].clientY });
+                }
+            });
+
+            // Flower group
+            const flowerGroup = new THREE.Group();
+            scene.add(flowerGroup);
+
+            // Cold and hot colors
+            const coldColor = new THREE.Color(0x4488ff);
+            const warmColor = new THREE.Color(0xffaa44);
+            const hotColor = new THREE.Color(0xff4422);
+
+            // Create petal
+            function createPetal() {
+                const shape = new THREE.Shape();
+                shape.moveTo(0, 0);
+                shape.bezierCurveTo(0.15, 0.08, 0.2, 0.35, 0.12, 0.6);
+                shape.bezierCurveTo(0.05, 0.75, -0.05, 0.75, -0.12, 0.6);
+                shape.bezierCurveTo(-0.2, 0.35, -0.15, 0.08, 0, 0);
+
+                const geom = new THREE.ShapeGeometry(shape, 24);
+                const positions = geom.attributes.position;
+                for (let i = 0; i < positions.count; i++) {
+                    const y = positions.getY(i);
+                    positions.setZ(i, Math.sin(y * Math.PI * 0.6) * 0.1);
+                }
+                positions.needsUpdate = true;
+                geom.computeVertexNormals();
+                return geom;
+            }
+
+            // Create petals
+            const petalCount = 10;
+            const petals = [];
+
+            for (let i = 0; i < petalCount; i++) {
+                const geom = createPetal();
+                const mat = new THREE.MeshStandardMaterial({
+                    color: coldColor.clone(),
+                    side: THREE.DoubleSide,
+                    roughness: 0.5
+                });
+
+                const petal = new THREE.Mesh(geom, mat);
+                const angle = (i / petalCount) * Math.PI * 2;
+                const layer = i < 5 ? 0 : 1;
+
+                petal.rotation.z = angle;
+                petal.rotation.x = -Math.PI / 2 + 0.4 + layer * 0.1;
+                petal.position.y = 0.5;
+                petal.scale.setScalar(1 - layer * 0.2);
+
+                flowerGroup.add(petal);
+                petals.push({
+                    mesh: petal,
+                    worldPos: new THREE.Vector3()
+                });
+            }
+
+            // Center
+            const centerGeom = new THREE.SphereGeometry(0.1, 32, 32);
+            const centerMat = new THREE.MeshStandardMaterial({
+                color: coldColor.clone(),
+                roughness: 0.6
+            });
+            const center = new THREE.Mesh(centerGeom, centerMat);
+            center.position.y = 0.55;
+            flowerGroup.add(center);
+
+            // Stem
+            const stemCurve = new THREE.CatmullRomCurve3([
+                new THREE.Vector3(0, 0.4, 0),
+                new THREE.Vector3(0.02, 0, 0.01),
+                new THREE.Vector3(-0.01, -0.5, -0.01),
+                new THREE.Vector3(0, -1, 0)
+            ]);
+            const stemGeom = new THREE.TubeGeometry(stemCurve, 16, 0.025, 8, false);
+            const stemMat = new THREE.MeshStandardMaterial({ color: 0x2d5a27 });
+            const stem = new THREE.Mesh(stemGeom, stemMat);
+            flowerGroup.add(stem);
+
+            // Ground
+            const groundGeom = new THREE.CircleGeometry(5, 64);
+            const groundMat = new THREE.MeshStandardMaterial({ color: 0x111118, roughness: 0.9 });
+            const ground = new THREE.Mesh(groundGeom, groundMat);
+            ground.rotation.x = -Math.PI / 2;
+            ground.position.y = -1;
+            scene.add(ground);
+
+            function animate() {
+                requestAnimationFrame(animate);
+                const elapsed = clock.getElapsedTime();
+                const delta = clock.getDelta();
+
+                // Smooth heat sphere movement
+                heatSphere.position.lerp(targetPos, delta * 5);
+
+                // Pulse heat sphere
+                const pulse = 1 + Math.sin(elapsed * 8) * 0.1;
+                heatGlow.scale.setScalar(pulse);
+                heatLight.intensity = 1.5 + Math.sin(elapsed * 6) * 0.5;
+
+                // Update petal colors based on heat proximity
+                petals.forEach(p => {
+                    p.mesh.getWorldPosition(p.worldPos);
+                    const dist = p.worldPos.distanceTo(heatSphere.position);
+                    const maxDist = 3;
+                    const heat = Math.max(0, 1 - dist / maxDist);
+
+                    // Interpolate colors
+                    const targetColor = new THREE.Color();
+                    if (heat < 0.5) {
+                        targetColor.lerpColors(coldColor, warmColor, heat * 2);
+                    } else {
+                        targetColor.lerpColors(warmColor, hotColor, (heat - 0.5) * 2);
+                    }
+                    p.mesh.material.color.lerp(targetColor, delta * 3);
+                });
+
+                // Center color
+                const centerDist = center.getWorldPosition(new THREE.Vector3()).distanceTo(heatSphere.position);
+                const centerHeat = Math.max(0, 1 - centerDist / 3);
+                const centerTargetColor = new THREE.Color().lerpColors(coldColor, hotColor, centerHeat);
+                centerMat.color.lerp(centerTargetColor, delta * 3);
+
+                // Slow rotation
+                flowerGroup.rotation.y = elapsed * 0.1;
+
+                renderer.render(scene, camera);
+            }
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+            FlowerUtils.hideLoading();
+        })();
+    </script>
+</body>
+
+</html>

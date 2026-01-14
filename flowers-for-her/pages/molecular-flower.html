@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Molecular Flower | Flowers For You 🌸</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+    <div class="loading-overlay">
+        <div class="loading-flower"></div>
+        <p class="loading-text">Building molecules...</p>
+    </div>
+
+    <div class="flower-page">
+        <nav class="page-nav">
+            <a href="../index.html" class="back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Back to Garden
+            </a>
+        </nav>
+        <div id="canvas-container" class="flower-canvas"></div>
+        <div class="flower-info">
+            <h1>Molecular Flower</h1>
+            <p>Glowing atoms and bonds forming a lattice bloom</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        (function () {
+            const container = document.getElementById('canvas-container');
+            const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
+                background: 0x050510
+            });
+
+            camera.position.set(0, 2, 5);
+            camera.lookAt(0, 0.5, 0);
+
+            // Dark ambient
+            const ambient = new THREE.AmbientLight(0x222244, 0.3);
+            scene.add(ambient);
+
+            // Flower group
+            const flowerGroup = new THREE.Group();
+            scene.add(flowerGroup);
+
+            // Atom colors
+            const atomColors = [0xff6688, 0x66ff88, 0x6688ff, 0xffff66, 0xff66ff];
+
+            // Create atom (sphere with glow)
+            function createAtom(color, size) {
+                const group = new THREE.Group();
+
+                const geom = new THREE.SphereGeometry(size, 16, 16);
+                const mat = new THREE.MeshBasicMaterial({ color: color });
+                const atom = new THREE.Mesh(geom, mat);
+                group.add(atom);
+
+                // Glow
+                const glowGeom = new THREE.SphereGeometry(size * 1.5, 16, 16);
+                const glowMat = new THREE.MeshBasicMaterial({
+                    color: color,
+                    transparent: true,
+                    opacity: 0.2
+                });
+                const glow = new THREE.Mesh(glowGeom, glowMat);
+                group.add(glow);
+
+                // Point light
+                const light = new THREE.PointLight(color, 0.3, 1);
+                group.add(light);
+
+                return group;
+            }
+
+            // Create bond (cylinder)
+            function createBond(start, end, color) {
+                const direction = new THREE.Vector3().subVectors(end, start);
+                const length = direction.length();
+
+                const geom = new THREE.CylinderGeometry(0.015, 0.015, length, 8);
+                const mat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.6 });
+                const bond = new THREE.Mesh(geom, mat);
+
+                bond.position.copy(start).add(direction.multiplyScalar(0.5));
+                bond.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize());
+
+                return bond;
+            }
+
+            // Build molecular flower structure
+            const atoms = [];
+            const bonds = [];
+
+            // Center atom
+            const centerAtom = createAtom(0xffffff, 0.08);
+            centerAtom.position.y = 0.5;
+            flowerGroup.add(centerAtom);
+            atoms.push(centerAtom);
+
+            // Petal atoms (rings)
+            const petalCount = 6;
+            for (let ring = 0; ring < 3; ring++) {
+                for (let i = 0; i < petalCount; i++) {
+                    const angle = (i / petalCount) * Math.PI * 2 + ring * 0.2;
+                    const radius = 0.2 + ring * 0.15;
+                    const y = 0.5 + ring * 0.1;
+
+                    const atom = createAtom(atomColors[ring % atomColors.length], 0.04 + ring * 0.01);
+                    atom.position.set(
+                        Math.cos(angle) * radius,
+                        y,
+                        Math.sin(angle) * radius
+                    );
+                    atom.userData.phase = i * 0.3 + ring;
+                    flowerGroup.add(atom);
+                    atoms.push(atom);
+
+                    // Bond to center or previous ring
+                    if (ring === 0) {
+                        const bond = createBond(centerAtom.position, atom.position, 0x4466ff);
+                        flowerGroup.add(bond);
+                        bonds.push({ mesh: bond, start: centerAtom, end: atom });
+                    }
+                }
+            }
+
+            // Connect atoms within rings
+            for (let ring = 0; ring < 3; ring++) {
+                for (let i = 0; i < petalCount; i++) {
+                    const current = atoms[1 + ring * petalCount + i];
+                    const next = atoms[1 + ring * petalCount + ((i + 1) % petalCount)];
+                    const bond = createBond(current.position.clone(), next.position.clone(), 0x44ff66);
+                    flowerGroup.add(bond);
+                    bonds.push({ mesh: bond, start: current, end: next });
+                }
+            }
+
+            // Stem atoms
+            for (let i = 0; i < 6; i++) {
+                const atom = createAtom(0x44aa44, 0.03);
+                atom.position.set(0, 0.4 - i * 0.2, 0);
+                atom.userData.phase = i * 0.5;
+                flowerGroup.add(atom);
+                atoms.push(atom);
+
+                if (i > 0) {
+                    const prevAtom = atoms[atoms.length - 2];
+                    const bond = createBond(prevAtom.position.clone(), atom.position.clone(), 0x44aa44);
+                    flowerGroup.add(bond);
+                    bonds.push({ mesh: bond, start: prevAtom, end: atom });
+                }
+            }
+
+            // Electrons orbiting
+            const electrons = [];
+            for (let i = 0; i < 8; i++) {
+                const electronGeom = new THREE.SphereGeometry(0.02, 8, 8);
+                const electronMat = new THREE.MeshBasicMaterial({ color: 0xaaffff });
+                const electron = new THREE.Mesh(electronGeom, electronMat);
+                electron.userData = {
+                    orbitRadius: 0.3 + Math.random() * 0.3,
+                    speed: 2 + Math.random() * 2,
+                    phase: Math.random() * Math.PI * 2,
+                    yOffset: (Math.random() - 0.5) * 0.5
+                };
+                scene.add(electron);
+                electrons.push(electron);
+            }
+
+            let bloomProgress = 0;
+            let bloomDirection = 1;
+
+            function animate() {
+                requestAnimationFrame(animate);
+                const elapsed = clock.getElapsedTime();
+
+                // Bloom animation
+                bloomProgress += bloomDirection * 0.005;
+                if (bloomProgress > 1) { bloomProgress = 1; bloomDirection = -1; }
+                if (bloomProgress < 0) { bloomProgress = 0; bloomDirection = 1; }
+
+                // Atoms pulse
+                atoms.forEach((atom, i) => {
+                    const pulse = Math.sin(elapsed * 3 + (atom.userData.phase || i * 0.2)) * 0.2;
+                    atom.scale.setScalar(1 + pulse * 0.2);
+                });
+
+                // Electrons orbit
+                electrons.forEach(e => {
+                    const angle = elapsed * e.userData.speed + e.userData.phase;
+                    e.position.set(
+                        Math.cos(angle) * e.userData.orbitRadius,
+                        0.5 + e.userData.yOffset + Math.sin(angle * 0.5) * 0.1,
+                        Math.sin(angle) * e.userData.orbitRadius
+                    );
+                });
+
+                flowerGroup.rotation.y = elapsed * 0.1;
+
+                camera.position.x = Math.sin(elapsed * 0.1) * 0.5;
+                camera.lookAt(0, 0.5, 0);
+
+                renderer.render(scene, camera);
+            }
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+            FlowerUtils.hideLoading();
+        })();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Time-Reversed Flower | Flowers For You 🌸</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+    <div class="loading-overlay">
+        <div class="loading-flower"></div>
+        <p class="loading-text">Reversing time...</p>
+    </div>
+
+    <div class="flower-page">
+        <nav class="page-nav">
+            <a href="../index.html" class="back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Back to Garden
+            </a>
+        </nav>
+        <div id="canvas-container" class="flower-canvas"></div>
+        <div class="flower-info">
+            <h1>Time-Reversed Flower</h1>
+            <p>Bloom plays forward then rewinds perfectly</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        (function () {
+            const container = document.getElementById('canvas-container');
+            const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
+                background: 0x101018
+            });
+
+            camera.position.set(0, 2, 4.5);
+            camera.lookAt(0, 0.5, 0);
+
+            // Lighting
+            const ambient = new THREE.AmbientLight(0x333344, 0.5);
+            scene.add(ambient);
+            const mainLight = new THREE.DirectionalLight(0xffffee, 1);
+            mainLight.position.set(3, 5, 3);
+            scene.add(mainLight);
+
+            // Flower group
+            const flowerGroup = new THREE.Group();
+            scene.add(flowerGroup);
+
+            // Create petal
+            const petalMat = new THREE.MeshStandardMaterial({
+                color: 0xff7799,
+                side: THREE.DoubleSide,
+                roughness: 0.5
+            });
+
+            function createPetal() {
+                const shape = new THREE.Shape();
+                shape.moveTo(0, 0);
+                shape.bezierCurveTo(0.15, 0.1, 0.18, 0.4, 0.1, 0.6);
+                shape.bezierCurveTo(0.03, 0.72, -0.03, 0.72, -0.1, 0.6);
+                shape.bezierCurveTo(-0.18, 0.4, -0.15, 0.1, 0, 0);
+
+                const geom = new THREE.ShapeGeometry(shape, 16);
+                return new THREE.Mesh(geom, petalMat.clone());
+            }
+
+            // Create petals
+            const petalCount = 8;
+            const petals = [];
+            for (let i = 0; i < petalCount; i++) {
+                const petal = createPetal();
+                const angle = (i / petalCount) * Math.PI * 2;
+                petal.rotation.z = angle;
+                petal.position.y = 0.5;
+                petal.scale.setScalar(0);
+                petal.userData.delay = i * 0.1;
+                flowerGroup.add(petal);
+                petals.push(petal);
+            }
+
+            // Inner petals
+            for (let i = 0; i < 5; i++) {
+                const petal = createPetal();
+                petal.material = petalMat.clone();
+                petal.material.color.set(0xffaacc);
+                petal.scale.setScalar(0);
+                const angle = (i / 5) * Math.PI * 2 + 0.3;
+                petal.rotation.z = angle;
+                petal.position.y = 0.52;
+                petal.userData.delay = 0.8 + i * 0.08;
+                flowerGroup.add(petal);
+                petals.push(petal);
+            }
+
+            // Center
+            const centerGeom = new THREE.SphereGeometry(0.1, 32, 32);
+            const centerMat = new THREE.MeshStandardMaterial({ color: 0xffdd88 });
+            const center = new THREE.Mesh(centerGeom, centerMat);
+            center.position.y = 0.55;
+            center.scale.setScalar(0);
+            flowerGroup.add(center);
+
+            // Stem
+            const stemCurve = new THREE.CatmullRomCurve3([
+                new THREE.Vector3(0, 0.4, 0),
+                new THREE.Vector3(0.02, 0, 0.01),
+                new THREE.Vector3(0, -0.8, 0)
+            ]);
+            const stemGeom = new THREE.TubeGeometry(stemCurve, 16, 0.025, 8, false);
+            const stemMat = new THREE.MeshStandardMaterial({ color: 0x557755 });
+            const stem = new THREE.Mesh(stemGeom, stemMat);
+            stem.scale.y = 0;
+            flowerGroup.add(stem);
+
+            // Particles (follow time direction)
+            const particleCount = 30;
+            const particleGeom = new THREE.BufferGeometry();
+            const particlePos = new Float32Array(particleCount * 3);
+            const particleVelocities = [];
+            for (let i = 0; i < particleCount; i++) {
+                particlePos[i * 3] = (Math.random() - 0.5) * 0.5;
+                particlePos[i * 3 + 1] = 0.5 + Math.random() * 0.3;
+                particlePos[i * 3 + 2] = (Math.random() - 0.5) * 0.5;
+                particleVelocities.push({
+                    x: (Math.random() - 0.5) * 0.02,
+                    y: 0.01 + Math.random() * 0.02,
+                    z: (Math.random() - 0.5) * 0.02
+                });
+            }
+            particleGeom.setAttribute('position', new THREE.BufferAttribute(particlePos, 3));
+            const particleMat = new THREE.PointsMaterial({
+                color: 0xffdd88,
+                size: 0.03,
+                transparent: true,
+                opacity: 0.7
+            });
+            const particles = new THREE.Points(particleGeom, particleMat);
+            scene.add(particles);
+
+            // Store initial particle positions
+            const initialParticlePos = particlePos.slice();
+
+            const cycleDuration = 8; // 4s forward, 4s reverse
+
+            function animate() {
+                requestAnimationFrame(animate);
+                const elapsed = clock.getElapsedTime();
+
+                // Determine time direction
+                const cycleTime = elapsed % cycleDuration;
+                let progress;
+                let timeDirection;
+
+                if (cycleTime < cycleDuration / 2) {
+                    // Forward
+                    progress = cycleTime / (cycleDuration / 2);
+                    timeDirection = 1;
+                } else {
+                    // Reverse
+                    progress = 1 - (cycleTime - cycleDuration / 2) / (cycleDuration / 2);
+                    timeDirection = -1;
+                }
+
+                // Animate stem
+                stem.scale.y = Math.min(1, progress * 2);
+
+                // Animate center
+                const centerProgress = Math.max(0, (progress - 0.3) * 2);
+                center.scale.setScalar(Math.min(1, centerProgress));
+
+                // Animate petals
+                petals.forEach(petal => {
+                    const petalProgress = Math.max(0, Math.min(1, (progress - petal.userData.delay) * 2));
+                    petal.scale.setScalar(petalProgress);
+                    petal.rotation.x = -Math.PI / 2 + petalProgress * 0.4;
+                });
+
+                // Particle motion follows time direction
+                const pPos = particleGeom.attributes.position.array;
+                for (let i = 0; i < particleCount; i++) {
+                    pPos[i * 3] = initialParticlePos[i * 3] + particleVelocities[i].x * cycleTime * timeDirection * 10;
+                    pPos[i * 3 + 1] = initialParticlePos[i * 3 + 1] + particleVelocities[i].y * cycleTime * timeDirection * 10;
+                    pPos[i * 3 + 2] = initialParticlePos[i * 3 + 2] + particleVelocities[i].z * cycleTime * timeDirection * 10;
+                }
+                particleGeom.attributes.position.needsUpdate = true;
+                particles.material.opacity = progress * 0.7;
+
+                // Light intensity follows bloom
+                mainLight.intensity = 0.5 + progress * 0.8;
+
+                flowerGroup.rotation.y = elapsed * 0.05 * timeDirection;
+
+                camera.position.x = Math.sin(elapsed * 0.1) * 0.3;
+                camera.lookAt(0, 0.5, 0);
+
+                renderer.render(scene, camera);
+            }
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+            FlowerUtils.hideLoading();
+        })();
+    </script>
+</body>
+
+</html>

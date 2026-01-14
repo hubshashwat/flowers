@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon Cyberpunk Flower | Flowers For You 🌸</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+    <div class="loading-overlay">
+        <div class="loading-flower"></div>
+        <p class="loading-text">Booting system...</p>
+    </div>
+
+    <div class="flower-page">
+        <nav class="page-nav">
+            <a href="../index.html" class="back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Back to Garden
+            </a>
+        </nav>
+        <div id="canvas-container" class="flower-canvas"></div>
+        <div class="flower-info">
+            <h1>Neon Cyberpunk Flower</h1>
+            <p>Holographic petals with glitch effects and data streams</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        (function () {
+            const container = document.getElementById('canvas-container');
+            const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
+                background: 0x0a0015
+            });
+
+            camera.position.set(0, 2, 4.5);
+            camera.lookAt(0, 0.5, 0);
+
+            // Neon lighting
+            const ambient = new THREE.AmbientLight(0x220033, 0.3);
+            scene.add(ambient);
+            const pinkLight = new THREE.PointLight(0xff00ff, 2, 10);
+            pinkLight.position.set(-2, 2, 2);
+            scene.add(pinkLight);
+            const cyanLight = new THREE.PointLight(0x00ffff, 2, 10);
+            cyanLight.position.set(2, 1, -2);
+            scene.add(cyanLight);
+
+            // Flower group
+            const flowerGroup = new THREE.Group();
+            scene.add(flowerGroup);
+
+            // Holographic material
+            function createHoloMaterial(color) {
+                return new THREE.MeshBasicMaterial({
+                    color: color,
+                    transparent: true,
+                    opacity: 0.7,
+                    side: THREE.DoubleSide,
+                    wireframe: false
+                });
+            }
+
+            // Create neon petal
+            function createNeonPetal() {
+                const group = new THREE.Group();
+
+                // Main petal shape
+                const shape = new THREE.Shape();
+                shape.moveTo(0, 0);
+                shape.bezierCurveTo(0.15, 0.1, 0.18, 0.4, 0.1, 0.6);
+                shape.bezierCurveTo(0.03, 0.72, -0.03, 0.72, -0.1, 0.6);
+                shape.bezierCurveTo(-0.18, 0.4, -0.15, 0.1, 0, 0);
+
+                const geom = new THREE.ShapeGeometry(shape, 16);
+                const petal = new THREE.Mesh(geom, createHoloMaterial(0xff00ff));
+                group.add(petal);
+
+                // Grid lines overlay
+                const gridMat = new THREE.LineBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.5 });
+                for (let i = 0; i < 5; i++) {
+                    const y = i * 0.15;
+                    const lineGeom = new THREE.BufferGeometry().setFromPoints([
+                        new THREE.Vector3(-0.15 + i * 0.02, y, 0.001),
+                        new THREE.Vector3(0.15 - i * 0.02, y, 0.001)
+                    ]);
+                    const line = new THREE.Line(lineGeom, gridMat);
+                    group.add(line);
+                }
+
+                return group;
+            }
+
+            // Create petals
+            const petalCount = 8;
+            const petals = [];
+            for (let i = 0; i < petalCount; i++) {
+                const petal = createNeonPetal();
+                const angle = (i / petalCount) * Math.PI * 2;
+                petal.rotation.z = angle;
+                petal.rotation.x = -Math.PI / 2 + 0.4;
+                petal.position.y = 0.5;
+                petal.userData.phase = i * 0.3;
+                petal.userData.glitchOffset = 0;
+                flowerGroup.add(petal);
+                petals.push(petal);
+            }
+
+            // Center (glowing core)
+            const centerGeom = new THREE.IcosahedronGeometry(0.1, 1);
+            const centerMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            const center = new THREE.Mesh(centerGeom, centerMat);
+            center.position.y = 0.55;
+            flowerGroup.add(center);
+
+            // Data stream particles
+            const streamCount = 100;
+            const streamGeom = new THREE.BufferGeometry();
+            const streamPos = new Float32Array(streamCount * 3);
+            const streamVels = [];
+            for (let i = 0; i < streamCount; i++) {
+                streamPos[i * 3] = (Math.random() - 0.5) * 2;
+                streamPos[i * 3 + 1] = Math.random() * 2;
+                streamPos[i * 3 + 2] = (Math.random() - 0.5) * 2;
+                streamVels.push(-0.01 - Math.random() * 0.02);
+            }
+            streamGeom.setAttribute('position', new THREE.BufferAttribute(streamPos, 3));
+            const streamMat = new THREE.PointsMaterial({
+                color: 0x00ff88,
+                size: 0.02,
+                transparent: true,
+                opacity: 0.8
+            });
+            const streams = new THREE.Points(streamGeom, streamMat);
+            scene.add(streams);
+
+            // Stem (wireframe)
+            const stemCurve = new THREE.CatmullRomCurve3([
+                new THREE.Vector3(0, 0.4, 0),
+                new THREE.Vector3(0.02, 0, 0.01),
+                new THREE.Vector3(0, -0.8, 0)
+            ]);
+            const stemGeom = new THREE.TubeGeometry(stemCurve, 16, 0.025, 8, false);
+            const stemMat = new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true });
+            const stem = new THREE.Mesh(stemGeom, stemMat);
+            flowerGroup.add(stem);
+
+            // Glitch effect
+            let glitchTimer = 0;
+
+            function animate() {
+                requestAnimationFrame(animate);
+                const elapsed = clock.getElapsedTime();
+
+                // Pulse effect
+                const pulse = Math.sin(elapsed * 4) * 0.5 + 0.5;
+                petals.forEach((petal, i) => {
+                    const mat = petal.children[0].material;
+                    mat.opacity = 0.5 + pulse * 0.3;
+
+                    // Random glitch
+                    if (Math.random() < 0.02) {
+                        petal.userData.glitchOffset = (Math.random() - 0.5) * 0.1;
+                    } else {
+                        petal.userData.glitchOffset *= 0.9;
+                    }
+                    petal.position.x = petal.userData.glitchOffset;
+                });
+
+                // Center color cycle
+                const hue = (elapsed * 0.1) % 1;
+                center.material.color.setHSL(hue, 1, 0.7);
+                center.scale.setScalar(1 + pulse * 0.2);
+
+                // Data streams
+                const sPos = streamGeom.attributes.position.array;
+                for (let i = 0; i < streamCount; i++) {
+                    sPos[i * 3 + 1] += streamVels[i];
+                    if (sPos[i * 3 + 1] < -0.5) {
+                        sPos[i * 3 + 1] = 2;
+                        sPos[i * 3] = (Math.random() - 0.5) * 2;
+                        sPos[i * 3 + 2] = (Math.random() - 0.5) * 2;
+                    }
+                }
+                streamGeom.attributes.position.needsUpdate = true;
+
+                // Light flicker
+                pinkLight.intensity = 1.5 + Math.random() * 0.5;
+                cyanLight.intensity = 1.5 + Math.random() * 0.5;
+
+                flowerGroup.rotation.y = elapsed * 0.15;
+
+                camera.position.x = Math.sin(elapsed * 0.1) * 0.3;
+                camera.lookAt(0, 0.5, 0);
+
+                renderer.render(scene, camera);
+            }
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+            FlowerUtils.hideLoading();
+        })();
+    </script>
+</body>
+
+</html>

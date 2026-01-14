@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fractal Kaleidoscope Flower | Flowers For You 🌸</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+    <div class="loading-overlay">
+        <div class="loading-flower"></div>
+        <p class="loading-text">Mirroring patterns...</p>
+    </div>
+
+    <div class="flower-page">
+        <nav class="page-nav">
+            <a href="../index.html" class="back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Back to Garden
+            </a>
+        </nav>
+        <div id="canvas-container" class="flower-canvas"></div>
+        <div class="flower-info">
+            <h1>Fractal Kaleidoscope Flower</h1>
+            <p>Mirrored petals forming evolving kaleidoscopic patterns</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        (function () {
+            const container = document.getElementById('canvas-container');
+            const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
+                background: 0x0a0a15
+            });
+
+            camera.position.set(0, 0, 4);
+            camera.lookAt(0, 0, 0);
+
+            // Lighting
+            const ambient = new THREE.AmbientLight(0x444444, 0.5);
+            scene.add(ambient);
+            const mainLight = new THREE.PointLight(0xffffff, 1, 10);
+            mainLight.position.set(0, 0, 3);
+            scene.add(mainLight);
+
+            // Kaleidoscope segments
+            const segments = 12;
+            const kaleidoscopeGroup = new THREE.Group();
+            scene.add(kaleidoscopeGroup);
+
+            // Create one segment of the kaleidoscope
+            function createSegment() {
+                const group = new THREE.Group();
+
+                // Base petal shape
+                const shape = new THREE.Shape();
+                shape.moveTo(0, 0);
+                shape.lineTo(0.3, 0);
+                shape.bezierCurveTo(0.4, 0.3, 0.2, 0.6, 0.1, 0.8);
+                shape.lineTo(0, 0);
+
+                const geom = new THREE.ShapeGeometry(shape, 16);
+                const mat = new THREE.MeshStandardMaterial({
+                    color: 0xff6688,
+                    side: THREE.DoubleSide,
+                    metalness: 0.3,
+                    roughness: 0.5
+                });
+                const petal = new THREE.Mesh(geom, mat);
+                group.add(petal);
+
+                // Inner details
+                for (let i = 0; i < 3; i++) {
+                    const detailShape = new THREE.Shape();
+                    const scale = 0.3 - i * 0.08;
+                    detailShape.moveTo(0, 0);
+                    detailShape.lineTo(scale, 0);
+                    detailShape.lineTo(scale * 0.5, scale * 0.8);
+                    detailShape.closePath();
+
+                    const detailGeom = new THREE.ShapeGeometry(detailShape, 8);
+                    const detailMat = new THREE.MeshStandardMaterial({
+                        color: new THREE.Color().setHSL(0.9 - i * 0.1, 0.8, 0.6),
+                        side: THREE.DoubleSide
+                    });
+                    const detail = new THREE.Mesh(detailGeom, detailMat);
+                    detail.position.set(0.05 + i * 0.05, 0.1 + i * 0.1, 0.01 + i * 0.01);
+                    detail.scale.setScalar(0.8 - i * 0.2);
+                    group.add(detail);
+                }
+
+                return group;
+            }
+
+            // Create mirrored segments
+            for (let i = 0; i < segments; i++) {
+                const segment = createSegment();
+                const angle = (i / segments) * Math.PI * 2;
+                segment.rotation.z = angle;
+
+                // Mirror every other segment
+                if (i % 2 === 1) {
+                    segment.scale.x = -1;
+                }
+
+                kaleidoscopeGroup.add(segment);
+            }
+
+            // Inner flower ring
+            const innerRing = new THREE.Group();
+            for (let i = 0; i < segments; i++) {
+                const petalGeom = new THREE.CircleGeometry(0.1, 16, 0, Math.PI);
+                const petalMat = new THREE.MeshBasicMaterial({
+                    color: new THREE.Color().setHSL((i / segments) * 0.3 + 0.5, 0.9, 0.6),
+                    side: THREE.DoubleSide
+                });
+                const petal = new THREE.Mesh(petalGeom, petalMat);
+                const angle = (i / segments) * Math.PI * 2;
+                petal.position.set(Math.cos(angle) * 0.15, Math.sin(angle) * 0.15, 0);
+                petal.rotation.z = angle + Math.PI / 2;
+                innerRing.add(petal);
+            }
+            kaleidoscopeGroup.add(innerRing);
+
+            // Center gem
+            const centerGeom = new THREE.OctahedronGeometry(0.1, 0);
+            const centerMat = new THREE.MeshStandardMaterial({
+                color: 0xffffff,
+                metalness: 0.9,
+                roughness: 0.1
+            });
+            const center = new THREE.Mesh(centerGeom, centerMat);
+            kaleidoscopeGroup.add(center);
+
+            function animate() {
+                requestAnimationFrame(animate);
+                const elapsed = clock.getElapsedTime();
+
+                // Rotate kaleidoscope
+                kaleidoscopeGroup.rotation.z = elapsed * 0.1;
+
+                // Inner ring rotates opposite
+                innerRing.rotation.z = -elapsed * 0.3;
+
+                // Segments pulse
+                kaleidoscopeGroup.children.forEach((child, i) => {
+                    if (child !== innerRing && child !== center) {
+                        const pulse = Math.sin(elapsed * 2 + i * 0.3) * 0.05;
+                        child.scale.setScalar(1 + pulse);
+                        child.scale.x = (i % 2 === 1) ? -(1 + pulse) : (1 + pulse);
+                    }
+                });
+
+                // Center rotates and pulses
+                center.rotation.x = elapsed;
+                center.rotation.y = elapsed * 0.7;
+                center.scale.setScalar(1 + Math.sin(elapsed * 3) * 0.1);
+
+                // Color cycling
+                const hueShift = elapsed * 0.05;
+                kaleidoscopeGroup.children.forEach((child, i) => {
+                    if (child.material) {
+                        child.material.color.setHSL((hueShift + i * 0.05) % 1, 0.7, 0.5);
+                    }
+                    child.children?.forEach((c, j) => {
+                        if (c.material) {
+                            c.material.color.setHSL((hueShift + i * 0.05 + j * 0.1) % 1, 0.8, 0.6);
+                        }
+                    });
+                });
+
+                renderer.render(scene, camera);
+            }
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+            FlowerUtils.hideLoading();
+        })();
+    </script>
+</body>
+
+</html>

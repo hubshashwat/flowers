@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paper-Cut Shadow Flower | Flowers For You 🌸</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+    <div class="loading-overlay">
+        <div class="loading-flower"></div>
+        <p class="loading-text">Cutting paper...</p>
+    </div>
+
+    <div class="flower-page">
+        <nav class="page-nav">
+            <a href="../index.html" class="back-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Back to Garden
+            </a>
+        </nav>
+        <div id="canvas-container" class="flower-canvas"></div>
+        <div class="flower-info">
+            <h1>Paper-Cut Shadow Flower</h1>
+            <p>Simple silhouette with complex layered shadows</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+        (function () {
+            const container = document.getElementById('canvas-container');
+            const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
+                background: 0xfaf5e8
+            });
+
+            camera.position.set(0, 0, 5);
+            camera.lookAt(0, 0, 0);
+
+            // Strong directional light for shadows
+            const mainLight = new THREE.DirectionalLight(0xffffff, 1);
+            mainLight.position.set(2, 3, 5);
+            scene.add(mainLight);
+
+            // Paper/silhouette material
+            const silhouetteMat = new THREE.MeshBasicMaterial({ color: 0x1a1a1a, side: THREE.DoubleSide });
+            const shadowMat = new THREE.MeshBasicMaterial({
+                color: 0x000000,
+                transparent: true,
+                opacity: 0.15,
+                side: THREE.DoubleSide
+            });
+
+            // Create flower silhouette
+            const flowerGroup = new THREE.Group();
+            scene.add(flowerGroup);
+
+            // Simple paper-cut flower shape
+            function createFlowerShape() {
+                const shape = new THREE.Shape();
+                const petalCount = 6;
+                for (let i = 0; i < petalCount; i++) {
+                    const angle = (i / petalCount) * Math.PI * 2;
+                    const nextAngle = ((i + 1) / petalCount) * Math.PI * 2;
+                    const midAngle = (angle + nextAngle) / 2;
+
+                    const innerR = 0.15;
+                    const outerR = 0.5;
+
+                    if (i === 0) {
+                        shape.moveTo(Math.cos(angle) * innerR, Math.sin(angle) * innerR);
+                    }
+
+                    shape.quadraticCurveTo(
+                        Math.cos(midAngle) * outerR,
+                        Math.sin(midAngle) * outerR,
+                        Math.cos(nextAngle) * innerR,
+                        Math.sin(nextAngle) * innerR
+                    );
+                }
+                return shape;
+            }
+
+            // Main silhouette
+            const flowerShape = createFlowerShape();
+            const flowerGeom = new THREE.ShapeGeometry(flowerShape, 32);
+            const flower = new THREE.Mesh(flowerGeom, silhouetteMat);
+            flowerGroup.add(flower);
+
+            // Center cutout
+            const centerGeom = new THREE.CircleGeometry(0.12, 32);
+            const centerMat = new THREE.MeshBasicMaterial({ color: 0xfaf5e8 });
+            const center = new THREE.Mesh(centerGeom, centerMat);
+            center.position.z = 0.001;
+            flowerGroup.add(center);
+
+            // Multiple shadow layers (more complex than the flower)
+            const shadowLayers = [];
+            for (let layer = 0; layer < 5; layer++) {
+                const shadowGroup = new THREE.Group();
+
+                // Each layer has progressively more detail
+                for (let i = 0; i < 8 + layer * 4; i++) {
+                    const angle = (i / (8 + layer * 4)) * Math.PI * 2 + layer * 0.1;
+                    const petalShape = new THREE.Shape();
+                    const length = 0.3 + layer * 0.08;
+                    const width = 0.08 + layer * 0.02;
+
+                    petalShape.moveTo(0, 0);
+                    petalShape.bezierCurveTo(width, length * 0.3, width, length * 0.7, 0, length);
+                    petalShape.bezierCurveTo(-width, length * 0.7, -width, length * 0.3, 0, 0);
+
+                    const petalGeom = new THREE.ShapeGeometry(petalShape, 8);
+                    const petal = new THREE.Mesh(petalGeom, shadowMat.clone());
+                    petal.rotation.z = angle;
+                    petal.position.z = -0.1 - layer * 0.1;
+                    shadowGroup.add(petal);
+                }
+
+                // Decorative circles
+                for (let i = 0; i < 6 + layer * 2; i++) {
+                    const angle = (i / (6 + layer * 2)) * Math.PI * 2;
+                    const radius = 0.4 + layer * 0.15;
+                    const circleGeom = new THREE.CircleGeometry(0.03 + layer * 0.01, 16);
+                    const circle = new THREE.Mesh(circleGeom, shadowMat.clone());
+                    circle.position.set(Math.cos(angle) * radius, Math.sin(angle) * radius, -0.1 - layer * 0.1);
+                    shadowGroup.add(circle);
+                }
+
+                shadowGroup.position.set(layer * 0.03, -layer * 0.03, 0);
+                scene.add(shadowGroup);
+                shadowLayers.push(shadowGroup);
+            }
+
+            // Stem silhouette
+            const stemShape = new THREE.Shape();
+            stemShape.moveTo(-0.02, 0);
+            stemShape.lineTo(-0.02, -1);
+            stemShape.lineTo(0.02, -1);
+            stemShape.lineTo(0.02, 0);
+            stemShape.closePath();
+
+            const stemGeom = new THREE.ShapeGeometry(stemShape);
+            const stem = new THREE.Mesh(stemGeom, silhouetteMat);
+            stem.position.y = -0.15;
+            flowerGroup.add(stem);
+
+            function animate() {
+                requestAnimationFrame(animate);
+                const elapsed = clock.getElapsedTime();
+
+                // Light moves, creating dynamic shadow positions
+                const lightAngle = elapsed * 0.3;
+                mainLight.position.x = Math.cos(lightAngle) * 3;
+                mainLight.position.y = 2 + Math.sin(lightAngle * 0.5);
+
+                // Shadow layers shift with light
+                shadowLayers.forEach((layer, i) => {
+                    layer.position.x = Math.cos(lightAngle) * 0.05 * (i + 1);
+                    layer.position.y = -Math.sin(lightAngle * 0.5) * 0.03 * (i + 1) - i * 0.03;
+                });
+
+                // Gentle rotation
+                flowerGroup.rotation.z = Math.sin(elapsed * 0.5) * 0.05;
+
+                renderer.render(scene, camera);
+            }
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+            FlowerUtils.hideLoading();
+        })();
+    </script>
+</body>
+
+</html>
