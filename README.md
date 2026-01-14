@@ -1,9 +1,8 @@
 # 🌸 Flowers For You
 
-A collection of 50 unique, interactive 3D flower experiences built with Three.js. Each flower is a mini art piece with its own visual style, animations, and mood.
+A collection of 50 unique, interactive 3D flower experiences built (vibe-coded) with Three.js. Each flower is a mini art piece with its own visual style, animations, and mood.
 
 ![Flowers For You](https://img.shields.io/badge/flowers-50-pink)
-![Three.js](https://img.shields.io/badge/Three.js-r128-black)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 ## ✨ Features
