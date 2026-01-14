@@ -691,9 +691,14 @@
         const thumbs = document.querySelectorAll('.thumb');
         const mobileThumbs = document.querySelectorAll('.mobile-thumb');
 
-        function updateFlower(index) {
+        function updateFlower(index, skipSave = false) {
             currentIndex = index;
             const flower = flowers[index];
+
+            // Save to sessionStorage (persists across page navigation)
+            if (!skipSave) {
+                sessionStorage.setItem('currentFlower', index.toString());
+            }
 
             // Animate out
             mainFlower.style.opacity = '0';
@@ -754,8 +759,22 @@
             }
         });
 
-        // Initialize
-        progressFill.style.width = (1 / flowers.length * 100) + '%';
+        // Remember position using sessionStorage (persists across page navigation)
+        function initFromStorage() {
+            const saved = sessionStorage.getItem('currentFlower');
+            if (saved !== null) {
+                const num = parseInt(saved, 10);
+                if (num >= 0 && num < flowers.length) {
+                    // Use setTimeout to ensure DOM is ready
+                    setTimeout(() => updateFlower(num, true), 0);
+                    return;
+                }
+            }
+            // Default to first flower
+            progressFill.style.width = (1 / flowers.length * 100) + '%';
+        }
+
+        initFromStorage();
 
         // Touch swipe support
         let touchStartX = 0;

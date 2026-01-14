@@ -3,7 +3,7 @@
    =================================== */
 
 /* -------------------- Fonts -------------------- */
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300&family=Inter:wght@300;400&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap');
 
 /* -------------------- CSS Variables -------------------- */
 :root {
@@ -22,11 +22,11 @@
     --color-text-muted: #8A8A8A;
     --color-white: #FFFFFF;
     --color-black: #1A1A1A;
-    
+
     /* Typography */
     --font-heading: 'Playfair Display', Georgia, serif;
     --font-body: 'Cormorant Garamond', 'Times New Roman', serif;
-    
+
     /* Font Sizes - Fluid */
     --text-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
     --text-sm: clamp(0.875rem, 0.8rem + 0.35vw, 1rem);
@@ -37,7 +37,7 @@
     --text-3xl: clamp(1.875rem, 1.5rem + 2vw, 3rem);
     --text-4xl: clamp(2.25rem, 1.75rem + 2.5vw, 4rem);
     --text-5xl: clamp(3rem, 2rem + 4vw, 5.5rem);
-    
+
     /* Spacing */
     --space-xs: 0.25rem;
     --space-sm: 0.5rem;
@@ -47,26 +47,26 @@
     --space-2xl: 3rem;
     --space-3xl: 4rem;
     --space-4xl: 6rem;
-    
+
     /* Border Radius */
     --radius-sm: 4px;
     --radius-md: 8px;
     --radius-lg: 16px;
     --radius-xl: 24px;
     --radius-full: 9999px;
-    
+
     /* Shadows */
     --shadow-soft: 0 2px 15px rgba(183, 110, 121, 0.1);
     --shadow-medium: 0 4px 25px rgba(183, 110, 121, 0.15);
     --shadow-strong: 0 8px 40px rgba(183, 110, 121, 0.2);
     --shadow-glow: 0 0 30px rgba(183, 110, 121, 0.3);
-    
+
     /* Transitions */
     --transition-fast: 150ms ease;
     --transition-base: 300ms ease;
     --transition-slow: 500ms ease;
     --transition-slower: 800ms ease;
-    
+
     /* Z-index layers */
     --z-background: -1;
     --z-base: 0;
@@ -77,7 +77,9 @@
 }
 
 /* -------------------- Reset & Base -------------------- */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
@@ -100,19 +102,41 @@ body {
 }
 
 /* -------------------- Typography -------------------- */
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
     font-family: var(--font-heading);
     font-weight: 500;
     line-height: 1.2;
     color: var(--color-text);
 }
 
-h1 { font-size: var(--text-5xl); }
-h2 { font-size: var(--text-4xl); }
-h3 { font-size: var(--text-3xl); }
-h4 { font-size: var(--text-2xl); }
-h5 { font-size: var(--text-xl); }
-h6 { font-size: var(--text-lg); }
+h1 {
+    font-size: var(--text-5xl);
+}
+
+h2 {
+    font-size: var(--text-4xl);
+}
+
+h3 {
+    font-size: var(--text-3xl);
+}
+
+h4 {
+    font-size: var(--text-2xl);
+}
+
+h5 {
+    font-size: var(--text-xl);
+}
+
+h6 {
+    font-size: var(--text-lg);
+}
 
 p {
     margin-bottom: var(--space-md);
@@ -157,7 +181,8 @@ a:hover {
     border-radius: var(--radius-full);
     cursor: pointer;
     transition: all var(--transition-base);
-    min-height: 44px; /* Touch-friendly */
+    min-height: 44px;
+    /* Touch-friendly */
     min-width: 44px;
 }
 
@@ -222,7 +247,7 @@ a:hover {
     pointer-events: none;
 }
 
-.page-nav > * {
+.page-nav>* {
     pointer-events: auto;
 }
 
@@ -230,36 +255,39 @@ a:hover {
     display: flex;
     align-items: center;
     gap: var(--space-sm);
-    padding: var(--space-sm) var(--space-lg);
-    background: rgba(255, 255, 255, 0.15);
+    padding: var(--space-sm) var(--space-md);
+    background: rgba(0, 0, 0, 0.4);
     backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: var(--radius-full);
-    color: var(--color-white);
-    font-family: var(--font-body);
-    font-size: var(--text-sm);
-    font-weight: 500;
+    color: rgba(255, 255, 255, 0.7);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 400;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
     text-decoration: none;
     transition: all var(--transition-base);
-    min-height: 44px;
+    min-height: 40px;
 }
 
 .back-btn:hover {
-    background: rgba(255, 255, 255, 0.25);
-    color: var(--color-white);
-    transform: translateX(-3px);
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 1);
+    border-color: rgba(255, 255, 255, 0.3);
 }
 
 .back-btn svg {
-    width: 18px;
-    height: 18px;
+    width: 14px;
+    height: 14px;
+    opacity: 0.7;
 }
 
 /* -------------------- Flower Page Layout -------------------- */
 .flower-page {
     position: fixed;
     inset: 0;
-    background: var(--color-black);
+    background: #000;
 }
 
 .flower-canvas {
@@ -274,24 +302,31 @@ a:hover {
     left: 0;
     right: 0;
     z-index: var(--z-elevated);
-    padding: var(--space-2xl) var(--space-lg) var(--space-lg);
-    background: linear-gradient(to top, rgba(0, 0, 0, 0.7) 0%, transparent 100%);
+    padding: var(--space-3xl) var(--space-lg) var(--space-lg);
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.4) 50%, transparent 100%);
     color: var(--color-white);
     text-align: center;
 }
 
 .flower-info h1 {
-    font-size: var(--text-3xl);
-    color: var(--color-white);
-    margin-bottom: var(--space-sm);
-    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(1.5rem, 3vw, 2rem);
+    font-weight: 300;
+    font-style: italic;
+    color: rgba(255, 255, 255, 0.9);
+    margin-bottom: var(--space-xs);
+    letter-spacing: 0.02em;
 }
 
 .flower-info p {
-    font-size: var(--text-lg);
-    opacity: 0.9;
-    max-width: 600px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 300;
+    color: rgba(255, 255, 255, 0.4);
+    max-width: 400px;
     margin: 0 auto;
+    letter-spacing: 0.02em;
+    line-height: 1.6;
 }
 
 /* -------------------- Loading Overlay -------------------- */
@@ -299,7 +334,7 @@ a:hover {
     position: fixed;
     inset: 0;
     z-index: var(--z-modal);
-    background: var(--color-background);
+    background: #000;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -324,24 +359,41 @@ a:hover {
     font-size: 48px;
     position: absolute;
     animation: loadingSpin 2s ease-in-out infinite;
+    filter: grayscale(30%);
 }
 
 @keyframes loadingSpin {
-    0%, 100% { transform: rotate(0deg) scale(1); }
-    50% { transform: rotate(180deg) scale(1.1); }
+
+    0%,
+    100% {
+        transform: rotate(0deg) scale(1);
+        opacity: 0.6;
+    }
+
+    50% {
+        transform: rotate(180deg) scale(1.1);
+        opacity: 1;
+    }
 }
 
 .loading-text {
-    font-family: var(--font-heading);
-    font-size: var(--text-lg);
-    color: var(--color-primary);
-    font-style: italic;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.4);
+    font-weight: 300;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
 }
 
 /* -------------------- Animations -------------------- */
 @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
 }
 
 @keyframes fadeInUp {
@@ -349,6 +401,7 @@ a:hover {
         opacity: 0;
         transform: translateY(30px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -360,6 +413,7 @@ a:hover {
         opacity: 0;
         transform: scale(0.9);
     }
+
     to {
         opacity: 1;
         transform: scale(1);
@@ -367,18 +421,37 @@ a:hover {
 }
 
 @keyframes float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-10px); }
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-10px);
+    }
 }
 
 @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.7;
+    }
 }
 
 @keyframes shimmer {
-    0% { background-position: -200% 0; }
-    100% { background-position: 200% 0; }
+    0% {
+        background-position: -200% 0;
+    }
+
+    100% {
+        background-position: 200% 0;
+    }
 }
 
 .animate-fade-in {
@@ -406,7 +479,7 @@ a:hover {
     .hide-mobile {
         display: none;
     }
-    
+
     .show-mobile {
         display: block;
     }
@@ -444,6 +517,7 @@ a:hover {
 
 /* -------------------- Print -------------------- */
 @media print {
+
     .page-nav,
     .loading-overlay {
         display: none;
