@@ -45,6 +45,7 @@ Then open `http://localhost:8000` in your browser.
 ```
 flowers/
 ├── index.html          # Landing page with flower gallery
+├── favicon.svg         # Flower icon for browser tabs
 ├── css/
 │   └── style.css       # Shared styles for flower pages
 ├── js/

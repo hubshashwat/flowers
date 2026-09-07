@@ -50,6 +50,14 @@ const FlowerUtils = {
         
         container.appendChild(renderer.domElement);
 
+        // Store current flower page in sessionStorage so returning to the garden preserves position
+        try {
+            const pageName = window.location.pathname.split('/').pop();
+            if (pageName && pageName.endsWith('.html') && pageName !== 'index.html') {
+                sessionStorage.setItem('lastFlowerPage', pageName);
+            }
+        } catch (e) {}
+
         // Handle resize
         const handleResize = () => {
             camera.aspect = window.innerWidth / window.innerHeight;
@@ -355,7 +363,11 @@ const FlowerUtils = {
         ctx.fillRect(0, 0, 2, 512);
         
         const texture = new THREE.CanvasTexture(canvas);
-        texture.colorSpace = THREE.SRGBColorSpace;
+        if (typeof THREE.SRGBColorSpace !== 'undefined') {
+            texture.colorSpace = THREE.SRGBColorSpace;
+        } else if (typeof THREE.sRGBEncoding !== 'undefined') {
+            texture.encoding = THREE.sRGBEncoding;
+        }
         
         return texture;
     },

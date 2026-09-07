@@ -306,6 +306,12 @@ a:hover {
     background: linear-gradient(to top, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.4) 50%, transparent 100%);
     color: var(--color-white);
     text-align: center;
+    pointer-events: none;
+}
+
+.flower-info a,
+.flower-info button {
+    pointer-events: auto;
 }
 
 .flower-info h1 {

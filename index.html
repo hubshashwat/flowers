@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Flowers For You</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -291,6 +292,14 @@
             transform: scale(1.15);
         }
 
+        .thumb:focus-visible,
+        .mobile-thumb:focus-visible,
+        .nav-arrow:focus-visible,
+        .view-btn:focus-visible {
+            outline: 2px solid rgba(255, 255, 255, 0.8);
+            outline-offset: 3px;
+        }
+
         /* Bottom Navigation */
         .bottom-nav {
             position: fixed;
@@ -551,23 +560,23 @@
     <!-- Main View -->
     <main class="main-view">
         <div class="left-panel">
-            <h1 class="flower-title" id="flowerTitle">Rose</h1>
-            <p class="flower-desc" id="flowerDesc">Layered petals catching light like silk, rendered with care.</p>
+            <h1 class="flower-title" id="flowerTitle">Mercury</h1>
+            <p class="flower-desc" id="flowerDesc">Liquid metal petals morphing and reflecting light.</p>
             <div class="meta-info">
                 <div class="meta-item">
                     <span class="meta-label">Type</span>
-                    <span class="meta-value" id="flowerType">Photorealistic</span>
+                    <span class="meta-value" id="flowerType">Liquid Metal</span>
                 </div>
                 <div class="meta-item">
                     <span class="meta-label">Experience</span>
-                    <span class="meta-value" id="flowerExp">Interactive 3D</span>
+                    <span class="meta-value" id="flowerExp">Morphing</span>
                 </div>
             </div>
         </div>
 
         <div class="center-panel">
-            <div class="main-flower" id="mainFlower">🌹</div>
-            <a href="pages/photorealistic-rose.html" class="view-btn" id="viewBtn">Enter</a>
+            <div class="main-flower" id="mainFlower">🪞</div>
+            <a href="pages/liquid-metal.html" class="view-btn" id="viewBtn" aria-label="Enter Mercury experience">Enter</a>
         </div>
 
         <div class="right-panel">
@@ -584,7 +593,7 @@
 
     <!-- Bottom Navigation -->
     <div class="bottom-nav">
-        <button class="nav-arrow" id="prevBtn">
+        <button class="nav-arrow" id="prevBtn" aria-label="Previous flower">
             <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5">
                 <path d="M15 19l-7-7 7-7" />
             </svg>
@@ -594,7 +603,7 @@
             <div class="progress-fill" id="progressFill"></div>
         </div>
 
-        <button class="nav-arrow" id="nextBtn">
+        <button class="nav-arrow" id="nextBtn" aria-label="Next flower">
             <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5">
                 <path d="M9 5l7 7-7 7" />
             </svg>
@@ -676,7 +685,16 @@
             thumb.className = 'thumb' + (i === 0 ? ' active' : '');
             thumb.textContent = flower.emoji;
             thumb.dataset.index = i;
+            thumb.setAttribute('role', 'button');
+            thumb.setAttribute('tabindex', '0');
+            thumb.setAttribute('aria-label', `${flower.title} (${flower.type})`);
             thumb.addEventListener('click', () => updateFlower(i));
+            thumb.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    updateFlower(i);
+                }
+            });
             thumbList.appendChild(thumb);
 
             // Mobile thumbnail
@@ -684,33 +702,41 @@
             mobileThumb.className = 'mobile-thumb' + (i === 0 ? ' active' : '');
             mobileThumb.textContent = flower.emoji;
             mobileThumb.dataset.index = i;
+            mobileThumb.setAttribute('role', 'button');
+            mobileThumb.setAttribute('tabindex', '0');
+            mobileThumb.setAttribute('aria-label', `${flower.title} (${flower.type})`);
             mobileThumb.addEventListener('click', () => updateFlower(i));
+            mobileThumb.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    updateFlower(i);
+                }
+            });
             mobileThumbList.appendChild(mobileThumb);
         });
 
         const thumbs = document.querySelectorAll('.thumb');
         const mobileThumbs = document.querySelectorAll('.mobile-thumb');
 
-        function updateFlower(index, skipSave = false) {
+        function updateFlower(index, skipSave = false, animate = true) {
             currentIndex = index;
             const flower = flowers[index];
 
             // Save to sessionStorage (persists across page navigation)
             if (!skipSave) {
-                sessionStorage.setItem('currentFlower', index.toString());
+                try {
+                    sessionStorage.setItem('currentFlower', index.toString());
+                } catch (e) {}
             }
 
-            // Animate out
-            mainFlower.style.opacity = '0';
-            mainFlower.style.transform = 'scale(0.95)';
-
-            setTimeout(() => {
+            const applyState = () => {
                 flowerTitle.textContent = flower.title;
                 flowerDesc.textContent = flower.desc;
                 flowerType.textContent = flower.type;
                 flowerExp.textContent = flower.exp;
                 mainFlower.textContent = flower.emoji;
                 viewBtn.href = flower.link;
+                viewBtn.setAttribute('aria-label', `Enter ${flower.title} experience`);
                 currentNum.textContent = String(index + 1).padStart(2, '0');
 
                 // Update progress
@@ -721,13 +747,24 @@
                 mobileThumbs.forEach((t, i) => t.classList.toggle('active', i === index));
 
                 // Scroll thumbnails into view
-                thumbs[index].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                mobileThumbs[index].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                if (thumbs[index]) {
+                    thumbs[index].scrollIntoView({ behavior: animate ? 'smooth' : 'auto', block: 'nearest' });
+                }
+                if (mobileThumbs[index]) {
+                    mobileThumbs[index].scrollIntoView({ behavior: animate ? 'smooth' : 'auto', block: 'nearest', inline: 'center' });
+                }
 
-                // Animate in
                 mainFlower.style.opacity = '1';
                 mainFlower.style.transform = 'scale(1)';
-            }, 150);
+            };
+
+            if (animate) {
+                mainFlower.style.opacity = '0';
+                mainFlower.style.transform = 'scale(0.95)';
+                setTimeout(applyState, 150);
+            } else {
+                applyState();
+            }
         }
 
         // Arrow navigation
@@ -755,23 +792,64 @@
                 const newIndex = currentIndex === 0 ? flowers.length - 1 : currentIndex - 1;
                 updateFlower(newIndex);
             } else if (e.key === 'Enter') {
+                // If focus is on a thumbnail or view button, let default behavior happen
+                if (document.activeElement && (document.activeElement.classList.contains('thumb') || document.activeElement.classList.contains('mobile-thumb') || document.activeElement === viewBtn)) {
+                    return;
+                }
                 window.location.href = flowers[currentIndex].link;
             }
         });
 
-        // Remember position using sessionStorage (persists across page navigation)
+        // Remember position using sessionStorage / URL params (persists across page navigation)
         function initFromStorage() {
-            const saved = sessionStorage.getItem('currentFlower');
-            if (saved !== null) {
-                const num = parseInt(saved, 10);
-                if (num >= 0 && num < flowers.length) {
-                    // Use setTimeout to ensure DOM is ready
-                    setTimeout(() => updateFlower(num, true), 0);
-                    return;
+            // 1. Check URL parameters (?flower=rose or ?flower=3)
+            try {
+                const params = new URLSearchParams(window.location.search);
+                const flowerParam = params.get('flower');
+                if (flowerParam !== null) {
+                    const idx = parseInt(flowerParam, 10);
+                    if (!isNaN(idx) && idx >= 1 && idx <= flowers.length) {
+                        updateFlower(idx - 1, false, false);
+                        return;
+                    }
+                    const matchIdx = flowers.findIndex(f => 
+                        f.title.toLowerCase() === flowerParam.toLowerCase() || 
+                        f.link.toLowerCase().includes(flowerParam.toLowerCase())
+                    );
+                    if (matchIdx !== -1) {
+                        updateFlower(matchIdx, false, false);
+                        return;
+                    }
                 }
-            }
-            // Default to first flower
-            progressFill.style.width = (1 / flowers.length * 100) + '%';
+            } catch (e) {}
+
+            // 2. Check if returning from a specific flower page
+            try {
+                const lastPage = sessionStorage.getItem('lastFlowerPage');
+                if (lastPage) {
+                    sessionStorage.removeItem('lastFlowerPage');
+                    const matchIdx = flowers.findIndex(f => f.link.endsWith(lastPage));
+                    if (matchIdx !== -1) {
+                        updateFlower(matchIdx, false, false);
+                        return;
+                    }
+                }
+            } catch (e) {}
+
+            // 3. Check saved flower index in sessionStorage
+            try {
+                const saved = sessionStorage.getItem('currentFlower');
+                if (saved !== null) {
+                    const num = parseInt(saved, 10);
+                    if (!isNaN(num) && num >= 0 && num < flowers.length) {
+                        updateFlower(num, true, false);
+                        return;
+                    }
+                }
+            } catch (e) {}
+
+            // 4. Default to first flower
+            updateFlower(0, true, false);
         }
 
         initFromStorage();
