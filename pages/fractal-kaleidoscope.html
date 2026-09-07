@@ -7,55 +7,6 @@
     <title>Fractal Kaleidoscope Flower | Flowers For You 🌸</title>
     <link rel="icon" href="../favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="../css/style.css">
-    <style>
-        .kaleido-badge {
-            position: fixed;
-            top: 24px;
-            right: 24px;
-            background: rgba(18, 14, 32, 0.75);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 215, 150, 0.25);
-            border-radius: 999px;
-            padding: 8px 18px;
-            font-size: 0.8rem;
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
-            color: #ffd8a8;
-            font-family: inherit;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            z-index: 30;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-            pointer-events: none;
-        }
-
-        .kaleido-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: #ff77aa;
-            box-shadow: 0 0 10px #ff77aa;
-            animation: kaleidoPulse 2s infinite ease-in-out;
-        }
-
-        @keyframes kaleidoPulse {
-            0%, 100% { transform: scale(1); opacity: 0.8; }
-            50% { transform: scale(1.4); opacity: 1; box-shadow: 0 0 16px #ffd700; }
-        }
-
-        @media (max-width: 600px) {
-            .kaleido-badge {
-                top: auto;
-                bottom: 84px;
-                right: 50%;
-                transform: translateX(50%);
-                font-size: 0.72rem;
-                padding: 6px 14px;
-            }
-        }
-    </style>
 </head>
 
 <body>
@@ -74,10 +25,6 @@
             </a>
         </nav>
         <div id="canvas-container" class="flower-canvas"></div>
-        <div class="kaleido-badge">
-            <span class="kaleido-dot"></span>
-            <span>12-Fold Optical Prism Matrix</span>
-        </div>
         <div class="flower-info">
             <h1>Fractal Kaleidoscope Flower</h1>
             <p>Concentric faceted crystal prism tiers revolving in mathematical kaleidoscopic harmony</p>

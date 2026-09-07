@@ -7,51 +7,6 @@
     <title>Chameleon Flower | Flowers For You 🌸</title>
     <link rel="icon" href="../favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="../css/style.css">
-    <style>
-        .chameleon-badge {
-            position: fixed;
-            top: 24px;
-            right: 24px;
-            background: rgba(14, 16, 26, 0.78);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.25);
-            border-radius: 999px;
-            padding: 8px 18px;
-            font-size: 0.8rem;
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
-            color: #ffffff;
-            font-family: inherit;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            z-index: 30;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
-            pointer-events: none;
-            transition: all 0.6s ease;
-        }
-
-        .chameleon-swatch {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: #00ffaa;
-            box-shadow: 0 0 10px #00ffaa;
-            transition: all 0.6s ease;
-        }
-
-        @media (max-width: 600px) {
-            .chameleon-badge {
-                top: auto;
-                bottom: 84px;
-                right: 50%;
-                transform: translateX(50%);
-                font-size: 0.72rem;
-                padding: 6px 14px;
-            }
-        }
-    </style>
 </head>
 
 <body>
@@ -70,10 +25,6 @@
             </a>
         </nav>
         <div id="canvas-container" class="flower-canvas"></div>
-        <div id="chameleon-badge" class="chameleon-badge">
-            <span id="chameleon-swatch" class="chameleon-swatch"></span>
-            <span id="chameleon-label">Amazonian Emerald</span>
-        </div>
         <div class="flower-info">
             <h1>Chameleon Flower</h1>
             <p>A living biomimetic orchid adapting its cellular pigments dynamically across shifting ambient spectrums</p>
@@ -85,9 +36,6 @@
     <script>
         (function () {
             const container = document.getElementById('canvas-container');
-            const badgeEl = document.getElementById('chameleon-badge');
-            const swatchEl = document.getElementById('chameleon-swatch');
-            const labelEl = document.getElementById('chameleon-label');
 
             const { scene, camera, renderer, clock, controls } = FlowerUtils.initScene(container, {
                 background: 0x07090e,
@@ -420,17 +368,6 @@
 
                 reactiveLight1.color.copy(curLight1);
                 reactiveLight2.color.copy(curLight2);
-
-                // Update UI badge when active palette transitions
-                const dominantIdx = blend < 0.5 ? fromIdx : toIdx;
-                if (dominantIdx !== lastPaletteIdx) {
-                    lastPaletteIdx = dominantIdx;
-                    const domPal = palettes[dominantIdx];
-                    labelEl.textContent = domPal.name;
-                    swatchEl.style.background = domPal.swatchHex;
-                    swatchEl.style.boxShadow = `0 0 10px ${domPal.swatchHex}`;
-                    badgeEl.style.borderColor = domPal.swatchHex;
-                }
 
                 // Orchid organic breathing & labellum flutter
                 sepalMeshes.forEach((mesh, i) => {

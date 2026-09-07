@@ -7,55 +7,6 @@
     <title>Mycelium Network Flower | Flowers For You 🌸</title>
     <link rel="icon" href="../favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="../css/style.css">
-    <style>
-        .mycelium-badge {
-            position: fixed;
-            top: 24px;
-            right: 24px;
-            background: rgba(10, 18, 16, 0.8);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(52, 211, 153, 0.3);
-            border-radius: 999px;
-            padding: 8px 18px;
-            font-size: 0.8rem;
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
-            color: #6ee7b7;
-            font-family: inherit;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            z-index: 30;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
-            pointer-events: none;
-        }
-
-        .mycelium-node {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: #10b981;
-            box-shadow: 0 0 10px #10b981;
-            animation: hyphaePulse 2s infinite ease-in-out;
-        }
-
-        @keyframes hyphaePulse {
-            0%, 100% { transform: scale(1); opacity: 0.7; }
-            50% { transform: scale(1.4); opacity: 1; box-shadow: 0 0 16px #34d399; }
-        }
-
-        @media (max-width: 600px) {
-            .mycelium-badge {
-                top: auto;
-                bottom: 84px;
-                right: 50%;
-                transform: translateX(50%);
-                font-size: 0.72rem;
-                padding: 6px 14px;
-            }
-        }
-    </style>
 </head>
 
 <body>
@@ -74,10 +25,6 @@
             </a>
         </nav>
         <div id="canvas-container" class="flower-canvas"></div>
-        <div class="mycelium-badge">
-            <span class="mycelium-node"></span>
-            <span>Bio-Electric Hyphae Web</span>
-        </div>
         <div class="flower-info">
             <h1>Mycelium Network Flower</h1>
             <p>An otherworldly fungal blossom sustained by a luminous subterranean hyphae web conducting bio-electric signals</p>

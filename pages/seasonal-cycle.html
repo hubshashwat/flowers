@@ -7,44 +7,6 @@
     <title>Seasonal Cycle | Flowers For You 🌸</title>
     <link rel="icon" href="../favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="../css/style.css">
-    <style>
-        .season-badge {
-            position: fixed;
-            top: 75px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(18, 18, 28, 0.75);
-            backdrop-filter: blur(14px);
-            -webkit-backdrop-filter: blur(14px);
-            padding: 8px 24px;
-            border-radius: 30px;
-            color: #fff;
-            font-size: 13px;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-            z-index: 50;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            pointer-events: none;
-            transition: border-color 0.8s ease, box-shadow 0.8s ease;
-        }
-
-        .season-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: #ff9ebb;
-            box-shadow: 0 0 10px #ff9ebb;
-            transition: background 0.8s ease, box-shadow 0.8s ease;
-        }
-
-        .season-text {
-            font-weight: 500;
-        }
-    </style>
 </head>
 
 <body>
@@ -63,10 +25,6 @@
             </a>
         </nav>
         <div id="canvas-container" class="flower-canvas"></div>
-        <div class="season-badge" id="seasonBadge">
-            <span class="season-dot" id="seasonDot"></span>
-            <span class="season-text" id="season">🌸 Spring Awakening</span>
-        </div>
         <div class="flower-info">
             <h1>Seasonal Cycle</h1>
             <p>A living blossom morphing continuously through Spring bloom, Summer radiance, Autumn decay, and Winter frost</p>
@@ -337,10 +295,6 @@
             const fallingParticles = new THREE.Points(pGeom, pMat);
             scene.add(fallingParticles);
 
-            const seasonBadge = document.getElementById('seasonBadge');
-            const seasonDot = document.getElementById('seasonDot');
-            const seasonText = document.getElementById('season');
-
             function animate() {
                 requestAnimationFrame(animate);
                 const elapsed = clock.getElapsedTime();
@@ -356,11 +310,6 @@
                 const next = seasons[nextKey];
 
                 const easeT = FlowerUtils.easing.easeInOutCubic(progress);
-
-                seasonText.textContent = curr.label;
-                seasonDot.style.background = curr.dot;
-                seasonDot.style.boxShadow = `0 0 12px ${curr.dot}`;
-                seasonBadge.style.borderColor = curr.dot + '55';
 
                 const activePetalColor = new THREE.Color().lerpColors(curr.petal, next.petal, easeT);
                 const activeStemColor = new THREE.Color().lerpColors(curr.stem, next.stem, easeT);

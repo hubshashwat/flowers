@@ -7,57 +7,6 @@
     <title>Time-Reversed Flower | Flowers For You 🌸</title>
     <link rel="icon" href="../favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="../css/style.css">
-    <style>
-        .chrono-badge {
-            position: fixed;
-            top: 24px;
-            right: 24px;
-            background: rgba(20, 14, 28, 0.8);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 215, 120, 0.3);
-            border-radius: 999px;
-            padding: 8px 18px;
-            font-size: 0.8rem;
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
-            color: #ffd880;
-            font-family: inherit;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            z-index: 30;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
-            pointer-events: none;
-            transition: border-color 0.4s ease, color 0.4s ease;
-        }
-
-        .chrono-arrow {
-            display: inline-block;
-            transition: transform 0.4s ease;
-            font-size: 1rem;
-        }
-
-        .chrono-badge.rewind {
-            border-color: rgba(120, 210, 255, 0.5);
-            color: #99e0ff;
-        }
-
-        .chrono-badge.rewind .chrono-arrow {
-            transform: rotate(180deg);
-        }
-
-        @media (max-width: 600px) {
-            .chrono-badge {
-                top: auto;
-                bottom: 84px;
-                right: 50%;
-                transform: translateX(50%);
-                font-size: 0.72rem;
-                padding: 6px 14px;
-            }
-        }
-    </style>
 </head>
 
 <body>
@@ -76,10 +25,6 @@
             </a>
         </nav>
         <div id="canvas-container" class="flower-canvas"></div>
-        <div id="chrono-badge" class="chrono-badge">
-            <span class="chrono-arrow">➔</span>
-            <span id="chrono-text">Forward Entropy: Bloom</span>
-        </div>
         <div class="flower-info">
             <h1>Time-Reversed Flower</h1>
             <p>An intricate temporal blossom perpetually unblooming forward, freezing at peak beauty, and rewinding into bud</p>
@@ -91,8 +36,6 @@
     <script>
         (function () {
             const container = document.getElementById('canvas-container');
-            const chronoBadge = document.getElementById('chrono-badge');
-            const chronoText = document.getElementById('chrono-text');
 
             const { scene, camera, renderer, clock, controls } = FlowerUtils.initScene(container, {
                 background: 0x090710,
@@ -370,16 +313,6 @@
                     bloomProgress = 1.0 - smoothStep(6.8, 12.0, cycleTime);
                     isRewind = true;
                     phaseName = `Temporal Rewind • Implosion ${Math.round((1 - bloomProgress) * 100)}%`;
-                }
-
-                // Update UI badge
-                if (chronoBadge && chronoText) {
-                    if (isRewind) {
-                        chronoBadge.classList.add('rewind');
-                    } else {
-                        chronoBadge.classList.remove('rewind');
-                    }
-                    chronoText.textContent = phaseName;
                 }
 
                 // Animate Petals based on non-linear bloom progress

@@ -7,52 +7,6 @@
     <title>Cloud Flower | Flowers For You 🌸</title>
     <link rel="icon" href="../favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="../css/style.css">
-    <style>
-        .cloud-badge {
-            position: fixed;
-            top: 24px;
-            right: 24px;
-            background: rgba(18, 16, 32, 0.78);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(254, 215, 170, 0.3);
-            border-radius: 999px;
-            padding: 8px 18px;
-            font-size: 0.8rem;
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
-            color: #fed7aa;
-            font-family: inherit;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            z-index: 30;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
-            pointer-events: none;
-        }
-
-        .cloud-icon {
-            font-size: 1rem;
-            color: #fed7aa;
-            animation: cloudFloat 3s infinite ease-in-out;
-        }
-
-        @keyframes cloudFloat {
-            0%, 100% { transform: translateY(0); opacity: 0.8; }
-            50% { transform: translateY(-3px); opacity: 1; }
-        }
-
-        @media (max-width: 600px) {
-            .cloud-badge {
-                top: auto;
-                bottom: 84px;
-                right: 50%;
-                transform: translateX(50%);
-                font-size: 0.72rem;
-                padding: 6px 14px;
-            }
-        }
-    </style>
 </head>
 
 <body>
@@ -71,10 +25,6 @@
             </a>
         </nav>
         <div id="canvas-container" class="flower-canvas"></div>
-        <div class="cloud-badge">
-            <span class="cloud-icon">☁️</span>
-            <span>Sunset Rayleigh Vapor</span>
-        </div>
         <div class="flower-info">
             <h1>Cloud Flower</h1>
             <p>Volumetric cumulus cloud clusters sculpted into botanical petal formations, illuminated by warm sunset scattering and lightning filaments</p>

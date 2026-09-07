@@ -7,44 +7,6 @@
     <title>Biomechanical Flower | Flowers For You 🌸</title>
     <link rel="icon" href="../favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="../css/style.css">
-    <style>
-        .chassis-badge {
-            position: fixed;
-            top: 75px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(10, 14, 22, 0.8);
-            backdrop-filter: blur(14px);
-            -webkit-backdrop-filter: blur(14px);
-            padding: 8px 24px;
-            border-radius: 30px;
-            color: #38bdf8;
-            font-size: 13px;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-            border: 1px solid rgba(56, 189, 248, 0.25);
-            box-shadow: 0 8px 32px rgba(56, 189, 248, 0.2);
-            z-index: 50;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            pointer-events: none;
-        }
-
-        .chassis-badge span {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: #38bdf8;
-            box-shadow: 0 0 10px #38bdf8;
-            animation: servoPulse 2s infinite ease-in-out;
-        }
-
-        @keyframes servoPulse {
-            0%, 100% { opacity: 0.5; transform: scale(0.9); }
-            50% { opacity: 1; transform: scale(1.2); }
-        }
-    </style>
 </head>
 
 <body>
@@ -63,10 +25,6 @@
             </a>
         </nav>
         <div id="canvas-container" class="flower-canvas"></div>
-        <div class="chassis-badge">
-            <span></span>
-            Articulated Titan Alloy • Servo Mesh
-        </div>
         <div class="flower-info">
             <h1>Biomechanical Flower</h1>
             <p>Titanium alloy petal segments articulated with hydraulic micro-servos and a pulsating cybernetic plasma reactor</p>

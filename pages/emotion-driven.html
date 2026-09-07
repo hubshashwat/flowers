@@ -53,25 +53,6 @@
             font-weight: 600;
         }
 
-        .emotion-hint {
-            position: fixed;
-            bottom: 84px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(18, 14, 30, 0.75);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            padding: 8px 20px;
-            border-radius: 999px;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            color: rgba(255, 255, 255, 0.85);
-            font-size: 0.78rem;
-            letter-spacing: 0.06em;
-            z-index: 30;
-            pointer-events: none;
-            white-space: nowrap;
-        }
-
         @media (max-width: 600px) {
             .emotion-bar {
                 top: auto;
@@ -85,10 +66,6 @@
             .emotion-btn {
                 padding: 6px 10px;
                 font-size: 0.72rem;
-            }
-
-            .emotion-hint {
-                display: none;
             }
         }
     </style>
@@ -117,8 +94,6 @@
             <button class="emotion-btn" data-emotion="passion">🔥 Passion</button>
             <button class="emotion-btn" data-emotion="melancholy">🌧️ Melancholy</button>
         </div>
-
-        <div class="emotion-hint">Move mouse or touch to influence bio-resonance aura</div>
 
         <div class="flower-info">
             <h1>Emotion Driven</h1>
