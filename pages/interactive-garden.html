@@ -8,23 +8,56 @@
     <link rel="icon" href="../favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="../css/style.css">
     <style>
-        .hint {
+        .garden-counter {
+            position: fixed;
+            top: 75px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(14, 20, 16, 0.78);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            padding: 8px 24px;
+            border-radius: 30px;
+            color: #d1fae5;
+            font-size: 13px;
+            letter-spacing: 0.08em;
+            border: 1px solid rgba(52, 211, 153, 0.25);
+            box-shadow: 0 8px 32px rgba(16, 185, 129, 0.15);
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            pointer-events: none;
+            transition: all 0.3s ease;
+        }
+
+        .garden-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #34d399;
+            box-shadow: 0 0 10px #34d399;
+        }
+
+        .garden-hint {
             position: fixed;
             bottom: 120px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(10px);
-            padding: 10px 20px;
+            background: rgba(12, 16, 24, 0.75);
+            backdrop-filter: blur(12px);
+            padding: 8px 20px;
             border-radius: 20px;
-            color: white;
-            font-size: 14px;
-            opacity: 1;
-            transition: opacity 0.5s;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: #fff;
+            font-size: 12px;
+            letter-spacing: 0.05em;
+            pointer-events: none;
+            transition: opacity 0.5s ease;
             z-index: 50;
         }
 
-        .hint.hidden {
+        .garden-hint.fade {
             opacity: 0;
         }
     </style>
@@ -33,7 +66,7 @@
 <body>
     <div class="loading-overlay">
         <div class="loading-flower"></div>
-        <p class="loading-text">Planting garden...</p>
+        <p class="loading-text">Planting interactive garden...</p>
     </div>
 
     <div class="flower-page">
@@ -46,10 +79,14 @@
             </a>
         </nav>
         <div id="canvas-container" class="flower-canvas"></div>
-        <div class="hint" id="hint">👆 Click on flowers to make them bloom!</div>
+        <div class="garden-counter" id="counter">
+            <span class="garden-dot"></span>
+            <span id="counterText">0 / 12 Blooms Awakened</span>
+        </div>
+        <div class="garden-hint" id="hint">👆 Tap closed buds to awaken glowing blossoms</div>
         <div class="flower-info">
             <h1>Interactive Garden</h1>
-            <p>Click flowers to bloom them and release glowing pollen particles</p>
+            <p>Click and awaken closed buds across the twilight sanctuary, releasing cascading glowing pollen into the night</p>
         </div>
     </div>
 
@@ -59,229 +96,315 @@
         (function () {
             const container = document.getElementById('canvas-container');
             const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
-                background: 0x1a2e1a
+                background: 0x080f12,
+                antialias: true
             });
 
-            camera.position.set(0, 4, 8);
-            camera.lookAt(0, 0, 0);
+            scene.fog = new THREE.FogExp2(0x080f12, 0.05);
+
+            FlowerUtils.createStudioEnvironment(renderer, 'dark_luxury');
+            const controls = FlowerUtils.setupOrbitControls(camera, renderer.domElement, {
+                autoRotateSpeed: 0.25,
+                minDistance: 3.5,
+                maxDistance: 14.0,
+                maxPolarAngle: Math.PI / 2 - 0.08
+            });
+
+            camera.position.set(0, 4.2, 7.5);
+            camera.lookAt(0, 0.5, 0);
 
             // Lighting
-            const ambient = new THREE.AmbientLight(0x404060, 0.4);
+            const ambient = new THREE.AmbientLight(0x182828, 0.7);
             scene.add(ambient);
 
-            const sunLight = new THREE.DirectionalLight(0xfffae6, 1);
-            sunLight.position.set(5, 10, 5);
-            scene.add(sunLight);
+            const moonLight = new THREE.DirectionalLight(0xd1fae5, 1.8);
+            moonLight.position.set(6, 12, 6);
+            scene.add(moonLight);
 
-            // Ground
-            const groundGeom = new THREE.PlaneGeometry(20, 20);
+            const fillLight = new THREE.DirectionalLight(0x818cf8, 1.0);
+            fillLight.position.set(-6, 8, -6);
+            scene.add(fillLight);
+
+            // Twilight Garden Ground
+            const groundGeom = new THREE.CircleGeometry(8.5, 64);
             const groundMat = new THREE.MeshStandardMaterial({
-                color: 0x2d5a2d,
-                roughness: 0.9
+                color: 0x0d1e18,
+                roughness: 0.85,
+                metalness: 0.05
             });
             const ground = new THREE.Mesh(groundGeom, groundMat);
             ground.rotation.x = -Math.PI / 2;
-            ground.position.y = -0.1;
+            ground.position.y = -0.05;
             scene.add(ground);
 
-            // Raycaster for interaction
+            // Garden Edge Ring
+            const ringGeom = new THREE.RingGeometry(8.4, 8.6, 64);
+            const ringMat = new THREE.MeshBasicMaterial({ color: 0x10b981, side: THREE.DoubleSide });
+            const ring = new THREE.Mesh(ringGeom, ringMat);
+            ring.rotation.x = -Math.PI / 2;
+            ring.position.y = -0.04;
+            scene.add(ring);
+
+            // Atmospheric Fireflies
+            const atmosphere = FlowerUtils.createAtmosphere(scene, {
+                count: 130,
+                color: 0x34d399,
+                size: 0.04,
+                spread: 12,
+                driftSpeed: 0.25
+            });
+
+            // Raycaster for interactivity
             const raycaster = new THREE.Raycaster();
             const mouse = new THREE.Vector2();
 
-            // Create flower bud
-            function createFlowerBud(x, z, color) {
+            // Flower Palettes
+            const flowerColors = [
+                { petal: 0xf43f5e, core: 0xfde047, name: 'Velvet Rose' },
+                { petal: 0xec4899, core: 0xfef08a, name: 'Cherry Blossom' },
+                { petal: 0x8b5cf6, core: 0xf472b6, name: 'Royal Iris' },
+                { petal: 0x38bdf8, core: 0x6ee7b7, name: 'Azure Lotus' },
+                { petal: 0xfbbf24, core: 0xffedd5, name: 'Golden Dahlia' },
+                { petal: 0x34d399, core: 0xa7f3d0, name: 'Jade Camellia' },
+                { petal: 0xf97316, core: 0xfef08a, name: 'Sunset Poppy' },
+                { petal: 0xa855f7, core: 0xfbcfe8, name: 'Orchid Nectar' },
+                { petal: 0xf472b6, core: 0xfef9c3, name: 'Peony Glow' },
+                { petal: 0x06b6d4, core: 0xdcfce7, name: 'Aquamarine' },
+                { petal: 0xe11d48, core: 0xfde68a, name: 'Crimson Flame' },
+                { petal: 0xf59e0b, core: 0xfff7ed, name: 'Marigold Sun' }
+            ];
+
+            const flowers = [];
+            let bloomedCount = 0;
+            const counterText = document.getElementById('counterText');
+            const hint = document.getElementById('hint');
+
+            // Plant 12 distinct flowers in the sanctuary
+            flowerColors.forEach((col, idx) => {
+                const angle = (idx / flowerColors.length) * Math.PI * 2 + (idx % 2 * 0.25);
+                const r = 1.8 + (idx % 3) * 1.5;
+                const x = Math.cos(angle) * r;
+                const z = Math.sin(angle) * r;
+
                 const group = new THREE.Group();
                 group.position.set(x, 0, z);
 
-                // Stem
-                const stemGeom = new THREE.CylinderGeometry(0.02, 0.03, 0.5, 6);
-                const stemMat = new THREE.MeshStandardMaterial({ color: 0x228b22 });
+                // Curved stem
+                const stemHeight = 0.55 + (idx % 3) * 0.15;
+                const stemPoints = [
+                    new THREE.Vector3(0, 0, 0),
+                    new THREE.Vector3(0.02, stemHeight * 0.35, 0.01),
+                    new THREE.Vector3(-0.02, stemHeight * 0.7, -0.01),
+                    new THREE.Vector3(0, stemHeight, 0)
+                ];
+                const stemCurve = new THREE.CatmullRomCurve3(stemPoints);
+                const stemGeom = new THREE.TubeGeometry(stemCurve, 16, 0.022, 8, false);
+                const stemMat = new THREE.MeshPhysicalMaterial({ color: 0x1e4620, roughness: 0.4 });
                 const stem = new THREE.Mesh(stemGeom, stemMat);
-                stem.position.y = 0.25;
                 group.add(stem);
 
-                // Petals (start closed)
-                const petals = [];
-                const petalGeom = new THREE.ShapeGeometry((() => {
-                    const s = new THREE.Shape();
-                    s.moveTo(0, 0);
-                    s.bezierCurveTo(0.1, 0.1, 0.12, 0.3, 0.06, 0.45);
-                    s.bezierCurveTo(0.02, 0.5, -0.02, 0.5, -0.06, 0.45);
-                    s.bezierCurveTo(-0.12, 0.3, -0.1, 0.1, 0, 0);
-                    return s;
-                })(), 16);
+                // Leaf
+                const leafGeom = FlowerUtils.createCurvedPetalGeometry({
+                    length: 0.35,
+                    width: 0.14,
+                    curl: 0.25,
+                    wave: 0.1
+                });
+                const leafMat = new THREE.MeshStandardMaterial({ color: 0x245828, roughness: 0.5, side: THREE.DoubleSide });
+                const leaf = new THREE.Mesh(leafGeom, leafMat);
+                leaf.position.set(0.02, stemHeight * 0.45, 0.01);
+                leaf.rotation.set(0.6, idx * 1.2, 0.4);
+                group.add(leaf);
 
-                for (let i = 0; i < 6; i++) {
-                    const petalMat = new THREE.MeshStandardMaterial({
-                        color: color,
-                        side: THREE.DoubleSide
-                    });
-                    const petal = new THREE.Mesh(petalGeom, petalMat);
-                    petal.rotation.z = (i / 6) * Math.PI * 2;
-                    petal.rotation.x = 0.1; // Closed position
-                    petal.position.y = 0.5;
-                    group.add(petal);
-                    petals.push(petal);
-                }
-
-                // Center (hidden when closed)
-                const centerGeom = new THREE.SphereGeometry(0.05, 12, 12);
-                const centerMat = new THREE.MeshStandardMaterial({ color: 0xffd700 });
-                const center = new THREE.Mesh(centerGeom, centerMat);
-                center.position.y = 0.52;
-                center.scale.setScalar(0);
-                group.add(center);
-
-                // Hitbox
-                const hitGeom = new THREE.SphereGeometry(0.3, 8, 8);
-                const hitMat = new THREE.MeshBasicMaterial({ visible: false });
-                const hitbox = new THREE.Mesh(hitGeom, hitMat);
-                hitbox.position.y = 0.5;
-                group.add(hitbox);
-
-                group.userData = {
-                    petals,
-                    center,
-                    hitbox,
-                    bloomed: false,
-                    bloomProgress: 0,
-                    color
-                };
-
-                return group;
-            }
-
-            // Create flowers
-            const flowers = [];
-            const colors = [0xff6b6b, 0xffb6c1, 0xffd700, 0xff69b4, 0xdda0dd, 0x87ceeb];
-
-            for (let i = 0; i < 15; i++) {
-                const x = (Math.random() - 0.5) * 8;
-                const z = (Math.random() - 0.5) * 8;
-                const color = colors[Math.floor(Math.random() * colors.length)];
-                const flower = createFlowerBud(x, z, color);
-                scene.add(flower);
-                flowers.push(flower);
-            }
-
-            // Pollen particles
-            const pollenGroup = new THREE.Group();
-            scene.add(pollenGroup);
-
-            function createPollen(position, color) {
-                const count = 20;
-                const geometry = new THREE.BufferGeometry();
-                const positions = new Float32Array(count * 3);
-                const velocities = [];
-
-                for (let i = 0; i < count; i++) {
-                    positions[i * 3] = position.x;
-                    positions[i * 3 + 1] = position.y;
-                    positions[i * 3 + 2] = position.z;
-                    velocities.push({
-                        x: (Math.random() - 0.5) * 0.05,
-                        y: Math.random() * 0.05 + 0.02,
-                        z: (Math.random() - 0.5) * 0.05
-                    });
-                }
-
-                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-
-                const material = new THREE.PointsMaterial({
-                    size: 0.05,
-                    color: color,
-                    transparent: true,
-                    opacity: 1,
-                    blending: THREE.AdditiveBlending
+                // Physical Petals
+                const petalMat = new THREE.MeshPhysicalMaterial({
+                    color: col.petal,
+                    emissive: col.petal,
+                    emissiveIntensity: 0.15,
+                    roughness: 0.25,
+                    metalness: 0.05,
+                    clearcoat: 0.9,
+                    transmission: 0.35,
+                    thickness: 0.5,
+                    side: THREE.DoubleSide
                 });
 
-                const particles = new THREE.Points(geometry, material);
-                particles.userData = { velocities, life: 2 };
-                pollenGroup.add(particles);
+                const petalPivots = [];
+                const petalCount = 8;
+                const geom = FlowerUtils.createCurvedPetalGeometry({
+                    length: 0.55,
+                    width: 0.22,
+                    curl: 0.55,
+                    wave: 0.18,
+                    segmentsW: 10,
+                    segmentsL: 16
+                });
+
+                for (let p = 0; p < petalCount; p++) {
+                    const pAngle = (p / petalCount) * Math.PI * 2;
+                    const pivot = new THREE.Group();
+                    pivot.position.set(0, stemHeight, 0);
+                    pivot.rotation.y = pAngle;
+
+                    const pMesh = new THREE.Mesh(geom, petalMat);
+                    pMesh.rotation.x = 0.12; // Start tightly closed as bud!
+                    pivot.add(pMesh);
+                    group.add(pivot);
+
+                    petalPivots.push(pMesh);
+                }
+
+                // Core & Stamens (grow on bloom)
+                const core = FlowerUtils.createGlowingCore({
+                    radius: 0.08,
+                    color: col.core,
+                    glowColor: col.petal,
+                    emissiveIntensity: 1.5
+                });
+                core.position.set(0, stemHeight + 0.04, 0);
+                core.scale.setScalar(0.01); // Hidden initially
+                group.add(core);
+
+                // Hitbox for precise raycasting
+                const hitGeom = new THREE.SphereGeometry(0.38, 8, 8);
+                const hitMat = new THREE.MeshBasicMaterial({ visible: false });
+                const hitbox = new THREE.Mesh(hitGeom, hitMat);
+                hitbox.position.set(0, stemHeight, 0);
+                group.add(hitbox);
+
+                scene.add(group);
+
+                flowers.push({
+                    group,
+                    hitbox,
+                    petalPivots,
+                    core,
+                    color: col,
+                    stemHeight,
+                    bloomed: false,
+                    bloomProgress: 0,
+                    phase: idx * 0.7
+                });
+            });
+
+            // Cascading Pollen Particle System
+            const pollenParticles = [];
+            function spawnPollenBurst(pos, color) {
+                const count = 40;
+                const geom = new THREE.BufferGeometry();
+                const positions = new Float32Array(count * 3);
+                const vels = [];
+
+                for (let i = 0; i < count; i++) {
+                    positions[i * 3] = pos.x;
+                    positions[i * 3 + 1] = pos.y;
+                    positions[i * 3 + 2] = pos.z;
+                    vels.push({
+                        x: (Math.random() - 0.5) * 0.06,
+                        y: 0.04 + Math.random() * 0.08,
+                        z: (Math.random() - 0.5) * 0.06
+                    });
+                }
+                geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                const mat = new THREE.PointsMaterial({
+                    size: 0.06,
+                    color: color,
+                    transparent: true,
+                    opacity: 1.0,
+                    blending: THREE.AdditiveBlending,
+                    depthWrite: false
+                });
+                const points = new THREE.Points(geom, mat);
+                scene.add(points);
+                pollenParticles.push({ points, geom, mat, vels, life: 2.2 });
             }
 
-            // Click handler
-            function onClick(event) {
+            // Click / Touch Interaction
+            function triggerBloom(flower) {
+                if (flower.bloomed) return;
+                flower.bloomed = true;
+                bloomedCount++;
+                counterText.textContent = `${bloomedCount} / 12 Blooms Awakened`;
+                hint.classList.add('fade');
+
+                const burstPos = flower.group.position.clone().add(new THREE.Vector3(0, flower.stemHeight, 0));
+                spawnPollenBurst(burstPos, flower.color.core);
+            }
+
+            function handleInteract(clientX, clientY) {
                 const rect = renderer.domElement.getBoundingClientRect();
-                mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-                mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+                mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+                mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
 
                 raycaster.setFromCamera(mouse, camera);
-
-                const hitboxes = flowers.map(f => f.userData.hitbox);
+                const hitboxes = flowers.map(f => f.hitbox);
                 const intersects = raycaster.intersectObjects(hitboxes);
 
                 if (intersects.length > 0) {
-                    const flower = intersects[0].object.parent;
-                    if (!flower.userData.bloomed) {
-                        flower.userData.bloomed = true;
-                        createPollen(flower.position.clone().add(new THREE.Vector3(0, 0.5, 0)), flower.userData.color);
-
-                        // Hide hint after first click
-                        document.getElementById('hint').classList.add('hidden');
-                    }
+                    const hit = intersects[0].object;
+                    const flower = flowers.find(f => f.hitbox === hit);
+                    if (flower) triggerBloom(flower);
                 }
             }
 
-            renderer.domElement.addEventListener('click', onClick);
+            renderer.domElement.addEventListener('click', (e) => handleInteract(e.clientX, e.clientY));
             renderer.domElement.addEventListener('touchstart', (e) => {
-                e.preventDefault();
                 if (e.touches.length > 0) {
-                    onClick({ clientX: e.touches[0].clientX, clientY: e.touches[0].clientY });
+                    handleInteract(e.touches[0].clientX, e.touches[0].clientY);
                 }
-            });
+            }, { passive: true });
 
             function animate() {
                 requestAnimationFrame(animate);
                 const delta = clock.getDelta();
                 const elapsed = clock.getElapsedTime();
 
-                // Bloom animation
+                // Flower bloom animation & gentle sway
                 flowers.forEach(f => {
-                    if (f.userData.bloomed && f.userData.bloomProgress < 1) {
-                        f.userData.bloomProgress = Math.min(f.userData.bloomProgress + delta * 2, 1);
-                        const p = FlowerUtils.easing.easeOutBack(f.userData.bloomProgress);
+                    if (f.bloomed && f.bloomProgress < 1.0) {
+                        f.bloomProgress = Math.min(1.0, f.bloomProgress + delta * 1.5);
+                        const ease = FlowerUtils.easing.easeOutBack(f.bloomProgress);
 
-                        f.userData.petals.forEach((petal, i) => {
-                            petal.rotation.x = 0.1 + p * 0.7;
+                        f.petalPivots.forEach(p => {
+                            p.rotation.x = 0.12 + ease * 0.78; // Unfurls outward gracefully
                         });
-                        f.userData.center.scale.setScalar(p);
+                        f.core.scale.setScalar(ease);
                     }
 
-                    // Gentle sway
-                    f.rotation.z = Math.sin(elapsed + f.position.x) * 0.05;
+                    // Gentle nocturnal breathing sway
+                    f.group.rotation.z = Math.sin(elapsed * 1.2 + f.phase) * 0.03;
+                    f.group.rotation.x = Math.cos(elapsed * 0.9 + f.phase) * 0.02;
+
+                    f.core.update(elapsed);
                 });
 
-                // Update pollen
-                const toRemove = [];
-                pollenGroup.children.forEach((p, i) => {
-                    p.userData.life -= delta;
-                    if (p.userData.life <= 0) {
-                        toRemove.push(p);
-                        return;
+                // Update Pollen Bursts
+                for (let i = pollenParticles.length - 1; i >= 0; i--) {
+                    const p = pollenParticles[i];
+                    p.life -= delta;
+                    if (p.life <= 0) {
+                        scene.remove(p.points);
+                        p.geom.dispose();
+                        p.mat.dispose();
+                        pollenParticles.splice(i, 1);
+                        continue;
                     }
 
-                    const positions = p.geometry.attributes.position.array;
-                    const vels = p.userData.velocities;
-                    for (let j = 0; j < vels.length; j++) {
-                        positions[j * 3] += vels[j].x;
-                        positions[j * 3 + 1] += vels[j].y;
-                        positions[j * 3 + 2] += vels[j].z;
-                        vels[j].y -= 0.001; // gravity
+                    const posArr = p.geom.attributes.position.array;
+                    for (let j = 0; j < p.vels.length; j++) {
+                        const v = p.vels[j];
+                        posArr[j * 3] += v.x;
+                        posArr[j * 3 + 1] += v.y;
+                        posArr[j * 3 + 2] += v.z;
+                        v.y -= 0.0015; // subtle gravity
+                        v.x += Math.sin(elapsed * 3 + j) * 0.001;
                     }
-                    p.geometry.attributes.position.needsUpdate = true;
-                    p.material.opacity = p.userData.life / 2;
-                });
+                    p.geom.attributes.position.needsUpdate = true;
+                    p.mat.opacity = p.life / 2.2;
+                }
 
-                toRemove.forEach(p => {
-                    pollenGroup.remove(p);
-                    p.geometry.dispose();
-                    p.material.dispose();
-                });
-
-                // Camera
-                camera.position.x = Math.sin(elapsed * 0.1) * 2;
-                camera.lookAt(0, 0.5, 0);
+                atmosphere.update();
+                controls.update();
 
                 renderer.render(scene, camera);
             }

@@ -37,177 +37,288 @@
         (function () {
             const container = document.getElementById('canvas-container');
             const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
-                background: 0x050510
+                background: 0x020409,
+                cameraPos: [0, 1.4, 3.8],
+                controls: {
+                    target: new THREE.Vector3(0, 0.45, 0),
+                    minDistance: 2.0,
+                    maxDistance: 7.0,
+                    autoRotate: true,
+                    autoRotateSpeed: 0.35
+                }
             });
 
-            camera.position.set(0, 2, 5);
-            camera.lookAt(0, 0.5, 0);
+            // Studio Environment & Lighting
+            FlowerUtils.createStudioEnvironment(renderer, 'crystal_ice');
 
-            // Dark ambient
-            const ambient = new THREE.AmbientLight(0x222244, 0.3);
-            scene.add(ambient);
+            const ambientLight = new THREE.AmbientLight(0x0a1428, 1.2);
+            scene.add(ambientLight);
 
-            // Flower group
-            const flowerGroup = new THREE.Group();
-            scene.add(flowerGroup);
+            const keyLight = new THREE.DirectionalLight(0xe0f4ff, 2.2);
+            keyLight.position.set(4, 6, 3);
+            scene.add(keyLight);
 
-            // Atom colors
-            const atomColors = [0xff6688, 0x66ff88, 0x6688ff, 0xffff66, 0xff66ff];
+            const cyanRim = new THREE.DirectionalLight(0x00e5ff, 2.4);
+            cyanRim.position.set(-4, 2, -3);
+            scene.add(cyanRim);
 
-            // Create atom (sphere with glow)
-            function createAtom(color, size) {
-                const group = new THREE.Group();
+            const centerLight = new THREE.PointLight(0x38bdf8, 3.0, 7);
+            centerLight.position.set(0, 0.6, 0);
+            scene.add(centerLight);
 
-                const geom = new THREE.SphereGeometry(size, 16, 16);
-                const mat = new THREE.MeshBasicMaterial({ color: color });
-                const atom = new THREE.Mesh(geom, mat);
-                group.add(atom);
+            // Luxury Platinum Mirror Pedestal
+            const pedestal = FlowerUtils.createPedestal({
+                radius: 1.85,
+                height: 0.16,
+                y: -0.78,
+                color: 0x060c18,
+                metalness: 0.96,
+                roughness: 0.08,
+                rimColor: 0x00e5ff
+            });
+            scene.add(pedestal);
 
-                // Glow
-                const glowGeom = new THREE.SphereGeometry(size * 1.5, 16, 16);
-                const glowMat = new THREE.MeshBasicMaterial({
-                    color: color,
-                    transparent: true,
-                    opacity: 0.2
-                });
-                const glow = new THREE.Mesh(glowGeom, glowMat);
-                group.add(glow);
+            // Floating Nano-particles Atmosphere
+            const atmosphere = FlowerUtils.createAtmosphere(scene, {
+                count: 130,
+                color: 0x7dd3fc,
+                size: 0.024,
+                spread: 5.0,
+                ySpread: 3.5
+            });
 
-                // Point light
-                const light = new THREE.PointLight(color, 0.3, 1);
-                group.add(light);
+            // Flower Group
+            const flower = new THREE.Group();
+            flower.position.y = 0.35;
+            scene.add(flower);
 
-                return group;
+            // Atom Gem Materials
+            const rubyMat = new THREE.MeshPhysicalMaterial({
+                color: 0xff0055,
+                emissive: 0x990033,
+                emissiveIntensity: 0.8,
+                metalness: 0.2,
+                roughness: 0.05,
+                transmission: 0.7,
+                ior: 1.76,
+                clearcoat: 1.0
+            });
+
+            const sapphireMat = new THREE.MeshPhysicalMaterial({
+                color: 0x0066ff,
+                emissive: 0x0033aa,
+                emissiveIntensity: 0.8,
+                metalness: 0.2,
+                roughness: 0.05,
+                transmission: 0.7,
+                ior: 1.76,
+                clearcoat: 1.0
+            });
+
+            const emeraldMat = new THREE.MeshPhysicalMaterial({
+                color: 0x00e676,
+                emissive: 0x008844,
+                emissiveIntensity: 0.8,
+                metalness: 0.2,
+                roughness: 0.05,
+                transmission: 0.7,
+                ior: 1.6,
+                clearcoat: 1.0
+            });
+
+            const goldMat = new THREE.MeshPhysicalMaterial({
+                color: 0xffd700,
+                emissive: 0xaa7700,
+                emissiveIntensity: 0.9,
+                metalness: 0.9,
+                roughness: 0.12,
+                clearcoat: 1.0
+            });
+
+            const bondMat = new THREE.MeshPhysicalMaterial({
+                color: 0x67e8f9,
+                emissive: 0x0284c7,
+                emissiveIntensity: 0.6,
+                metalness: 0.85,
+                roughness: 0.15,
+                transmission: 0.4,
+                transparent: true,
+                opacity: 0.85
+            });
+
+            const atomMaterials = [rubyMat, sapphireMat, emeraldMat, goldMat];
+
+            // Helper to create atomic bond between two points
+            function createBondMesh(p1, p2, radius = 0.018) {
+                const dir = new THREE.Vector3().subVectors(p2, p1);
+                const len = dir.length();
+                const geom = new THREE.CylinderGeometry(radius, radius, len, 12);
+                const mesh = new THREE.Mesh(geom, bondMat);
+                mesh.position.copy(p1).addScaledVector(dir, 0.5);
+                mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
+                return mesh;
             }
 
-            // Create bond (cylinder)
-            function createBond(start, end, color) {
-                const direction = new THREE.Vector3().subVectors(end, start);
-                const length = direction.length();
+            // Central Super-Atom Nucleus
+            const coreSphereGeom = new THREE.SphereGeometry(0.14, 32, 32);
+            const coreAtom = new THREE.Mesh(coreSphereGeom, goldMat);
+            coreAtom.position.set(0, 0.2, 0);
+            flower.add(coreAtom);
 
-                const geom = new THREE.CylinderGeometry(0.015, 0.015, length, 8);
-                const mat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.6 });
-                const bond = new THREE.Mesh(geom, mat);
-
-                bond.position.copy(start).add(direction.multiplyScalar(0.5));
-                bond.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize());
-
-                return bond;
-            }
-
-            // Build molecular flower structure
-            const atoms = [];
+            // Multi-ring Phyllotaxis Lattice Blossom
+            const atoms = [{ mesh: coreAtom, origPos: coreAtom.position.clone(), phase: 0 }];
             const bonds = [];
 
-            // Center atom
-            const centerAtom = createAtom(0xffffff, 0.08);
-            centerAtom.position.y = 0.5;
-            flowerGroup.add(centerAtom);
-            atoms.push(centerAtom);
+            const ringConfigs = [
+                { count: 6,  radius: 0.45, y: 0.22, size: 0.065, mat: sapphireMat },
+                { count: 12, radius: 0.82, y: 0.14, size: 0.055, mat: rubyMat },
+                { count: 18, radius: 1.18, y: -0.02, size: 0.045, mat: emeraldMat }
+            ];
 
-            // Petal atoms (rings)
-            const petalCount = 6;
-            for (let ring = 0; ring < 3; ring++) {
-                for (let i = 0; i < petalCount; i++) {
-                    const angle = (i / petalCount) * Math.PI * 2 + ring * 0.2;
-                    const radius = 0.2 + ring * 0.15;
-                    const y = 0.5 + ring * 0.1;
+            let prevRingStart = 0;
+            let prevRingCount = 1;
 
-                    const atom = createAtom(atomColors[ring % atomColors.length], 0.04 + ring * 0.01);
-                    atom.position.set(
-                        Math.cos(angle) * radius,
-                        y,
-                        Math.sin(angle) * radius
+            ringConfigs.forEach((rc, rIdx) => {
+                const currentRingStart = atoms.length;
+                const sphereGeom = new THREE.SphereGeometry(rc.size, 24, 24);
+
+                for (let i = 0; i < rc.count; i++) {
+                    const angle = (i / rc.count) * Math.PI * 2 + (rIdx * 0.42);
+                    const pos = new THREE.Vector3(
+                        Math.cos(angle) * rc.radius,
+                        rc.y + Math.sin(angle * 2) * 0.05,
+                        Math.sin(angle) * rc.radius
                     );
-                    atom.userData.phase = i * 0.3 + ring;
-                    flowerGroup.add(atom);
-                    atoms.push(atom);
 
-                    // Bond to center or previous ring
-                    if (ring === 0) {
-                        const bond = createBond(centerAtom.position, atom.position, 0x4466ff);
-                        flowerGroup.add(bond);
-                        bonds.push({ mesh: bond, start: centerAtom, end: atom });
+                    const atomMesh = new THREE.Mesh(sphereGeom, rc.mat);
+                    atomMesh.position.copy(pos);
+                    flower.add(atomMesh);
+
+                    atoms.push({
+                        mesh: atomMesh,
+                        origPos: pos.clone(),
+                        phase: angle + rIdx,
+                        freq: 2.0 + rIdx * 0.6
+                    });
+
+                    // Bond to previous ring node
+                    if (rIdx === 0) {
+                        const b = createBondMesh(coreAtom.position, pos, 0.02);
+                        flower.add(b);
+                        bonds.push({ mesh: b, a1: 0, a2: atoms.length - 1 });
+                    } else {
+                        // Connect to nearest 2 nodes in previous ring
+                        const ratio = prevRingCount / rc.count;
+                        const parentIdx = prevRingStart + Math.floor(i * ratio);
+                        const b = createBondMesh(atoms[parentIdx].origPos, pos, 0.016);
+                        flower.add(b);
+                        bonds.push({ mesh: b, a1: parentIdx, a2: atoms.length - 1 });
                     }
                 }
-            }
 
-            // Connect atoms within rings
-            for (let ring = 0; ring < 3; ring++) {
-                for (let i = 0; i < petalCount; i++) {
-                    const current = atoms[1 + ring * petalCount + i];
-                    const next = atoms[1 + ring * petalCount + ((i + 1) % petalCount)];
-                    const bond = createBond(current.position.clone(), next.position.clone(), 0x44ff66);
-                    flowerGroup.add(bond);
-                    bonds.push({ mesh: bond, start: current, end: next });
+                // Connect adjacent nodes in same ring
+                for (let i = 0; i < rc.count; i++) {
+                    const idx1 = currentRingStart + i;
+                    const idx2 = currentRingStart + ((i + 1) % rc.count);
+                    const b = createBondMesh(atoms[idx1].origPos, atoms[idx2].origPos, 0.014);
+                    flower.add(b);
+                    bonds.push({ mesh: b, a1: idx1, a2: idx2 });
                 }
-            }
 
-            // Stem atoms
-            for (let i = 0; i < 6; i++) {
-                const atom = createAtom(0x44aa44, 0.03);
-                atom.position.set(0, 0.4 - i * 0.2, 0);
-                atom.userData.phase = i * 0.5;
-                flowerGroup.add(atom);
-                atoms.push(atom);
+                prevRingStart = currentRingStart;
+                prevRingCount = rc.count;
+            });
 
-                if (i > 0) {
-                    const prevAtom = atoms[atoms.length - 2];
-                    const bond = createBond(prevAtom.position.clone(), atom.position.clone(), 0x44aa44);
-                    flowerGroup.add(bond);
-                    bonds.push({ mesh: bond, start: prevAtom, end: atom });
-                }
-            }
+            // Glowing Core & Stamens
+            const core = FlowerUtils.createGlowingCore(flower, {
+                radius: 0.22,
+                color: 0x00e5ff,
+                innerColor: 0xffffff,
+                y: 0.2
+            });
 
-            // Electrons orbiting
+            // Orbiting Quantum Electrons
+            const electronCount = 28;
+            const electronGeom = new THREE.SphereGeometry(0.024, 16, 16);
+            const electronMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
             const electrons = [];
-            for (let i = 0; i < 8; i++) {
-                const electronGeom = new THREE.SphereGeometry(0.02, 8, 8);
-                const electronMat = new THREE.MeshBasicMaterial({ color: 0xaaffff });
-                const electron = new THREE.Mesh(electronGeom, electronMat);
-                electron.userData = {
-                    orbitRadius: 0.3 + Math.random() * 0.3,
-                    speed: 2 + Math.random() * 2,
+
+            for (let e = 0; e < electronCount; e++) {
+                const mesh = new THREE.Mesh(electronGeom, electronMat);
+                flower.add(mesh);
+                electrons.push({
+                    mesh,
+                    radius: 0.35 + Math.random() * 0.95,
+                    speed: (1.2 + Math.random() * 1.6) * (Math.random() > 0.5 ? 1 : -1),
                     phase: Math.random() * Math.PI * 2,
-                    yOffset: (Math.random() - 0.5) * 0.5
-                };
-                scene.add(electron);
-                electrons.push(electron);
+                    tilt: (Math.random() - 0.5) * Math.PI,
+                    yBase: 0.15 + (Math.random() - 0.5) * 0.25
+                });
             }
 
-            let bloomProgress = 0;
-            let bloomDirection = 1;
+            // Nanotech Molecular Stem
+            const stemNodes = 8;
+            let prevStemPos = new THREE.Vector3(0, 0.1, 0);
+            for (let s = 1; s <= stemNodes; s++) {
+                const sPos = new THREE.Vector3(
+                    Math.sin(s * 0.7) * 0.04,
+                    0.1 - (s * 0.11),
+                    Math.cos(s * 0.7) * 0.03
+                );
+                const sAtom = new THREE.Mesh(new THREE.SphereGeometry(0.045 - s * 0.002, 16, 16), goldMat);
+                sAtom.position.copy(sPos);
+                flower.add(sAtom);
+
+                const sBond = createBondMesh(prevStemPos, sPos, 0.02);
+                flower.add(sBond);
+
+                prevStemPos = sPos;
+            }
 
             function animate() {
                 requestAnimationFrame(animate);
                 const elapsed = clock.getElapsedTime();
 
-                // Bloom animation
-                bloomProgress += bloomDirection * 0.005;
-                if (bloomProgress > 1) { bloomProgress = 1; bloomDirection = -1; }
-                if (bloomProgress < 0) { bloomProgress = 0; bloomDirection = 1; }
+                // Gentle floating breath
+                flower.position.y = 0.35 + Math.sin(elapsed * 1.5) * 0.035;
 
-                // Atoms pulse
-                atoms.forEach((atom, i) => {
-                    const pulse = Math.sin(elapsed * 3 + (atom.userData.phase || i * 0.2)) * 0.2;
-                    atom.scale.setScalar(1 + pulse * 0.2);
-                });
+                // Atomic vibration oscillation
+                for (let i = 1; i < atoms.length; i++) {
+                    const at = atoms[i];
+                    const wave = Math.sin(elapsed * at.freq + at.phase) * 0.03;
+                    at.mesh.position.x = at.origPos.x * (1.0 + wave * 0.4);
+                    at.mesh.position.y = at.origPos.y + wave;
+                    at.mesh.position.z = at.origPos.z * (1.0 + wave * 0.4);
+                }
 
-                // Electrons orbit
-                electrons.forEach(e => {
-                    const angle = elapsed * e.userData.speed + e.userData.phase;
-                    e.position.set(
-                        Math.cos(angle) * e.userData.orbitRadius,
-                        0.5 + e.userData.yOffset + Math.sin(angle * 0.5) * 0.1,
-                        Math.sin(angle) * e.userData.orbitRadius
+                // Update bonds orientation & position
+                for (let b = 0; b < bonds.length; b++) {
+                    const bond = bonds[b];
+                    const p1 = atoms[bond.a1].mesh.position;
+                    const p2 = atoms[bond.a2].mesh.position;
+                    const dir = new THREE.Vector3().subVectors(p2, p1);
+                    const len = dir.length();
+
+                    bond.mesh.position.copy(p1).addScaledVector(dir, 0.5);
+                    bond.mesh.scale.set(1, len / (atoms[bond.a1].origPos.distanceTo(atoms[bond.a2].origPos) || 1), 1);
+                    bond.mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
+                }
+
+                // Electrons orbiting
+                for (let e = 0; e < electronCount; e++) {
+                    const el = electrons[e];
+                    const angle = elapsed * el.speed + el.phase;
+                    el.mesh.position.set(
+                        Math.cos(angle) * el.radius,
+                        el.yBase + Math.sin(angle * 2.0) * 0.1,
+                        Math.sin(angle) * el.radius
                     );
-                });
+                }
 
-                flowerGroup.rotation.y = elapsed * 0.1;
+                core.pulse(elapsed, 1.8);
+                centerLight.intensity = 2.8 + Math.sin(elapsed * 4.0) * 0.9;
 
-                camera.position.x = Math.sin(elapsed * 0.1) * 0.5;
-                camera.lookAt(0, 0.5, 0);
-
+                atmosphere.update();
                 renderer.render(scene, camera);
             }
 

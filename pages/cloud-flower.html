@@ -3,16 +3,62 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>Cloud Flower | Flowers For You 🌸</title>
     <link rel="icon" href="../favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="../css/style.css">
+    <style>
+        .cloud-badge {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            background: rgba(18, 16, 32, 0.78);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(254, 215, 170, 0.3);
+            border-radius: 999px;
+            padding: 8px 18px;
+            font-size: 0.8rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: #fed7aa;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 30;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+            pointer-events: none;
+        }
+
+        .cloud-icon {
+            font-size: 1rem;
+            color: #fed7aa;
+            animation: cloudFloat 3s infinite ease-in-out;
+        }
+
+        @keyframes cloudFloat {
+            0%, 100% { transform: translateY(0); opacity: 0.8; }
+            50% { transform: translateY(-3px); opacity: 1; }
+        }
+
+        @media (max-width: 600px) {
+            .cloud-badge {
+                top: auto;
+                bottom: 84px;
+                right: 50%;
+                transform: translateX(50%);
+                font-size: 0.72rem;
+                padding: 6px 14px;
+            }
+        }
+    </style>
 </head>
 
 <body>
     <div class="loading-overlay">
         <div class="loading-flower"></div>
-        <p class="loading-text">Forming clouds...</p>
+        <p class="loading-text">Sculpting volumetric cumulus vapor...</p>
     </div>
 
     <div class="flower-page">
@@ -25,9 +71,13 @@
             </a>
         </nav>
         <div id="canvas-container" class="flower-canvas"></div>
+        <div class="cloud-badge">
+            <span class="cloud-icon">☁️</span>
+            <span>Sunset Rayleigh Vapor</span>
+        </div>
         <div class="flower-info">
             <h1>Cloud Flower</h1>
-            <p>Volumetric wisps that dissipate and reform</p>
+            <p>Volumetric cumulus cloud clusters sculpted into botanical petal formations, illuminated by warm sunset scattering and lightning filaments</p>
         </div>
     </div>
 
@@ -36,166 +86,373 @@
     <script>
         (function () {
             const container = document.getElementById('canvas-container');
-            const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
-                background: 0x87ceeb
+            const { scene, camera, renderer, clock, controls } = FlowerUtils.initScene(container, {
+                background: 0x0a0915,
+                cameraPos: [0, 2.0, 5.2],
+                enableOrbit: true,
+                autoRotate: false
             });
 
-            camera.position.set(0, 2, 5);
-            camera.lookAt(0, 0.5, 0);
-
-            // Soft sky lighting
-            const ambient = new THREE.AmbientLight(0xffffff, 0.7);
-            scene.add(ambient);
-            const sunLight = new THREE.DirectionalLight(0xfffaee, 1);
-            sunLight.position.set(5, 10, 5);
-            scene.add(sunLight);
-
-            // Cloud particle material
-            const cloudTexture = new THREE.CanvasTexture(createCloudTexture());
-
-            function createCloudTexture() {
-                const canvas = document.createElement('canvas');
-                canvas.width = 64;
-                canvas.height = 64;
-                const ctx = canvas.getContext('2d');
-
-                const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
-                gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
-                gradient.addColorStop(0.4, 'rgba(255, 255, 255, 0.8)');
-                gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
-
-                ctx.fillStyle = gradient;
-                ctx.fillRect(0, 0, 64, 64);
-                return canvas;
+            camera.lookAt(0, 0.35, 0);
+            if (controls) {
+                controls.target.set(0, 0.35, 0);
+                controls.enableDamping = true;
+                controls.dampingFactor = 0.05;
+                controls.maxDistance = 10;
+                controls.minDistance = 2;
+                controls.maxPolarAngle = Math.PI / 2 + 0.15;
             }
 
-            // Cloud flower structure
-            const flowerGroup = new THREE.Group();
-            scene.add(flowerGroup);
+            // Sunset Rayleigh Scattering Lighting
+            const ambient = new THREE.AmbientLight(0x201832, 0.85);
+            scene.add(ambient);
 
-            // Create cloud puff
-            function createCloudPuff(count, radius, color) {
-                const geometry = new THREE.BufferGeometry();
-                const positions = new Float32Array(count * 3);
-                const sizes = new Float32Array(count);
-                const opacities = new Float32Array(count);
+            // Low Golden Sunset Sun
+            const sunsetSun = new THREE.DirectionalLight(0xffaa5e, 1.6);
+            sunsetSun.position.set(6, 4, 5);
+            sunsetSun.castShadow = true;
+            scene.add(sunsetSun);
 
-                for (let i = 0; i < count; i++) {
-                    const theta = Math.random() * Math.PI * 2;
-                    const phi = Math.random() * Math.PI;
-                    const r = radius * (0.5 + Math.random() * 0.5);
+            // Twilight Cool Sky Fill
+            const skyFill = new THREE.DirectionalLight(0x6366f1, 0.8);
+            skyFill.position.set(-5, 5, -4);
+            scene.add(skyFill);
 
-                    positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
-                    positions[i * 3 + 1] = r * Math.cos(phi);
-                    positions[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
+            // Storm Core Lightning Flash Point Light
+            const stormCoreLight = new THREE.PointLight(0xffe4a0, 2.0, 8);
+            stormCoreLight.position.set(0, 0.5, 0);
+            scene.add(stormCoreLight);
 
-                    sizes[i] = 0.1 + Math.random() * 0.15;
-                    opacities[i] = 0.3 + Math.random() * 0.4;
+            // Cloud Alabaster Pedestal with Golden Twilight Rim
+            const plinthGroup = new THREE.Group();
+            const plinthGeom = new THREE.CylinderGeometry(2.3, 2.5, 0.25, 48);
+            const plinthMat = new THREE.MeshStandardMaterial({
+                color: 0x120f22,
+                roughness: 0.2,
+                metalness: 0.8
+            });
+            const plinth = new THREE.Mesh(plinthGeom, plinthMat);
+            plinth.position.y = -1.2;
+            plinthGroup.add(plinth);
+
+            const rimGeom = new THREE.TorusGeometry(2.3, 0.025, 16, 64);
+            const rimMat = new THREE.MeshStandardMaterial({
+                color: 0xf59e0b,
+                metalness: 0.9,
+                roughness: 0.25
+            });
+            const rimMesh = new THREE.Mesh(rimGeom, rimMat);
+            rimMesh.rotation.x = Math.PI / 2;
+            rimMesh.position.y = -1.07;
+            plinthGroup.add(rimMesh);
+            scene.add(plinthGroup);
+
+            // Procedural Soft Gaussian Cloud Sprite Texture
+            function generateCloudTexture() {
+                const canvas = document.createElement('canvas');
+                canvas.width = 128;
+                canvas.height = 128;
+                const ctx = canvas.getContext('2d');
+
+                const grad = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+                grad.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
+                grad.addColorStop(0.3, 'rgba(255, 245, 240, 0.85)');
+                grad.addColorStop(0.65, 'rgba(230, 220, 245, 0.35)');
+                grad.addColorStop(1, 'rgba(200, 200, 240, 0.0)');
+
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, 0, 128, 128);
+                return new THREE.CanvasTexture(canvas);
+            }
+
+            const cloudTexture = generateCloudTexture();
+
+            // Cloud Flower Group
+            const flowerRoot = new THREE.Group();
+            flowerRoot.position.set(0, 0.1, 0);
+            scene.add(flowerRoot);
+
+            // Volumetric Cloud Petal Builder (Clusters of billowy particles)
+            function createVolumetricCloudPetal(length, width, puffCount, baseColor, tipColor) {
+                const geom = new THREE.BufferGeometry();
+                const pos = new Float32Array(puffCount * 3);
+                const colors = new Float32Array(puffCount * 3);
+                const sizes = new Float32Array(puffCount);
+                const offsets = [];
+
+                for (let i = 0; i < puffCount; i++) {
+                    // Elliptical distribution along petal profile
+                    const v = (i / puffCount); // 0 (base) to 1 (tip)
+                    const y = v * length;
+                    const w = Math.sin(Math.pow(v, 0.6) * Math.PI) * width;
+
+                    const rx = (Math.random() - 0.5) * w;
+                    const rz = (Math.random() - 0.5) * (w * 0.7);
+                    const ry = y + (Math.random() - 0.5) * 0.1;
+
+                    pos[i * 3] = rx;
+                    pos[i * 3 + 1] = ry;
+                    pos[i * 3 + 2] = rz;
+
+                    // Blend from internal deep twilight rose to sunlit amber/cream tip
+                    const c = baseColor.clone().lerp(tipColor, v);
+                    colors[i * 3] = c.r;
+                    colors[i * 3 + 1] = c.g;
+                    colors[i * 3 + 2] = c.b;
+
+                    sizes[i] = 0.25 + Math.random() * 0.25;
+
+                    offsets.push({
+                        baseY: ry,
+                        phase: Math.random() * Math.PI * 2,
+                        speed: 1.5 + Math.random() * 1.5
+                    });
                 }
 
-                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-                geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+                geom.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+                geom.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+                geom.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
 
-                const material = new THREE.PointsMaterial({
-                    color: color,
-                    size: 0.2,
+                const mat = new THREE.PointsMaterial({
+                    size: 0.32,
                     map: cloudTexture,
+                    vertexColors: true,
                     transparent: true,
-                    opacity: 0.7,
+                    opacity: 0.75,
                     depthWrite: false,
                     blending: THREE.NormalBlending
                 });
 
-                const cloud = new THREE.Points(geometry, material);
-                cloud.userData.basePositions = positions.slice();
-                cloud.userData.opacities = opacities;
-                return cloud;
+                const points = new THREE.Points(geom, mat);
+                points.userData.offsets = offsets;
+                return points;
             }
 
-            // Petals (cloud puffs arranged in flower shape)
-            const petalCount = 6;
-            const petals = [];
-            for (let i = 0; i < petalCount; i++) {
-                const petal = createCloudPuff(80, 0.25, 0xffffff);
-                const angle = (i / petalCount) * Math.PI * 2;
-                petal.position.set(
-                    Math.cos(angle) * 0.35,
-                    0.5,
-                    Math.sin(angle) * 0.35
-                );
-                petal.userData.angle = angle;
-                petal.userData.phase = i * 0.5;
-                flowerGroup.add(petal);
-                petals.push(petal);
-            }
+            // Palette: Sunset Rose & Amber Rayleigh Scattering
+            const cloudRose = new THREE.Color(0xd9779f);   // Internal dusk rose
+            const cloudAmber = new THREE.Color(0xffedd5);  // Sunlit golden cream
 
-            // Center puff (slightly pink)
-            const center = createCloudPuff(100, 0.2, 0xfff0f5);
-            center.position.y = 0.5;
-            flowerGroup.add(center);
+            const tiers = [
+                { count: 8, length: 1.35, width: 0.65, puffs: 75, rotX: 0.78, y: 0.32 },
+                { count: 7, length: 1.05, width: 0.55, puffs: 60, rotX: 0.58, y: 0.36 },
+                { count: 6, length: 0.75, width: 0.42, puffs: 48, rotX: 0.38, y: 0.40 }
+            ];
 
-            // Stem (thin cloud trail)
-            const stemParticleCount = 50;
-            const stemGeom = new THREE.BufferGeometry();
-            const stemPos = new Float32Array(stemParticleCount * 3);
-            for (let i = 0; i < stemParticleCount; i++) {
-                stemPos[i * 3] = (Math.random() - 0.5) * 0.1;
-                stemPos[i * 3 + 1] = -i * 0.025;
-                stemPos[i * 3 + 2] = (Math.random() - 0.5) * 0.1;
+            const cloudPetals = [];
+
+            tiers.forEach((tData, tIdx) => {
+                const tGroup = new THREE.Group();
+                tGroup.position.y = tData.y;
+
+                for (let i = 0; i < tData.count; i++) {
+                    const angle = (i / tData.count) * Math.PI * 2 + (tIdx * 0.35);
+                    const pivot = new THREE.Group();
+                    pivot.rotation.y = angle;
+
+                    const petal = createVolumetricCloudPetal(
+                        tData.length,
+                        tData.width,
+                        tData.puffs,
+                        cloudRose,
+                        cloudAmber
+                    );
+                    petal.rotation.x = tData.rotX;
+
+                    pivot.add(petal);
+                    tGroup.add(pivot);
+
+                    cloudPetals.push({
+                        mesh: petal,
+                        baseRotX: tData.rotX,
+                        phase: i * 0.4 + tIdx * 0.6
+                    });
+                }
+                flowerRoot.add(tGroup);
+            });
+
+            // Golden Volumetric Sunbeam Core / Storm Center
+            const stormCoreGroup = new THREE.Group();
+            stormCoreGroup.position.y = 0.42;
+
+            // Soft radiant sunbeam cloud cluster
+            const sunbeamGeom = new THREE.BufferGeometry();
+            const sunbeamCount = 36;
+            const sbPos = new Float32Array(sunbeamCount * 3);
+            for (let i = 0; i < sunbeamCount; i++) {
+                sbPos[i * 3] = (Math.random() - 0.5) * 0.28;
+                sbPos[i * 3 + 1] = (Math.random() - 0.5) * 0.28;
+                sbPos[i * 3 + 2] = (Math.random() - 0.5) * 0.28;
             }
-            stemGeom.setAttribute('position', new THREE.BufferAttribute(stemPos, 3));
-            const stemMat = new THREE.PointsMaterial({
-                color: 0xcccccc,
-                size: 0.08,
+            sunbeamGeom.setAttribute('position', new THREE.BufferAttribute(sbPos, 3));
+            const sunbeamMat = new THREE.PointsMaterial({
+                color: 0xffe89e,
+                size: 0.38,
                 map: cloudTexture,
                 transparent: true,
-                opacity: 0.5,
-                depthWrite: false
+                opacity: 0.85,
+                depthWrite: false,
+                blending: THREE.AdditiveBlending
+            });
+            const sunbeam = new THREE.Points(sunbeamGeom, sunbeamMat);
+            stormCoreGroup.add(sunbeam);
+
+            // Internal Lightning Filament Arcs
+            const lightningLines = [];
+            for (let i = 0; i < 6; i++) {
+                const lGeom = new THREE.BufferGeometry();
+                const lPos = new Float32Array(5 * 3);
+                lGeom.setAttribute('position', new THREE.BufferAttribute(lPos, 3));
+
+                const lMat = new THREE.LineBasicMaterial({
+                    color: 0x93c5fd,
+                    transparent: true,
+                    opacity: 0.8,
+                    blending: THREE.AdditiveBlending
+                });
+                const line = new THREE.Line(lGeom, lMat);
+                stormCoreGroup.add(line);
+                lightningLines.push(line);
+            }
+
+            flowerRoot.add(stormCoreGroup);
+
+            // Vapor Trail Stem
+            const stemPoints = 60;
+            const stemGeom = new THREE.BufferGeometry();
+            const stemPos = new Float32Array(stemPoints * 3);
+            const stemColors = new Float32Array(stemPoints * 3);
+
+            for (let i = 0; i < stemPoints; i++) {
+                const t = i / stemPoints;
+                const y = 0.1 - t * 1.3;
+                const r = 0.08 * (1 - t * 0.5);
+
+                stemPos[i * 3] = (Math.random() - 0.5) * r;
+                stemPos[i * 3 + 1] = y;
+                stemPos[i * 3 + 2] = (Math.random() - 0.5) * r;
+
+                const c = cloudRose.clone().lerp(new THREE.Color(0x312e81), t);
+                stemColors[i * 3] = c.r;
+                stemColors[i * 3 + 1] = c.g;
+                stemColors[i * 3 + 2] = c.b;
+            }
+
+            stemGeom.setAttribute('position', new THREE.BufferAttribute(stemPos, 3));
+            stemGeom.setAttribute('color', new THREE.BufferAttribute(stemColors, 3));
+
+            const stemMat = new THREE.PointsMaterial({
+                size: 0.22,
+                map: cloudTexture,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.65,
+                depthWrite: false,
+                blending: THREE.NormalBlending
             });
             const stem = new THREE.Points(stemGeom, stemMat);
-            stem.position.y = 0.4;
-            flowerGroup.add(stem);
+            flowerRoot.add(stem);
+
+            // Descending Mist & Rain Dew Streaks
+            const mistCount = 140;
+            const mistGeom = new THREE.BufferGeometry();
+            const mistPos = new Float32Array(mistCount * 3);
+            const mistData = [];
+
+            for (let i = 0; i < mistCount; i++) {
+                mistPos[i * 3] = (Math.random() - 0.5) * 3.0;
+                mistPos[i * 3 + 1] = -0.6 + Math.random() * 2.8;
+                mistPos[i * 3 + 2] = (Math.random() - 0.5) * 3.0;
+
+                mistData.push({
+                    speedY: 0.006 + Math.random() * 0.012,
+                    driftX: (Math.random() - 0.5) * 0.002,
+                    driftZ: (Math.random() - 0.5) * 0.002,
+                    startY: 1.8 + Math.random() * 0.5
+                });
+            }
+
+            mistGeom.setAttribute('position', new THREE.BufferAttribute(mistPos, 3));
+            const mistMat = new THREE.PointsMaterial({
+                color: 0xc7d2fe,
+                size: 0.05,
+                transparent: true,
+                opacity: 0.75,
+                blending: THREE.AdditiveBlending
+            });
+            const mist = new THREE.Points(mistGeom, mistMat);
+            scene.add(mist);
+
+            let nextLightningTime = 2.0;
+
+            function updateLightning() {
+                lightningLines.forEach(line => {
+                    const pos = line.geometry.attributes.position.array;
+                    let cx = 0, cy = 0, cz = 0;
+                    for (let j = 0; j < 5; j++) {
+                        pos[j * 3] = cx;
+                        pos[j * 3 + 1] = cy;
+                        pos[j * 3 + 2] = cz;
+
+                        cx += (Math.random() - 0.5) * 0.08;
+                        cy += 0.05 + Math.random() * 0.04;
+                        cz += (Math.random() - 0.5) * 0.08;
+                    }
+                    line.geometry.attributes.position.needsUpdate = true;
+                });
+            }
 
             function animate() {
                 requestAnimationFrame(animate);
                 const elapsed = clock.getElapsedTime();
 
-                // Animate cloud petals (turbulence)
-                petals.forEach((petal, i) => {
-                    const positions = petal.geometry.attributes.position.array;
-                    const basePositions = petal.userData.basePositions;
+                // Petal billow and breathing
+                cloudPetals.forEach(cp => {
+                    const wave = Math.sin(elapsed * 1.5 + cp.phase) * 0.04;
+                    cp.mesh.rotation.x = cp.baseRotX + wave;
 
-                    for (let j = 0; j < positions.length; j += 3) {
-                        const turbulence = 0.03;
-                        positions[j] = basePositions[j] + Math.sin(elapsed * 2 + j) * turbulence;
-                        positions[j + 1] = basePositions[j + 1] + Math.cos(elapsed * 1.5 + j * 0.5) * turbulence;
-                        positions[j + 2] = basePositions[j + 2] + Math.sin(elapsed * 1.8 + j * 0.3) * turbulence;
+                    // Internal puff turbulence
+                    const pArr = cp.mesh.geometry.attributes.position.array;
+                    const offs = cp.mesh.userData.offsets;
+                    for (let i = 0; i < offs.length; i++) {
+                        pArr[i * 3 + 1] = offs[i].baseY + Math.sin(elapsed * offs[i].speed + offs[i].phase) * 0.03;
                     }
-                    petal.geometry.attributes.position.needsUpdate = true;
-
-                    // Petal opacity cycle (dissipate and reform)
-                    const cycle = Math.sin(elapsed * 0.5 + petal.userData.phase) * 0.5 + 0.5;
-                    petal.material.opacity = 0.4 + cycle * 0.4;
-
-                    // Slight movement
-                    petal.position.y = 0.5 + Math.sin(elapsed + petal.userData.phase) * 0.05;
+                    cp.mesh.geometry.attributes.position.needsUpdate = true;
                 });
 
-                // Center turbulence
-                const centerPos = center.geometry.attributes.position.array;
-                const centerBase = center.userData.basePositions;
-                for (let j = 0; j < centerPos.length; j += 3) {
-                    centerPos[j] = centerBase[j] + Math.sin(elapsed * 2.5 + j * 0.1) * 0.02;
-                    centerPos[j + 1] = centerBase[j + 1] + Math.cos(elapsed * 2 + j * 0.15) * 0.02;
-                    centerPos[j + 2] = centerBase[j + 2] + Math.sin(elapsed * 1.5 + j * 0.2) * 0.02;
+                // Storm core sunbeam pulsation
+                const sunPulse = 1.0 + Math.sin(elapsed * 2.0) * 0.08;
+                stormCoreGroup.scale.set(sunPulse, sunPulse, sunPulse);
+
+                // Lightning sheet flash discharge
+                if (elapsed > nextLightningTime) {
+                    updateLightning();
+                    stormCoreLight.intensity = 4.5;
+                    stormCoreLight.color.setHex(0x93c5fd);
+                    nextLightningTime = elapsed + 3.0 + Math.random() * 4.0;
+                } else {
+                    stormCoreLight.intensity += (1.8 - stormCoreLight.intensity) * 0.08;
+                    stormCoreLight.color.lerp(new THREE.Color(0xffe4a0), 0.1);
                 }
-                center.geometry.attributes.position.needsUpdate = true;
 
-                flowerGroup.rotation.y = elapsed * 0.1;
+                // Descending rain / mist condensation
+                const mPos = mistGeom.attributes.position.array;
+                for (let i = 0; i < mistCount; i++) {
+                    const md = mistData[i];
+                    mPos[i * 3] += md.driftX;
+                    mPos[i * 3 + 1] -= md.speedY;
+                    mPos[i * 3 + 2] += md.driftZ;
 
-                camera.position.x = Math.sin(elapsed * 0.08) * 0.5;
-                camera.lookAt(0, 0.5, 0);
+                    if (mPos[i * 3 + 1] < -1.1) {
+                        mPos[i * 3 + 1] = md.startY;
+                    }
+                }
+                mistGeom.attributes.position.needsUpdate = true;
 
+                // Floating cloud flower root levitation
+                flowerRoot.position.y = 0.1 + Math.sin(elapsed * 1.1) * 0.05;
+                flowerRoot.rotation.y = Math.sin(elapsed * 0.25) * 0.06;
+
+                if (controls) controls.update();
                 renderer.render(scene, camera);
             }
 

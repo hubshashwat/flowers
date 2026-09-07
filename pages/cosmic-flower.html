@@ -36,207 +36,255 @@
     <script>
         (function () {
             const container = document.getElementById('canvas-container');
-            const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
-                background: 0x000008
+            const { scene, camera, renderer, clock, controls } = FlowerUtils.initScene(container, {
+                background: 0x030209,
+                environmentTheme: 'cyberpunk',
+                controls: {
+                    target: new THREE.Vector3(0, 0.45, 0),
+                    minDistance: 2.2,
+                    maxDistance: 6.5,
+                    autoRotate: true,
+                    autoRotateSpeed: 0.35
+                }
             });
 
-            camera.position.set(0, 0, 5);
-            camera.lookAt(0, 0, 0);
+            camera.position.set(0, 1.4, 3.6);
+            camera.lookAt(0, 0.45, 0);
 
-            // Starfield
-            const starCount = 2000;
+            // Celestial starfield
+            const starCount = 1200;
             const starGeom = new THREE.BufferGeometry();
             const starPositions = new Float32Array(starCount * 3);
-            const starColors = new Float32Array(starCount * 3);
-
             for (let i = 0; i < starCount; i++) {
                 const theta = Math.random() * Math.PI * 2;
                 const phi = Math.acos(2 * Math.random() - 1);
-                const r = 50 + Math.random() * 50;
-
+                const r = 25 + Math.random() * 25;
                 starPositions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
                 starPositions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
                 starPositions[i * 3 + 2] = r * Math.cos(phi);
-
-                const brightness = 0.5 + Math.random() * 0.5;
-                starColors[i * 3] = brightness;
-                starColors[i * 3 + 1] = brightness;
-                starColors[i * 3 + 2] = brightness * (0.8 + Math.random() * 0.4);
             }
-
             starGeom.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
-            starGeom.setAttribute('color', new THREE.BufferAttribute(starColors, 3));
-
             const starMat = new THREE.PointsMaterial({
-                size: 0.15,
-                vertexColors: true,
+                size: 0.08,
+                color: 0xdfd5ff,
                 transparent: true,
                 opacity: 0.8
             });
             const stars = new THREE.Points(starGeom, starMat);
             scene.add(stars);
 
+            // Studio lighting for cosmic bloom
+            const ambient = new THREE.AmbientLight(0x180b2a, 0.5);
+            scene.add(ambient);
+
+            const stellarKey = new THREE.DirectionalLight(0xffe6f7, 2.0);
+            stellarKey.position.set(3, 5, 3);
+            scene.add(stellarKey);
+
+            const magentaFill = new THREE.DirectionalLight(0xe056fd, 1.4);
+            magentaFill.position.set(-3, 3, 2);
+            scene.add(magentaFill);
+
+            const cyanRim = new THREE.PointLight(0x00f0ff, 2.2, 8);
+            cyanRim.position.set(0, 3, -2.5);
+            scene.add(cyanRim);
+
+            // Dark astral pedestal
+            const pedestal = FlowerUtils.createPedestal(scene, {
+                radius: 1.7,
+                color: 0x070410,
+                roughness: 0.12,
+                metalness: 0.85,
+                y: -0.8
+            });
+
+            // Luminous celestial accretion rings
+            const ringGeom = new THREE.RingGeometry(1.2, 1.32, 64);
+            const ringMat = new THREE.MeshBasicMaterial({
+                color: 0x9b59b6,
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.6
+            });
+            const ring = new THREE.Mesh(ringGeom, ringMat);
+            ring.rotation.x = -Math.PI / 2;
+            ring.position.y = -0.79;
+            scene.add(ring);
+
+            // Cosmic stardust atmosphere
+            const atmosphere = FlowerUtils.createAtmosphere(scene, {
+                count: 120,
+                color: 0xc77dff,
+                spread: 4.5,
+                size: 0.03,
+                speed: 0.25
+            });
+
             // Flower group
             const flowerGroup = new THREE.Group();
             scene.add(flowerGroup);
 
-            // Create nebula-like petal
-            function createNebulaPetal() {
-                const shape = new THREE.Shape();
-                shape.moveTo(0, 0);
-                shape.bezierCurveTo(0.2, 0.1, 0.3, 0.4, 0.15, 0.7);
-                shape.bezierCurveTo(0.05, 0.85, -0.05, 0.85, -0.15, 0.7);
-                shape.bezierCurveTo(-0.3, 0.4, -0.2, 0.1, 0, 0);
-
-                return new THREE.ShapeGeometry(shape, 32);
+            // Nebula Petal Materials
+            function createNebulaMat(baseColor = 0x240046, emissiveColor = 0x9d4edd, intensity = 1.4) {
+                return new THREE.MeshPhysicalMaterial({
+                    color: new THREE.Color(baseColor),
+                    emissive: new THREE.Color(emissiveColor),
+                    emissiveIntensity: intensity,
+                    roughness: 0.22,
+                    metalness: 0.1,
+                    clearcoat: 0.8,
+                    clearcoatRoughness: 0.15,
+                    side: THREE.DoubleSide
+                });
             }
 
-            // Petal colors (nebula palette)
-            const nebulaColors = [
-                new THREE.Color(0xff6090),
-                new THREE.Color(0x9060ff),
-                new THREE.Color(0x60c0ff),
-                new THREE.Color(0xff90c0)
-            ];
+            const outerNebulaMat = createNebulaMat(0x10002b, 0x7b2cbf, 1.3);
+            const midNebulaMat = createNebulaMat(0x240046, 0xc77dff, 1.6);
+            const innerNebulaMat = createNebulaMat(0x3c096c, 0x00f0ff, 2.0);
 
-            // Create petals
-            const petalCount = 8;
             const petals = [];
 
-            for (let i = 0; i < petalCount; i++) {
-                const geom = createNebulaPetal();
-                const color = nebulaColors[i % nebulaColors.length];
-
-                const mat = new THREE.MeshBasicMaterial({
-                    color: color,
-                    transparent: true,
-                    opacity: 0.7,
-                    side: THREE.DoubleSide,
-                    blending: THREE.AdditiveBlending
+            // Outer layer: Grand celestial wings
+            const outerCount = 8;
+            for (let i = 0; i < outerCount; i++) {
+                const geom = FlowerUtils.createCurvedPetalGeometry(0.55, 1.25, {
+                    curl: 0.3,
+                    cup: 0.22,
+                    flare: 0.32,
+                    ruffle: 0.03,
+                    uSegments: 24,
+                    vSegments: 32
                 });
+                const petal = new THREE.Mesh(geom, outerNebulaMat);
 
-                const petal = new THREE.Mesh(geom, mat);
-                const angle = (i / petalCount) * Math.PI * 2;
-
+                const angle = (i / outerCount) * Math.PI * 2;
                 petal.rotation.z = angle;
-                petal.rotation.x = -Math.PI / 2 + 0.5;
-                petal.scale.setScalar(1.2);
-
+                petal.rotation.x = -Math.PI / 2 + 0.52;
+                petal.position.y = 0.44;
+                petal.userData = { phase: i * 0.4, baseRotX: petal.rotation.x };
                 flowerGroup.add(petal);
-                petals.push({ mesh: petal, phase: i * 0.3 });
+                petals.push(petal);
             }
 
-            // Inner petals
-            for (let i = 0; i < 5; i++) {
-                const geom = createNebulaPetal();
-                const mat = new THREE.MeshBasicMaterial({
-                    color: 0xffffff,
-                    transparent: true,
-                    opacity: 0.5,
-                    side: THREE.DoubleSide,
-                    blending: THREE.AdditiveBlending
+            // Middle layer: Swirling nebula blades
+            const midCount = 8;
+            for (let i = 0; i < midCount; i++) {
+                const geom = FlowerUtils.createCurvedPetalGeometry(0.42, 0.95, {
+                    curl: 0.38,
+                    cup: 0.26,
+                    flare: 0.2,
+                    ruffle: 0.02,
+                    uSegments: 20,
+                    vSegments: 28
                 });
+                const petal = new THREE.Mesh(geom, midNebulaMat);
 
-                const petal = new THREE.Mesh(geom, mat);
-                const angle = (i / 5) * Math.PI * 2 + 0.3;
-
+                const angle = (i / midCount) * Math.PI * 2 + Math.PI / outerCount;
                 petal.rotation.z = angle;
-                petal.rotation.x = -Math.PI / 2 + 0.3;
-                petal.scale.setScalar(0.7);
-
+                petal.rotation.x = -Math.PI / 2 + 0.32;
+                petal.position.y = 0.47;
+                petal.userData = { phase: i * 0.5 + 2, baseRotX: petal.rotation.x };
                 flowerGroup.add(petal);
-                petals.push({ mesh: petal, phase: i * 0.2 + 1 });
+                petals.push(petal);
             }
 
-            // Glowing core
-            const coreGeom = new THREE.SphereGeometry(0.2, 32, 32);
-            const coreMat = new THREE.MeshBasicMaterial({
-                color: 0xffffff,
-                transparent: true,
-                opacity: 0.9
-            });
-            const core = new THREE.Mesh(coreGeom, coreMat);
-            flowerGroup.add(core);
-
-            // Core glow layers
-            [0.3, 0.5, 0.8].forEach((size, i) => {
-                const glowGeom = new THREE.SphereGeometry(size, 16, 16);
-                const glowMat = new THREE.MeshBasicMaterial({
-                    color: nebulaColors[i],
-                    transparent: true,
-                    opacity: 0.2 - i * 0.05,
-                    blending: THREE.AdditiveBlending
+            // Inner layer: Star-core petals
+            const innerCount = 6;
+            for (let i = 0; i < innerCount; i++) {
+                const geom = FlowerUtils.createCurvedPetalGeometry(0.3, 0.7, {
+                    curl: 0.42,
+                    cup: 0.3,
+                    flare: 0.12,
+                    ruffle: 0.01,
+                    uSegments: 18,
+                    vSegments: 24
                 });
-                const glow = new THREE.Mesh(glowGeom, glowMat);
-                flowerGroup.add(glow);
-            });
+                const petal = new THREE.Mesh(geom, innerNebulaMat);
 
-            // Ambient particles
-            const particleCount = 200;
-            const particleGeom = new THREE.BufferGeometry();
-            const particlePos = new Float32Array(particleCount * 3);
-
-            for (let i = 0; i < particleCount; i++) {
-                const theta = Math.random() * Math.PI * 2;
-                const r = 1 + Math.random() * 2;
-                particlePos[i * 3] = Math.cos(theta) * r;
-                particlePos[i * 3 + 1] = (Math.random() - 0.5) * 2;
-                particlePos[i * 3 + 2] = Math.sin(theta) * r;
+                const angle = (i / innerCount) * Math.PI * 2 + 0.3;
+                petal.rotation.z = angle;
+                petal.rotation.x = -Math.PI / 2 + 0.16;
+                petal.position.y = 0.5;
+                petal.userData = { phase: i * 0.6 + 4, baseRotX: petal.rotation.x };
+                flowerGroup.add(petal);
+                petals.push(petal);
             }
 
-            particleGeom.setAttribute('position', new THREE.BufferAttribute(particlePos, 3));
-            const particleMat = new THREE.PointsMaterial({
-                size: 0.03,
-                color: 0xffffff,
-                transparent: true,
-                opacity: 0.6,
-                blending: THREE.AdditiveBlending
+            // Supernova glowing pulsar core
+            const cosmicCore = FlowerUtils.createGlowingCore({
+                radius: 0.15,
+                innerColor: 0xffffff,
+                glowColor: 0x00f0ff,
+                emissiveIntensity: 2.6
             });
-            const particles = new THREE.Points(particleGeom, particleMat);
-            flowerGroup.add(particles);
+            cosmicCore.group.position.y = 0.52;
+            flowerGroup.add(cosmicCore.group);
+
+            // Pulsar stamen filaments
+            const stamens = FlowerUtils.createStamenCluster({
+                count: 24,
+                radius: 0.12,
+                height: 0.32,
+                filamentColor: 0x9d4edd,
+                pollenColor: 0x00f0ff,
+                pollenEmissive: 0x00f0ff
+            });
+            stamens.position.y = 0.5;
+            flowerGroup.add(stamens);
+
+            // Dark astral stem
+            const stemPoints = [
+                new THREE.Vector3(0, 0.44, 0),
+                new THREE.Vector3(0.02, 0.2, 0.01),
+                new THREE.Vector3(-0.015, -0.1, -0.01),
+                new THREE.Vector3(0.01, -0.45, 0.005),
+                new THREE.Vector3(0, -0.78, 0)
+            ];
+            const stemCurve = new THREE.CatmullRomCurve3(stemPoints);
+            const stemGeom = new THREE.TubeGeometry(stemCurve, 32, 0.035, 16, false);
+            const stemMat = new THREE.MeshPhysicalMaterial({
+                color: 0x0e071c,
+                emissive: 0x240046,
+                emissiveIntensity: 0.4,
+                roughness: 0.3,
+                metalness: 0.7,
+                clearcoat: 0.5
+            });
+            const stem = new THREE.Mesh(stemGeom, stemMat);
+            flowerGroup.add(stem);
+
+            // Astral nebula leaves
+            [-0.08, -0.4].forEach((y, i) => {
+                const leafGeom = FlowerUtils.createCurvedPetalGeometry(0.24, 0.65, {
+                    curl: 0.35,
+                    cup: 0.15,
+                    flare: 0.25
+                });
+                const leaf = new THREE.Mesh(leafGeom, midNebulaMat);
+                leaf.position.set(i % 2 === 0 ? 0.02 : -0.02, y, 0);
+                leaf.rotation.set(0.28, i % 2 === 0 ? 1.15 : -1.15, i % 2 === 0 ? 0.45 : -0.45);
+                flowerGroup.add(leaf);
+            });
 
             function animate() {
                 requestAnimationFrame(animate);
+                const delta = clock.getDelta();
                 const elapsed = clock.getElapsedTime();
 
-                // Pulse petals
+                // Gentle cosmic breathing
                 petals.forEach(p => {
-                    const pulse = 1 + Math.sin(elapsed * 2 + p.phase) * 0.05;
-                    p.mesh.scale.setScalar(p.mesh.scale.x > 1 ? 1.2 * pulse : 0.7 * pulse);
-                    p.mesh.material.opacity = 0.5 + Math.sin(elapsed * 1.5 + p.phase) * 0.2;
+                    const wave = Math.sin(elapsed * 0.8 + p.userData.phase) * 0.018;
+                    p.rotation.x = p.userData.baseRotX + wave;
                 });
 
-                // Core pulse
-                const corePulse = 0.8 + Math.sin(elapsed * 3) * 0.2;
-                core.scale.setScalar(0.2 * corePulse);
-                coreMat.opacity = 0.7 + Math.sin(elapsed * 4) * 0.3;
-
-                // Rotate elements
-                flowerGroup.rotation.y += 0.002;
-                stars.rotation.y += 0.0002;
-                particles.rotation.y -= 0.003;
-
-                // Update particles
-                const pos = particleGeom.attributes.position.array;
-                for (let i = 0; i < particleCount; i++) {
-                    pos[i * 3 + 1] += 0.005;
-                    if (pos[i * 3 + 1] > 2) pos[i * 3 + 1] = -2;
-                }
-                particleGeom.attributes.position.needsUpdate = true;
-
-                // Camera float
-                camera.position.y = Math.sin(elapsed * 0.5) * 0.3;
-                camera.position.x = Math.sin(elapsed * 0.3) * 0.5;
-                camera.lookAt(0, 0, 0);
+                stars.rotation.y = elapsed * 0.01;
+                ring.rotation.z = elapsed * 0.2;
+                cosmicCore.update(elapsed);
+                atmosphere.update(elapsed, delta);
+                if (controls) controls.update(delta);
 
                 renderer.render(scene, camera);
             }
-
-            window.addEventListener('resize', () => {
-                camera.aspect = window.innerWidth / window.innerHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(window.innerWidth, window.innerHeight);
-            });
 
             animate();
             FlowerUtils.hideLoading();

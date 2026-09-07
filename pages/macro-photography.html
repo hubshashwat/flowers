@@ -37,202 +37,244 @@
         (function () {
             const container = document.getElementById('canvas-container');
             const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
-                background: 0x0a0808
+                background: 0x080509,
+                cameraPos: [0, 0.65, 2.2],
+                controls: {
+                    target: new THREE.Vector3(0, 0.45, 0),
+                    minDistance: 1.1,
+                    maxDistance: 4.5,
+                    autoRotate: true,
+                    autoRotateSpeed: 0.3
+                }
             });
 
-            renderer.toneMapping = THREE.ACESFilmicToneMapping;
-            renderer.toneMappingExposure = 1.3;
-
-            // Macro camera - very close
-            camera.position.set(0, 0.1, 1.2);
-            camera.lookAt(0, 0, 0);
-            camera.fov = 35;
+            camera.fov = 38;
             camera.updateProjectionMatrix();
 
-            // Soft lighting for macro
-            const keyLight = new THREE.DirectionalLight(0xfff5e6, 1.5);
-            keyLight.position.set(1, 2, 2);
-            scene.add(keyLight);
+            // Studio Environment & Lighting
+            FlowerUtils.createStudioEnvironment(renderer, 'warm_sunset');
 
-            const fillLight = new THREE.DirectionalLight(0xe6f0ff, 0.5);
-            fillLight.position.set(-2, 1, 1);
-            scene.add(fillLight);
+            const ambientLight = new THREE.AmbientLight(0x201424, 1.2);
+            scene.add(ambientLight);
 
-            const backLight = new THREE.DirectionalLight(0xffddcc, 0.8);
-            backLight.position.set(0, 1, -2);
-            scene.add(backLight);
+            // Soft Macro Studio Key Light
+            const macroKeyLight = new THREE.DirectionalLight(0xfff2e6, 2.6);
+            macroKeyLight.position.set(2, 4, 2.5);
+            scene.add(macroKeyLight);
 
-            const ambient = new THREE.AmbientLight(0xffffff, 0.2);
-            scene.add(ambient);
+            const softFillLight = new THREE.DirectionalLight(0xffaacc, 1.6);
+            softFillLight.position.set(-3, 2, 1);
+            scene.add(softFillLight);
 
-            // Flower center group (macro focus)
-            const centerGroup = new THREE.Group();
-            scene.add(centerGroup);
+            const rimLight = new THREE.DirectionalLight(0xffeedd, 2.2);
+            rimLight.position.set(0, 3, -2.5);
+            scene.add(rimLight);
 
-            // Create pollen grains
-            const pollenCount = 80;
-            const pollenGeom = new THREE.SphereGeometry(0.015, 16, 16);
-            const pollenMat = new THREE.MeshStandardMaterial({
-                color: 0xffd700,
-                roughness: 0.3,
-                metalness: 0.1
+            // Dark Pedestal
+            const pedestal = FlowerUtils.createPedestal({
+                radius: 1.85,
+                height: 0.16,
+                y: -0.78,
+                color: 0x0e0812,
+                metalness: 0.95,
+                roughness: 0.12,
+                rimColor: 0xff6688
             });
+            scene.add(pedestal);
 
-            for (let i = 0; i < pollenCount; i++) {
-                const pollen = new THREE.Mesh(pollenGeom, pollenMat.clone());
+            // Shallow Depth-of-Field Bokeh Particles
+            const bokehCount = 60;
+            const bokehGeom = new THREE.BufferGeometry();
+            const bokehPos = new Float32Array(bokehCount * 3);
+            const bokehData = [];
 
-                // Distribute on a dome
-                const theta = Math.random() * Math.PI * 2;
-                const phi = Math.random() * Math.PI * 0.4;
-                const r = 0.15 + Math.random() * 0.1;
+            for (let i = 0; i < bokehCount; i++) {
+                const x = (Math.random() - 0.5) * 3.0;
+                const y = Math.random() * 2.0 - 0.2;
+                const z = (Math.random() - 0.5) * 3.0;
+                bokehPos[i * 3] = x;
+                bokehPos[i * 3 + 1] = y;
+                bokehPos[i * 3 + 2] = z;
 
-                pollen.position.set(
-                    r * Math.sin(phi) * Math.cos(theta),
-                    r * Math.cos(phi),
-                    r * Math.sin(phi) * Math.sin(theta)
-                );
-
-                // Vary pollen sizes
-                const scale = 0.6 + Math.random() * 0.8;
-                pollen.scale.setScalar(scale);
-
-                // Slight color variation
-                const hue = 0.12 + Math.random() * 0.05;
-                pollen.material.color.setHSL(hue, 0.8, 0.5 + Math.random() * 0.2);
-
-                centerGroup.add(pollen);
-            }
-
-            // Stamen filaments
-            const filamentCount = 20;
-            for (let i = 0; i < filamentCount; i++) {
-                const angle = (i / filamentCount) * Math.PI * 2;
-                const height = 0.2 + Math.random() * 0.1;
-
-                const curve = new THREE.CatmullRomCurve3([
-                    new THREE.Vector3(Math.cos(angle) * 0.1, 0, Math.sin(angle) * 0.1),
-                    new THREE.Vector3(Math.cos(angle) * 0.15, height * 0.5, Math.sin(angle) * 0.15),
-                    new THREE.Vector3(Math.cos(angle) * 0.12, height, Math.sin(angle) * 0.12)
-                ]);
-
-                const filamentGeom = new THREE.TubeGeometry(curve, 12, 0.003, 6, false);
-                const filamentMat = new THREE.MeshStandardMaterial({
-                    color: 0xffee88,
-                    roughness: 0.7
+                bokehData.push({
+                    x, y, z,
+                    speed: 0.3 + Math.random() * 0.6,
+                    phase: Math.random() * Math.PI * 2
                 });
-                const filament = new THREE.Mesh(filamentGeom, filamentMat);
-                centerGroup.add(filament);
-
-                // Anther (pollen sac) at top
-                const antherGeom = new THREE.SphereGeometry(0.012, 8, 8);
-                const antherMat = new THREE.MeshStandardMaterial({
-                    color: 0xcc8800,
-                    roughness: 0.5
-                });
-                const anther = new THREE.Mesh(antherGeom, antherMat);
-                anther.position.set(
-                    Math.cos(angle) * 0.12,
-                    height,
-                    Math.sin(angle) * 0.12
-                );
-                centerGroup.add(anther);
             }
-
-            // Petal surface behind (out of focus)
-            const petalSurfaceGeom = new THREE.PlaneGeometry(2, 2, 32, 32);
-            const petalPositions = petalSurfaceGeom.attributes.position;
-            for (let i = 0; i < petalPositions.count; i++) {
-                const x = petalPositions.getX(i);
-                const y = petalPositions.getY(i);
-                // Add surface texture
-                const z = Math.sin(x * 20) * 0.005 + Math.sin(y * 25) * 0.003;
-                petalPositions.setZ(i, z);
-            }
-            petalPositions.needsUpdate = true;
-            petalSurfaceGeom.computeVertexNormals();
-
-            const petalSurfaceMat = new THREE.MeshStandardMaterial({
-                color: 0xff6b8a,
-                roughness: 0.6,
-                side: THREE.DoubleSide
-            });
-            const petalSurface = new THREE.Mesh(petalSurfaceGeom, petalSurfaceMat);
-            petalSurface.position.z = -0.3;
-            petalSurface.rotation.x = -0.2;
-            scene.add(petalSurface);
-
-            // Petal veins
-            for (let i = 0; i < 5; i++) {
-                const veinCurve = new THREE.CatmullRomCurve3([
-                    new THREE.Vector3(-0.8 + i * 0.4, -0.8, -0.28),
-                    new THREE.Vector3(-0.6 + i * 0.35, 0, -0.27),
-                    new THREE.Vector3(-0.5 + i * 0.3, 0.8, -0.26)
-                ]);
-                const veinGeom = new THREE.TubeGeometry(veinCurve, 16, 0.003, 6, false);
-                const veinMat = new THREE.MeshStandardMaterial({
-                    color: 0xdd5070,
-                    roughness: 0.5
-                });
-                const vein = new THREE.Mesh(veinGeom, veinMat);
-                scene.add(vein);
-            }
-
-            // Floating dust particles (bokeh)
-            const dustCount = 100;
-            const dustGeom = new THREE.BufferGeometry();
-            const dustPos = new Float32Array(dustCount * 3);
-            const dustSizes = new Float32Array(dustCount);
-
-            for (let i = 0; i < dustCount; i++) {
-                dustPos[i * 3] = (Math.random() - 0.5) * 2;
-                dustPos[i * 3 + 1] = (Math.random() - 0.5) * 2;
-                dustPos[i * 3 + 2] = Math.random() * 1.5 - 0.5;
-                dustSizes[i] = 0.01 + Math.random() * 0.03;
-            }
-
-            dustGeom.setAttribute('position', new THREE.BufferAttribute(dustPos, 3));
-            const dustMat = new THREE.PointsMaterial({
-                size: 0.02,
-                color: 0xffffee,
+            bokehGeom.setAttribute('position', new THREE.BufferAttribute(bokehPos, 3));
+            const bokehMat = new THREE.PointsMaterial({
+                color: 0xffeedd,
+                size: 0.05,
                 transparent: true,
-                opacity: 0.4,
+                opacity: 0.45,
                 blending: THREE.AdditiveBlending
             });
-            const dust = new THREE.Points(dustGeom, dustMat);
-            scene.add(dust);
+            const bokehPoints = new THREE.Points(bokehGeom, bokehMat);
+            scene.add(bokehPoints);
 
-            // Camera focus animation
-            let focusDistance = 1.2;
-            let focusDirection = 1;
+            // Flower Group
+            const flower = new THREE.Group();
+            flower.position.y = 0.35;
+            scene.add(flower);
+
+            // Velvet Hibiscus/Peony Petals
+            const outerMat = new THREE.MeshPhysicalMaterial({
+                color: 0xd62858,
+                emissive: 0x4a0a1a,
+                emissiveIntensity: 0.4,
+                roughness: 0.28,
+                metalness: 0.1,
+                clearcoat: 0.9,
+                clearcoatRoughness: 0.18,
+                side: THREE.DoubleSide
+            });
+
+            const innerMat = new THREE.MeshPhysicalMaterial({
+                color: 0xf04878,
+                emissive: 0x5a1024,
+                emissiveIntensity: 0.45,
+                roughness: 0.22,
+                metalness: 0.1,
+                clearcoat: 1.0,
+                side: THREE.DoubleSide
+            });
+
+            // 2 Tiers of Organic Petals
+            const tiers = [
+                { count: 10, length: 1.3, width: 0.48, curl: 0.85, wave: 0.26, angle: 0.85, y: 0.0, mat: outerMat },
+                { count: 8,  length: 1.0, width: 0.4,  curl: 0.65, wave: 0.2,  angle: 0.6,  y: 0.08, mat: innerMat }
+            ];
+
+            const allPetals = [];
+
+            tiers.forEach((tier, tIdx) => {
+                const geom = FlowerUtils.createCurvedPetalGeometry({
+                    length: tier.length,
+                    width: tier.width,
+                    curl: tier.curl,
+                    wave: tier.wave,
+                    segmentsL: 28,
+                    segmentsW: 20
+                });
+
+                for (let i = 0; i < tier.count; i++) {
+                    const angle = (i / tier.count) * Math.PI * 2 + (tIdx * 0.4);
+                    const mesh = new THREE.Mesh(geom, tier.mat);
+                    mesh.position.y = tier.y;
+                    mesh.rotation.y = angle;
+                    mesh.rotation.x = tier.angle;
+                    mesh.userData = {
+                        origRotX: tier.angle,
+                        angle,
+                        freq: 1.6 + tIdx * 0.4
+                    };
+                    flower.add(mesh);
+                    allPetals.push(mesh);
+                }
+            });
+
+            // Glistening Optical Dewdrops scattered on petals
+            const dewPositions = [
+                [0.22, 0.24, 0.25],
+                [-0.28, 0.26, 0.18],
+                [0.15, 0.22, -0.3],
+                [-0.18, 0.25, -0.22],
+                [0.35, 0.2, -0.12]
+            ];
+            dewPositions.forEach(pos => {
+                const drop = FlowerUtils.createDewdrop({ radius: 0.032 + Math.random() * 0.02 });
+                drop.position.set(...pos);
+                flower.add(drop);
+            });
+
+            // Extreme Detail Stamen Cluster: 48 Filaments with Golden Anther Pollen
+            FlowerUtils.createStamenCluster(flower, {
+                count: 48,
+                radius: 0.16,
+                height: 0.38,
+                spread: 0.42,
+                stemColor: 0xffeeaa,
+                antherColor: 0xffcc00,
+                y: 0.15
+            });
+
+            // 120 Microscopic Pollen Grains clustering near center
+            const pollenCount = 120;
+            const pollenGeom = new THREE.SphereGeometry(0.016, 12, 12);
+            const pollenMat = new THREE.MeshPhysicalMaterial({
+                color: 0xffe600,
+                emissive: 0xaa8800,
+                emissiveIntensity: 0.6,
+                roughness: 0.35,
+                metalness: 0.2,
+                clearcoat: 0.6
+            });
+            const pollenInstanced = new THREE.InstancedMesh(pollenGeom, pollenMat, pollenCount);
+            const dummy = new THREE.Object3D();
+
+            for (let i = 0; i < pollenCount; i++) {
+                const theta = Math.random() * Math.PI * 2;
+                const r = 0.04 + Math.random() * 0.15;
+                const y = 0.18 + Math.random() * 0.22;
+                dummy.position.set(Math.cos(theta) * r, y, Math.sin(theta) * r);
+                const s = 0.6 + Math.random() * 0.8;
+                dummy.scale.set(s, s, s);
+                dummy.updateMatrix();
+                pollenInstanced.setMatrixAt(i, dummy.matrix);
+            }
+            pollenInstanced.instanceMatrix.needsUpdate = true;
+            flower.add(pollenInstanced);
+
+            // Glowing Heart Core
+            const core = FlowerUtils.createGlowingCore(flower, {
+                radius: 0.22,
+                color: 0xffaa00,
+                innerColor: 0xffffff,
+                y: 0.18
+            });
+
+            // Stem
+            const stemCurve = new THREE.CatmullRomCurve3([
+                new THREE.Vector3(0, 0.05, 0),
+                new THREE.Vector3(0.03, -0.28, 0.02),
+                new THREE.Vector3(-0.02, -0.55, -0.01),
+                new THREE.Vector3(0, -0.78, 0)
+            ]);
+            const stemGeom = new THREE.TubeGeometry(stemCurve, 32, 0.032, 12, false);
+            const stemMat = new THREE.MeshPhysicalMaterial({
+                color: 0x1a3418,
+                emissive: 0x081608,
+                emissiveIntensity: 0.4,
+                roughness: 0.35,
+                clearcoat: 0.8
+            });
+            const stemMesh = new THREE.Mesh(stemGeom, stemMat);
+            flower.add(stemMesh);
 
             function animate() {
                 requestAnimationFrame(animate);
                 const elapsed = clock.getElapsedTime();
 
-                // Slow focus breathing
-                focusDistance += focusDirection * 0.001;
-                if (focusDistance > 1.4) focusDirection = -1;
-                if (focusDistance < 1.0) focusDirection = 1;
+                // Gentle floating breath
+                flower.position.y = 0.35 + Math.sin(elapsed * 1.5) * 0.03;
 
-                camera.position.z = focusDistance;
-
-                // Gentle camera drift
-                camera.position.x = Math.sin(elapsed * 0.2) * 0.05;
-                camera.position.y = 0.1 + Math.sin(elapsed * 0.15) * 0.03;
-                camera.lookAt(0, 0.05, 0);
-
-                // Dust floating
-                const dustPositions = dustGeom.attributes.position.array;
-                for (let i = 0; i < dustCount; i++) {
-                    dustPositions[i * 3] += Math.sin(elapsed + i) * 0.0005;
-                    dustPositions[i * 3 + 1] += 0.0003;
-                    if (dustPositions[i * 3 + 1] > 1) dustPositions[i * 3 + 1] = -1;
+                // Petal breathing
+                for (let i = 0; i < allPetals.length; i++) {
+                    const p = allPetals[i];
+                    const wave = Math.sin(elapsed * p.userData.freq + p.userData.angle) * 0.03;
+                    p.rotation.x = p.userData.origRotX + wave;
                 }
-                dustGeom.attributes.position.needsUpdate = true;
 
-                // Subtle light variation
-                keyLight.intensity = 1.4 + Math.sin(elapsed * 0.5) * 0.1;
+                // Bokeh floating
+                const pos = bokehGeom.attributes.position.array;
+                for (let i = 0; i < bokehCount; i++) {
+                    const d = bokehData[i];
+                    pos[i * 3 + 1] = d.y + Math.sin(elapsed * d.speed + d.phase) * 0.15;
+                }
+                bokehGeom.attributes.position.needsUpdate = true;
 
+                core.pulse(elapsed, 1.8);
                 renderer.render(scene, camera);
             }
 

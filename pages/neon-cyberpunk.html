@@ -36,178 +36,208 @@
     <script>
         (function () {
             const container = document.getElementById('canvas-container');
-            const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
-                background: 0x0a0015
+            const { scene, camera, renderer, clock, controls } = FlowerUtils.initScene(container, {
+                background: 0x05010a,
+                environmentTheme: 'cyberpunk',
+                controls: {
+                    target: new THREE.Vector3(0, 0.45, 0),
+                    minDistance: 2.2,
+                    maxDistance: 6.5,
+                    autoRotate: true,
+                    autoRotateSpeed: 0.4
+                }
             });
 
-            camera.position.set(0, 2, 4.5);
-            camera.lookAt(0, 0.5, 0);
+            camera.position.set(0, 1.4, 3.6);
+            camera.lookAt(0, 0.45, 0);
 
-            // Neon lighting
-            const ambient = new THREE.AmbientLight(0x220033, 0.3);
+            // Cyberpunk studio lighting
+            const ambient = new THREE.AmbientLight(0x220533, 0.5);
             scene.add(ambient);
-            const pinkLight = new THREE.PointLight(0xff00ff, 2, 10);
-            pinkLight.position.set(-2, 2, 2);
+
+            const pinkLight = new THREE.PointLight(0xff007f, 2.5, 8);
+            pinkLight.position.set(-3, 3, 2.5);
             scene.add(pinkLight);
-            const cyanLight = new THREE.PointLight(0x00ffff, 2, 10);
-            cyanLight.position.set(2, 1, -2);
+
+            const cyanLight = new THREE.PointLight(0x00f0ff, 2.5, 8);
+            cyanLight.position.set(3, 2, -2.5);
             scene.add(cyanLight);
+
+            const rimLight = new THREE.DirectionalLight(0xe056fd, 1.4);
+            rimLight.position.set(0, 4, -3);
+            scene.add(rimLight);
+
+            // Dark cyber pedestal with neon accent
+            const pedestal = FlowerUtils.createPedestal(scene, {
+                radius: 1.7,
+                color: 0x0a0512,
+                roughness: 0.12,
+                metalness: 0.85,
+                y: -0.8
+            });
+
+            // Glowing neon circuit ring on pedestal
+            const ringGeom = new THREE.RingGeometry(1.3, 1.34, 64);
+            const ringMat = new THREE.MeshBasicMaterial({
+                color: 0x00f0ff,
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.7
+            });
+            const ring = new THREE.Mesh(ringGeom, ringMat);
+            ring.rotation.x = -Math.PI / 2;
+            ring.position.y = -0.79;
+            scene.add(ring);
+
+            // Cyber data motes atmosphere
+            const atmosphere = FlowerUtils.createAtmosphere(scene, {
+                count: 100,
+                color: 0x00f0ff,
+                spread: 4.5,
+                size: 0.028
+            });
 
             // Flower group
             const flowerGroup = new THREE.Group();
             scene.add(flowerGroup);
 
-            // Holographic material
-            function createHoloMaterial(color) {
-                return new THREE.MeshBasicMaterial({
-                    color: color,
-                    transparent: true,
-                    opacity: 0.7,
-                    side: THREE.DoubleSide,
-                    wireframe: false
+            // Materials
+            const cyberDarkMat = new THREE.MeshStandardMaterial({
+                color: 0x130a20,
+                roughness: 0.25,
+                metalness: 0.8,
+                side: THREE.DoubleSide
+            });
+
+            function createNeonEdgeMat(color = 0xff007f) {
+                return new THREE.MeshPhysicalMaterial({
+                    color: 0x090312,
+                    emissive: new THREE.Color(color),
+                    emissiveIntensity: 1.8,
+                    roughness: 0.15,
+                    metalness: 0.9,
+                    side: THREE.DoubleSide
                 });
             }
 
-            // Create neon petal
-            function createNeonPetal() {
+            const petals = [];
+
+            // Outer layer: Grand cyber wings with neon glowing edge curves
+            const outerCount = 8;
+            for (let i = 0; i < outerCount; i++) {
                 const group = new THREE.Group();
-
-                // Main petal shape
-                const shape = new THREE.Shape();
-                shape.moveTo(0, 0);
-                shape.bezierCurveTo(0.15, 0.1, 0.18, 0.4, 0.1, 0.6);
-                shape.bezierCurveTo(0.03, 0.72, -0.03, 0.72, -0.1, 0.6);
-                shape.bezierCurveTo(-0.18, 0.4, -0.15, 0.1, 0, 0);
-
-                const geom = new THREE.ShapeGeometry(shape, 16);
-                const petal = new THREE.Mesh(geom, createHoloMaterial(0xff00ff));
+                const geom = FlowerUtils.createCurvedPetalGeometry(0.55, 1.2, {
+                    curl: 0.26,
+                    cup: 0.22,
+                    flare: 0.28,
+                    ruffle: 0.03,
+                    uSegments: 24,
+                    vSegments: 32
+                });
+                const isCyan = i % 2 === 0;
+                const petal = new THREE.Mesh(geom, cyberDarkMat);
                 group.add(petal);
 
-                // Grid lines overlay
-                const gridMat = new THREE.LineBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.5 });
-                for (let i = 0; i < 5; i++) {
-                    const y = i * 0.15;
-                    const lineGeom = new THREE.BufferGeometry().setFromPoints([
-                        new THREE.Vector3(-0.15 + i * 0.02, y, 0.001),
-                        new THREE.Vector3(0.15 - i * 0.02, y, 0.001)
-                    ]);
-                    const line = new THREE.Line(lineGeom, gridMat);
-                    group.add(line);
-                }
+                // Neon trim edge
+                const edgeMat = createNeonEdgeMat(isCyan ? 0x00f0ff : 0xff007f);
+                const edgeMesh = new THREE.Mesh(geom, edgeMat);
+                edgeMesh.scale.set(1.02, 1.02, 1.02);
+                edgeMesh.position.z = -0.005;
+                group.add(edgeMesh);
 
-                return group;
+                const angle = (i / outerCount) * Math.PI * 2;
+                group.rotation.z = angle;
+                group.rotation.x = -Math.PI / 2 + 0.52;
+                group.position.y = 0.44;
+                group.userData = { phase: i * 0.4, baseRotX: group.rotation.x, edgeMat };
+                flowerGroup.add(group);
+                petals.push(group);
             }
 
-            // Create petals
-            const petalCount = 8;
-            const petals = [];
-            for (let i = 0; i < petalCount; i++) {
-                const petal = createNeonPetal();
-                const angle = (i / petalCount) * Math.PI * 2;
-                petal.rotation.z = angle;
-                petal.rotation.x = -Math.PI / 2 + 0.4;
-                petal.position.y = 0.5;
-                petal.userData.phase = i * 0.3;
-                petal.userData.glitchOffset = 0;
-                flowerGroup.add(petal);
-                petals.push(petal);
+            // Middle layer: Inner neon petals
+            const midCount = 8;
+            for (let i = 0; i < midCount; i++) {
+                const group = new THREE.Group();
+                const geom = FlowerUtils.createCurvedPetalGeometry(0.4, 0.9, {
+                    curl: 0.35,
+                    cup: 0.26,
+                    flare: 0.16,
+                    ruffle: 0.02,
+                    uSegments: 20,
+                    vSegments: 28
+                });
+                const isCyan = i % 2 !== 0;
+                const petal = new THREE.Mesh(geom, cyberDarkMat);
+                group.add(petal);
+
+                const edgeMat = createNeonEdgeMat(isCyan ? 0x00f0ff : 0xff007f);
+                const edgeMesh = new THREE.Mesh(geom, edgeMat);
+                edgeMesh.scale.set(1.02, 1.02, 1.02);
+                group.add(edgeMesh);
+
+                const angle = (i / midCount) * Math.PI * 2 + Math.PI / outerCount;
+                group.rotation.z = angle;
+                group.rotation.x = -Math.PI / 2 + 0.32;
+                group.position.y = 0.47;
+                group.userData = { phase: i * 0.5 + 2, baseRotX: group.rotation.x, edgeMat };
+                flowerGroup.add(group);
+                petals.push(group);
             }
 
-            // Center (glowing core)
-            const centerGeom = new THREE.IcosahedronGeometry(0.1, 1);
-            const centerMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-            const center = new THREE.Mesh(centerGeom, centerMat);
-            center.position.y = 0.55;
-            flowerGroup.add(center);
-
-            // Data stream particles
-            const streamCount = 100;
-            const streamGeom = new THREE.BufferGeometry();
-            const streamPos = new Float32Array(streamCount * 3);
-            const streamVels = [];
-            for (let i = 0; i < streamCount; i++) {
-                streamPos[i * 3] = (Math.random() - 0.5) * 2;
-                streamPos[i * 3 + 1] = Math.random() * 2;
-                streamPos[i * 3 + 2] = (Math.random() - 0.5) * 2;
-                streamVels.push(-0.01 - Math.random() * 0.02);
-            }
-            streamGeom.setAttribute('position', new THREE.BufferAttribute(streamPos, 3));
-            const streamMat = new THREE.PointsMaterial({
-                color: 0x00ff88,
-                size: 0.02,
-                transparent: true,
-                opacity: 0.8
+            // Glowing Plasma Core
+            const cyberCore = FlowerUtils.createGlowingCore({
+                radius: 0.14,
+                innerColor: 0xffffff,
+                glowColor: 0x00f0ff,
+                emissiveIntensity: 2.4
             });
-            const streams = new THREE.Points(streamGeom, streamMat);
-            scene.add(streams);
+            cyberCore.group.position.y = 0.52;
+            flowerGroup.add(cyberCore.group);
 
-            // Stem (wireframe)
-            const stemCurve = new THREE.CatmullRomCurve3([
-                new THREE.Vector3(0, 0.4, 0),
-                new THREE.Vector3(0.02, 0, 0.01),
-                new THREE.Vector3(0, -0.8, 0)
-            ]);
-            const stemGeom = new THREE.TubeGeometry(stemCurve, 16, 0.025, 8, false);
-            const stemMat = new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true });
-            const stem = new THREE.Mesh(stemGeom, stemMat);
+            // Metallic dark conduit stem
+            const stemPoints = [
+                new THREE.Vector3(0, 0.44, 0),
+                new THREE.Vector3(0.02, 0.2, 0.01),
+                new THREE.Vector3(-0.015, -0.1, -0.01),
+                new THREE.Vector3(0.01, -0.45, 0.005),
+                new THREE.Vector3(0, -0.78, 0)
+            ];
+            const stemCurve = new THREE.CatmullRomCurve3(stemPoints);
+            const stemGeom = new THREE.TubeGeometry(stemCurve, 32, 0.035, 16, false);
+            const stem = new THREE.Mesh(stemGeom, cyberDarkMat);
             flowerGroup.add(stem);
 
-            // Glitch effect
-            let glitchTimer = 0;
+            // Neon conduit rings running down the stem
+            [-0.05, -0.22, -0.45].forEach((y, i) => {
+                const ringC = new THREE.Mesh(
+                    new THREE.TorusGeometry(0.045, 0.008, 12, 24),
+                    new THREE.MeshBasicMaterial({ color: i % 2 === 0 ? 0xff007f : 0x00f0ff })
+                );
+                ringC.position.y = y;
+                ringC.rotation.x = Math.PI / 2;
+                flowerGroup.add(ringC);
+            });
 
             function animate() {
                 requestAnimationFrame(animate);
+                const delta = clock.getDelta();
                 const elapsed = clock.getElapsedTime();
 
-                // Pulse effect
-                const pulse = Math.sin(elapsed * 4) * 0.5 + 0.5;
-                petals.forEach((petal, i) => {
-                    const mat = petal.children[0].material;
-                    mat.opacity = 0.5 + pulse * 0.3;
-
-                    // Random glitch
-                    if (Math.random() < 0.02) {
-                        petal.userData.glitchOffset = (Math.random() - 0.5) * 0.1;
-                    } else {
-                        petal.userData.glitchOffset *= 0.9;
-                    }
-                    petal.position.x = petal.userData.glitchOffset;
+                // Gentle cyber breathing
+                const pulse = Math.sin(elapsed * 3) * 0.5 + 0.5;
+                petals.forEach(p => {
+                    const breathe = Math.sin(elapsed * 0.8 + p.userData.phase) * 0.02;
+                    p.rotation.x = p.userData.baseRotX + breathe;
+                    p.userData.edgeMat.emissiveIntensity = 1.6 + pulse * 0.8;
                 });
 
-                // Center color cycle
-                const hue = (elapsed * 0.1) % 1;
-                center.material.color.setHSL(hue, 1, 0.7);
-                center.scale.setScalar(1 + pulse * 0.2);
-
-                // Data streams
-                const sPos = streamGeom.attributes.position.array;
-                for (let i = 0; i < streamCount; i++) {
-                    sPos[i * 3 + 1] += streamVels[i];
-                    if (sPos[i * 3 + 1] < -0.5) {
-                        sPos[i * 3 + 1] = 2;
-                        sPos[i * 3] = (Math.random() - 0.5) * 2;
-                        sPos[i * 3 + 2] = (Math.random() - 0.5) * 2;
-                    }
-                }
-                streamGeom.attributes.position.needsUpdate = true;
-
-                // Light flicker
-                pinkLight.intensity = 1.5 + Math.random() * 0.5;
-                cyanLight.intensity = 1.5 + Math.random() * 0.5;
-
-                flowerGroup.rotation.y = elapsed * 0.15;
-
-                camera.position.x = Math.sin(elapsed * 0.1) * 0.3;
-                camera.lookAt(0, 0.5, 0);
+                // Core pulse & atmosphere
+                cyberCore.update(elapsed);
+                atmosphere.update(elapsed, delta);
+                if (controls) controls.update(delta);
 
                 renderer.render(scene, camera);
             }
-
-            window.addEventListener('resize', () => {
-                camera.aspect = window.innerWidth / window.innerHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(window.innerWidth, window.innerHeight);
-            });
 
             animate();
             FlowerUtils.hideLoading();

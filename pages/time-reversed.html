@@ -3,16 +3,67 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>Time-Reversed Flower | Flowers For You 🌸</title>
     <link rel="icon" href="../favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="../css/style.css">
+    <style>
+        .chrono-badge {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            background: rgba(20, 14, 28, 0.8);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 215, 120, 0.3);
+            border-radius: 999px;
+            padding: 8px 18px;
+            font-size: 0.8rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: #ffd880;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 30;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+            pointer-events: none;
+            transition: border-color 0.4s ease, color 0.4s ease;
+        }
+
+        .chrono-arrow {
+            display: inline-block;
+            transition: transform 0.4s ease;
+            font-size: 1rem;
+        }
+
+        .chrono-badge.rewind {
+            border-color: rgba(120, 210, 255, 0.5);
+            color: #99e0ff;
+        }
+
+        .chrono-badge.rewind .chrono-arrow {
+            transform: rotate(180deg);
+        }
+
+        @media (max-width: 600px) {
+            .chrono-badge {
+                top: auto;
+                bottom: 84px;
+                right: 50%;
+                transform: translateX(50%);
+                font-size: 0.72rem;
+                padding: 6px 14px;
+            }
+        }
+    </style>
 </head>
 
 <body>
     <div class="loading-overlay">
         <div class="loading-flower"></div>
-        <p class="loading-text">Reversing time...</p>
+        <p class="loading-text">Reversing temporal chronons...</p>
     </div>
 
     <div class="flower-page">
@@ -25,9 +76,13 @@
             </a>
         </nav>
         <div id="canvas-container" class="flower-canvas"></div>
+        <div id="chrono-badge" class="chrono-badge">
+            <span class="chrono-arrow">➔</span>
+            <span id="chrono-text">Forward Entropy: Bloom</span>
+        </div>
         <div class="flower-info">
             <h1>Time-Reversed Flower</h1>
-            <p>Bloom plays forward then rewinds perfectly</p>
+            <p>An intricate temporal blossom perpetually unblooming forward, freezing at peak beauty, and rewinding into bud</p>
         </div>
     </div>
 
@@ -36,171 +91,335 @@
     <script>
         (function () {
             const container = document.getElementById('canvas-container');
-            const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
-                background: 0x101018
+            const chronoBadge = document.getElementById('chrono-badge');
+            const chronoText = document.getElementById('chrono-text');
+
+            const { scene, camera, renderer, clock, controls } = FlowerUtils.initScene(container, {
+                background: 0x090710,
+                cameraPos: [0, 2.2, 5.0],
+                enableOrbit: true,
+                autoRotate: false
             });
 
-            camera.position.set(0, 2, 4.5);
-            camera.lookAt(0, 0.5, 0);
+            camera.lookAt(0, 0.4, 0);
+            if (controls) {
+                controls.target.set(0, 0.4, 0);
+                controls.enableDamping = true;
+                controls.dampingFactor = 0.05;
+                controls.maxDistance = 10;
+                controls.minDistance = 2;
+                controls.maxPolarAngle = Math.PI / 2 + 0.15;
+            }
 
-            // Lighting
-            const ambient = new THREE.AmbientLight(0x333344, 0.5);
+            // Cinematic Temporal Studio Lighting
+            const ambient = new THREE.AmbientLight(0x1a1226, 0.85);
             scene.add(ambient);
-            const mainLight = new THREE.DirectionalLight(0xffffee, 1);
-            mainLight.position.set(3, 5, 3);
-            scene.add(mainLight);
 
-            // Flower group
-            const flowerGroup = new THREE.Group();
-            scene.add(flowerGroup);
+            const keyLight = new THREE.DirectionalLight(0xfffaee, 1.4);
+            keyLight.position.set(4, 7, 5);
+            keyLight.castShadow = true;
+            scene.add(keyLight);
 
-            // Create petal
-            const petalMat = new THREE.MeshStandardMaterial({
-                color: 0xff7799,
-                side: THREE.DoubleSide,
-                roughness: 0.5
+            const fillLight = new THREE.DirectionalLight(0x705090, 0.8);
+            fillLight.position.set(-5, 3, -3);
+            scene.add(fillLight);
+
+            // Core Temporal Pulsar Light
+            const coreLight = new THREE.PointLight(0xffc244, 2.0, 7);
+            coreLight.position.set(0, 0.5, 0);
+            scene.add(coreLight);
+
+            // Temporal Dial Pedestal
+            const plinthGroup = new THREE.Group();
+            const plinthGeom = new THREE.CylinderGeometry(2.3, 2.5, 0.25, 48);
+            const plinthMat = new THREE.MeshStandardMaterial({
+                color: 0x0c0914,
+                roughness: 0.18,
+                metalness: 0.85
+            });
+            const plinth = new THREE.Mesh(plinthGeom, plinthMat);
+            plinth.position.y = -1.2;
+            plinthGroup.add(plinth);
+
+            // Concentric Chrono Rings on Plinth
+            const chronoRing1 = new THREE.Mesh(
+                new THREE.TorusGeometry(2.3, 0.02, 16, 64),
+                new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.9, roughness: 0.2 })
+            );
+            chronoRing1.rotation.x = Math.PI / 2;
+            chronoRing1.position.y = -1.07;
+            plinthGroup.add(chronoRing1);
+
+            const chronoRing2 = new THREE.Mesh(
+                new THREE.TorusGeometry(1.6, 0.015, 16, 48),
+                new THREE.MeshStandardMaterial({ color: 0x60c0ff, metalness: 0.9, roughness: 0.2 })
+            );
+            chronoRing2.rotation.x = Math.PI / 2;
+            chronoRing2.position.y = -1.07;
+            plinthGroup.add(chronoRing2);
+            scene.add(plinthGroup);
+
+            // Flower Main Group
+            const flowerRoot = new THREE.Group();
+            flowerRoot.position.set(0, 0.1, 0);
+            scene.add(flowerRoot);
+
+            // Royal Crimson & Amethyst Velvet Petal Materials
+            const outerMat = new THREE.MeshPhysicalMaterial({
+                color: 0x750c32,
+                roughness: 0.45,
+                metalness: 0.1,
+                clearcoat: 0.6,
+                clearcoatRoughness: 0.2,
+                sheen: new THREE.Color(0xff4080),
+                side: THREE.DoubleSide
             });
 
-            function createPetal() {
-                const shape = new THREE.Shape();
-                shape.moveTo(0, 0);
-                shape.bezierCurveTo(0.15, 0.1, 0.18, 0.4, 0.1, 0.6);
-                shape.bezierCurveTo(0.03, 0.72, -0.03, 0.72, -0.1, 0.6);
-                shape.bezierCurveTo(-0.18, 0.4, -0.15, 0.1, 0, 0);
+            const innerMat = new THREE.MeshPhysicalMaterial({
+                color: 0xaa1848,
+                emissive: 0x300010,
+                roughness: 0.35,
+                metalness: 0.15,
+                clearcoat: 0.8,
+                sheen: new THREE.Color(0xff88aa),
+                side: THREE.DoubleSide
+            });
 
-                const geom = new THREE.ShapeGeometry(shape, 16);
-                return new THREE.Mesh(geom, petalMat.clone());
+            // Curved Petal Mesh Generator
+            function createPetalMesh(length, width, mat) {
+                const geom = FlowerUtils.createCurvedPetalGeometry(length, width, 0.22);
+                return new THREE.Mesh(geom, mat);
             }
 
-            // Create petals
-            const petalCount = 8;
-            const petals = [];
-            for (let i = 0; i < petalCount; i++) {
-                const petal = createPetal();
-                const angle = (i / petalCount) * Math.PI * 2;
-                petal.rotation.z = angle;
-                petal.position.y = 0.5;
-                petal.scale.setScalar(0);
-                petal.userData.delay = i * 0.1;
-                flowerGroup.add(petal);
-                petals.push(petal);
+            // Tiers for Time-Reversible Bloom
+            const tiers = [
+                { count: 12, length: 1.35, width: 0.58, closedPitch: 0.12, openPitch: 0.88, y: 0.36, mat: outerMat, delay: 0.0 },
+                { count: 10, length: 1.10, width: 0.48, closedPitch: 0.10, openPitch: 0.68, y: 0.38, mat: outerMat, delay: 0.12 },
+                { count: 8,  length: 0.85, width: 0.38, closedPitch: 0.08, openPitch: 0.48, y: 0.40, mat: innerMat, delay: 0.22 },
+                { count: 6,  length: 0.62, width: 0.28, closedPitch: 0.05, openPitch: 0.30, y: 0.42, mat: innerMat, delay: 0.32 }
+            ];
+
+            const petalItems = [];
+
+            tiers.forEach((tData, tIdx) => {
+                const tGroup = new THREE.Group();
+                tGroup.position.y = tData.y;
+
+                for (let i = 0; i < tData.count; i++) {
+                    const angle = (i / tData.count) * Math.PI * 2 + (tIdx * 0.3);
+                    const pivot = new THREE.Group();
+                    pivot.rotation.y = angle;
+
+                    const mesh = createPetalMesh(tData.length, tData.width, tData.mat);
+                    mesh.castShadow = true;
+                    mesh.receiveShadow = true;
+                    mesh.rotation.x = tData.closedPitch;
+                    mesh.scale.set(0.3, 0.3, 0.3);
+
+                    pivot.add(mesh);
+                    tGroup.add(pivot);
+
+                    petalItems.push({
+                        mesh: mesh,
+                        closedPitch: tData.closedPitch,
+                        openPitch: tData.openPitch,
+                        delay: tData.delay + (i / tData.count) * 0.12
+                    });
+                }
+                flowerRoot.add(tGroup);
+            });
+
+            // Blooming Stamen Core
+            const coreGroup = new THREE.Group();
+            coreGroup.position.y = 0.42;
+
+            const centerGeom = new THREE.SphereGeometry(0.18, 24, 24);
+            const centerMat = new THREE.MeshStandardMaterial({
+                color: 0xffaa00,
+                roughness: 0.3,
+                metalness: 0.4,
+                emissive: 0xff6600,
+                emissiveIntensity: 0.4
+            });
+            const centerMesh = new THREE.Mesh(centerGeom, centerMat);
+            coreGroup.add(centerMesh);
+
+            // Anthers
+            const antherCount = 28;
+            const anthers = [];
+            for (let i = 0; i < antherCount; i++) {
+                const angle = (i / antherCount) * Math.PI * 2;
+                const r = 0.08 + (i % 3) * 0.03;
+                const h = 0.18 + Math.random() * 0.08;
+
+                const filament = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.006, 0.008, h, 6),
+                    new THREE.MeshStandardMaterial({ color: 0xffd166 })
+                );
+                filament.position.set(Math.cos(angle) * r, h * 0.5, Math.sin(angle) * r);
+                filament.rotation.z = (Math.random() - 0.5) * 0.2;
+                filament.rotation.x = (Math.random() - 0.5) * 0.2;
+                coreGroup.add(filament);
+
+                const tip = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.02, 8, 8),
+                    new THREE.MeshBasicMaterial({ color: 0xffe600 })
+                );
+                tip.position.set(0, h * 0.5, 0);
+                filament.add(tip);
+                anthers.push(filament);
             }
+            flowerRoot.add(coreGroup);
 
-            // Inner petals
-            for (let i = 0; i < 5; i++) {
-                const petal = createPetal();
-                petal.material = petalMat.clone();
-                petal.material.color.set(0xffaacc);
-                petal.scale.setScalar(0);
-                const angle = (i / 5) * Math.PI * 2 + 0.3;
-                petal.rotation.z = angle;
-                petal.position.y = 0.52;
-                petal.userData.delay = 0.8 + i * 0.08;
-                flowerGroup.add(petal);
-                petals.push(petal);
-            }
-
-            // Center
-            const centerGeom = new THREE.SphereGeometry(0.1, 32, 32);
-            const centerMat = new THREE.MeshStandardMaterial({ color: 0xffdd88 });
-            const center = new THREE.Mesh(centerGeom, centerMat);
-            center.position.y = 0.55;
-            center.scale.setScalar(0);
-            flowerGroup.add(center);
-
-            // Stem
+            // Stem with Calyx
             const stemCurve = new THREE.CatmullRomCurve3([
-                new THREE.Vector3(0, 0.4, 0),
-                new THREE.Vector3(0.02, 0, 0.01),
-                new THREE.Vector3(0, -0.8, 0)
+                new THREE.Vector3(0, 0.38, 0),
+                new THREE.Vector3(0.03, -0.2, 0.02),
+                new THREE.Vector3(-0.02, -0.7, -0.01),
+                new THREE.Vector3(0, -1.2, 0)
             ]);
-            const stemGeom = new THREE.TubeGeometry(stemCurve, 16, 0.025, 8, false);
-            const stemMat = new THREE.MeshStandardMaterial({ color: 0x557755 });
-            const stem = new THREE.Mesh(stemGeom, stemMat);
-            stem.scale.y = 0;
-            flowerGroup.add(stem);
-
-            // Particles (follow time direction)
-            const particleCount = 30;
-            const particleGeom = new THREE.BufferGeometry();
-            const particlePos = new Float32Array(particleCount * 3);
-            const particleVelocities = [];
-            for (let i = 0; i < particleCount; i++) {
-                particlePos[i * 3] = (Math.random() - 0.5) * 0.5;
-                particlePos[i * 3 + 1] = 0.5 + Math.random() * 0.3;
-                particlePos[i * 3 + 2] = (Math.random() - 0.5) * 0.5;
-                particleVelocities.push({
-                    x: (Math.random() - 0.5) * 0.02,
-                    y: 0.01 + Math.random() * 0.02,
-                    z: (Math.random() - 0.5) * 0.02
-                });
-            }
-            particleGeom.setAttribute('position', new THREE.BufferAttribute(particlePos, 3));
-            const particleMat = new THREE.PointsMaterial({
-                color: 0xffdd88,
-                size: 0.03,
-                transparent: true,
-                opacity: 0.7
+            const stemGeom = new THREE.TubeGeometry(stemCurve, 32, 0.045, 12, false);
+            const stemMat = new THREE.MeshStandardMaterial({
+                color: 0x1a3320,
+                roughness: 0.6,
+                metalness: 0.1
             });
-            const particles = new THREE.Points(particleGeom, particleMat);
-            scene.add(particles);
+            const stemMesh = new THREE.Mesh(stemGeom, stemMat);
+            flowerRoot.add(stemMesh);
 
-            // Store initial particle positions
-            const initialParticlePos = particlePos.slice();
+            // Temporal Chronon Particles
+            const chrononCount = 240;
+            const chrononGeom = new THREE.BufferGeometry();
+            const chrononPos = new Float32Array(chrononCount * 3);
+            const chrononColors = new Float32Array(chrononCount * 3);
+            const chrononData = [];
 
-            const cycleDuration = 8; // 4s forward, 4s reverse
+            for (let i = 0; i < chrononCount; i++) {
+                // Vector pointing outward from blossom core
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.random() * Math.PI * 0.6 + 0.1;
+                const dir = new THREE.Vector3(
+                    Math.sin(phi) * Math.cos(theta),
+                    Math.cos(phi) * 0.8 + 0.2,
+                    Math.sin(phi) * Math.sin(theta)
+                ).normalize();
+
+                const maxDist = 0.8 + Math.random() * 2.2;
+                const speed = 0.6 + Math.random() * 0.8;
+
+                chrononData.push({
+                    dir: dir,
+                    maxDist: maxDist,
+                    speed: speed,
+                    phase: Math.random()
+                });
+
+                // Colors: gold to azure chronon
+                const isGold = Math.random() > 0.35;
+                const c = isGold ? new THREE.Color(0xffc542) : new THREE.Color(0x52c9ff);
+                chrononColors[i * 3] = c.r;
+                chrononColors[i * 3 + 1] = c.g;
+                chrononColors[i * 3 + 2] = c.b;
+            }
+
+            chrononGeom.setAttribute('position', new THREE.BufferAttribute(chrononPos, 3));
+            chrononGeom.setAttribute('color', new THREE.BufferAttribute(chrononColors, 3));
+
+            const chrononMat = new THREE.PointsMaterial({
+                size: 0.04,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.85,
+                blending: THREE.AdditiveBlending
+            });
+            const chrononPoints = new THREE.Points(chrononGeom, chrononMat);
+            scene.add(chrononPoints);
+
+            // Cycle Timing parameters
+            const CYCLE_DURATION = 12.0; // 12 seconds loop
+            // 0 -> 5.2s: Forward Bloom
+            // 5.2s -> 6.8s: Peak Equilibrium Pause
+            // 6.8s -> 12.0s: Temporal Implosion / Rewind
+
+            function smoothStep(edge0, edge1, x) {
+                const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
+                return t * t * (3 - 2 * t);
+            }
 
             function animate() {
                 requestAnimationFrame(animate);
                 const elapsed = clock.getElapsedTime();
+                const cycleTime = elapsed % CYCLE_DURATION;
 
-                // Determine time direction
-                const cycleTime = elapsed % cycleDuration;
-                let progress;
-                let timeDirection;
+                let bloomProgress = 0;
+                let isRewind = false;
+                let phaseName = "";
 
-                if (cycleTime < cycleDuration / 2) {
-                    // Forward
-                    progress = cycleTime / (cycleDuration / 2);
-                    timeDirection = 1;
+                if (cycleTime < 5.2) {
+                    // Forward Bloom
+                    bloomProgress = smoothStep(0.0, 5.2, cycleTime);
+                    isRewind = false;
+                    phaseName = `Forward Entropy • Bloom ${Math.round(bloomProgress * 100)}%`;
+                } else if (cycleTime < 6.8) {
+                    // Peak Pause
+                    bloomProgress = 1.0;
+                    isRewind = false;
+                    phaseName = `Temporal Stasis • Peak Bloom`;
                 } else {
-                    // Reverse
-                    progress = 1 - (cycleTime - cycleDuration / 2) / (cycleDuration / 2);
-                    timeDirection = -1;
+                    // Time-Reversed Rewind
+                    bloomProgress = 1.0 - smoothStep(6.8, 12.0, cycleTime);
+                    isRewind = true;
+                    phaseName = `Temporal Rewind • Implosion ${Math.round((1 - bloomProgress) * 100)}%`;
                 }
 
-                // Animate stem
-                stem.scale.y = Math.min(1, progress * 2);
+                // Update UI badge
+                if (chronoBadge && chronoText) {
+                    if (isRewind) {
+                        chronoBadge.classList.add('rewind');
+                    } else {
+                        chronoBadge.classList.remove('rewind');
+                    }
+                    chronoText.textContent = phaseName;
+                }
 
-                // Animate center
-                const centerProgress = Math.max(0, (progress - 0.3) * 2);
-                center.scale.setScalar(Math.min(1, centerProgress));
-
-                // Animate petals
-                petals.forEach(petal => {
-                    const petalProgress = Math.max(0, Math.min(1, (progress - petal.userData.delay) * 2));
-                    petal.scale.setScalar(petalProgress);
-                    petal.rotation.x = -Math.PI / 2 + petalProgress * 0.4;
+                // Animate Petals based on non-linear bloom progress
+                petalItems.forEach(item => {
+                    const localProgress = smoothStep(item.delay, 1.0, bloomProgress);
+                    // Curvature pitch unfolding
+                    item.mesh.rotation.x = item.closedPitch + (item.openPitch - item.closedPitch) * localProgress;
+                    // Scale expansion
+                    const scale = 0.4 + 0.6 * localProgress;
+                    item.mesh.scale.set(scale, scale, scale);
                 });
 
-                // Particle motion follows time direction
-                const pPos = particleGeom.attributes.position.array;
-                for (let i = 0; i < particleCount; i++) {
-                    pPos[i * 3] = initialParticlePos[i * 3] + particleVelocities[i].x * cycleTime * timeDirection * 10;
-                    pPos[i * 3 + 1] = initialParticlePos[i * 3 + 1] + particleVelocities[i].y * cycleTime * timeDirection * 10;
-                    pPos[i * 3 + 2] = initialParticlePos[i * 3 + 2] + particleVelocities[i].z * cycleTime * timeDirection * 10;
+                // Animate Core & Anthers
+                const coreScale = 0.55 + 0.45 * bloomProgress;
+                coreGroup.scale.set(coreScale, coreScale, coreScale);
+                coreLight.intensity = 0.8 + 2.2 * bloomProgress;
+
+                // Animate Chronon Particles
+                const posArr = chrononGeom.attributes.position.array;
+                for (let i = 0; i < chrononCount; i++) {
+                    const c = chrononData[i];
+                    // Progress for individual particle with stagger
+                    const pLocal = Math.max(0, Math.min(1, bloomProgress * c.speed));
+                    // Trajectory from core (0, 0.42, 0) to outward distance
+                    const curDist = c.maxDist * Math.pow(pLocal, 1.2);
+
+                    posArr[i * 3] = c.dir.x * curDist;
+                    posArr[i * 3 + 1] = 0.42 + c.dir.y * curDist;
+                    posArr[i * 3 + 2] = c.dir.z * curDist;
                 }
-                particleGeom.attributes.position.needsUpdate = true;
-                particles.material.opacity = progress * 0.7;
+                chrononGeom.attributes.position.needsUpdate = true;
+                chrononMat.opacity = 0.2 + 0.7 * bloomProgress;
 
-                // Light intensity follows bloom
-                mainLight.intensity = 0.5 + progress * 0.8;
+                // Dial rotation: forward in bloom, backwards in rewind
+                const rotDir = isRewind ? -1.0 : 1.0;
+                chronoRing1.rotation.z += 0.008 * rotDir;
+                chronoRing2.rotation.z -= 0.012 * rotDir;
+                flowerRoot.rotation.y += 0.005 * rotDir;
 
-                flowerGroup.rotation.y = elapsed * 0.05 * timeDirection;
-
-                camera.position.x = Math.sin(elapsed * 0.1) * 0.3;
-                camera.lookAt(0, 0.5, 0);
-
+                if (controls) controls.update();
                 renderer.render(scene, camera);
             }
 

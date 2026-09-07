@@ -7,12 +7,44 @@
     <title>Paper-Cut Shadow Flower | Flowers For You 🌸</title>
     <link rel="icon" href="../favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="../css/style.css">
+    <style>
+        .kirigami-badge {
+            position: fixed;
+            top: 75px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(20, 16, 12, 0.8);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            padding: 8px 24px;
+            border-radius: 30px;
+            color: #fed7aa;
+            font-size: 13px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            border: 1px solid rgba(254, 215, 170, 0.25);
+            box-shadow: 0 8px 32px rgba(249, 115, 22, 0.15);
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            pointer-events: none;
+        }
+
+        .kirigami-badge span {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #fb923c;
+            box-shadow: 0 0 10px #fb923c;
+        }
+    </style>
 </head>
 
 <body>
     <div class="loading-overlay">
         <div class="loading-flower"></div>
-        <p class="loading-text">Cutting paper...</p>
+        <p class="loading-text">Layering shadowbox filigree...</p>
     </div>
 
     <div class="flower-page">
@@ -25,9 +57,13 @@
             </a>
         </nav>
         <div id="canvas-container" class="flower-canvas"></div>
+        <div class="kirigami-badge">
+            <span></span>
+            Multi-Layer Kirigami • Depth Shadowbox
+        </div>
         <div class="flower-info">
             <h1>Paper-Cut Shadow Flower</h1>
-            <p>Simple silhouette with complex layered shadows</p>
+            <p>Intricate 3D layered kirigami silhouettes stacked in spatial depth casting dynamic ambient shadows with warm backlighting</p>
         </div>
     </div>
 
@@ -37,137 +73,193 @@
         (function () {
             const container = document.getElementById('canvas-container');
             const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
-                background: 0xfaf5e8
+                background: 0x0c0907,
+                antialias: true
             });
 
-            camera.position.set(0, 0, 5);
-            camera.lookAt(0, 0, 0);
-
-            // Strong directional light for shadows
-            const mainLight = new THREE.DirectionalLight(0xffffff, 1);
-            mainLight.position.set(2, 3, 5);
-            scene.add(mainLight);
-
-            // Paper/silhouette material
-            const silhouetteMat = new THREE.MeshBasicMaterial({ color: 0x1a1a1a, side: THREE.DoubleSide });
-            const shadowMat = new THREE.MeshBasicMaterial({
-                color: 0x000000,
-                transparent: true,
-                opacity: 0.15,
-                side: THREE.DoubleSide
+            FlowerUtils.createStudioEnvironment(renderer, 'dark_luxury');
+            const controls = FlowerUtils.setupOrbitControls(camera, renderer.domElement, {
+                autoRotateSpeed: 0.45,
+                minDistance: 2.2,
+                maxDistance: 8.5
             });
 
-            // Create flower silhouette
+            camera.position.set(0, 1.4, 3.6);
+            camera.lookAt(0, 0.35, 0);
+
+            // Lighting
+            const ambient = new THREE.AmbientLight(0x2d1a10, 0.7);
+            scene.add(ambient);
+
+            const warmBacklight = new THREE.DirectionalLight(0xffeedd, 2.4);
+            warmBacklight.position.set(0, 2, -4);
+            scene.add(warmBacklight);
+
+            const keyLight = new THREE.DirectionalLight(0xffecd2, 1.8);
+            keyLight.position.set(4, 6, 4);
+            scene.add(keyLight);
+
+            const amberRim = new THREE.DirectionalLight(0xf97316, 1.4);
+            amberRim.position.set(-4, -2, -3);
+            scene.add(amberRim);
+
+            // Museum Shadowbox Pedestal
+            const pedestal = FlowerUtils.createPedestal(scene, {
+                radius: 1.8,
+                height: 0.16,
+                y: -1.3,
+                baseColor: 0x140c08,
+                rimColor: 0xfb923c,
+                marble: true
+            });
+
+            // Golden paper dust atmosphere
+            const atmosphere = FlowerUtils.createAtmosphere(scene, {
+                count: 110,
+                color: 0xfed7aa,
+                size: 0.035,
+                spread: 6.5,
+                driftSpeed: 0.2
+            });
+
+            // Flower Group
             const flowerGroup = new THREE.Group();
             scene.add(flowerGroup);
 
-            // Simple paper-cut flower shape
-            function createFlowerShape() {
-                const shape = new THREE.Shape();
-                const petalCount = 6;
-                for (let i = 0; i < petalCount; i++) {
-                    const angle = (i / petalCount) * Math.PI * 2;
-                    const nextAngle = ((i + 1) / petalCount) * Math.PI * 2;
-                    const midAngle = (angle + nextAngle) / 2;
+            // Kirigami Layer Materials with Physical Paper Texture & Subsurface Light
+            const layerColors = [
+                0x1a0f0a, // Darkest front silhouette
+                0x2e1810,
+                0x4d2818,
+                0x733a20,
+                0xa6552e,
+                0xd97736  // Warmest glowing back layer
+            ];
 
-                    const innerR = 0.15;
-                    const outerR = 0.5;
-
-                    if (i === 0) {
-                        shape.moveTo(Math.cos(angle) * innerR, Math.sin(angle) * innerR);
-                    }
-
-                    shape.quadraticCurveTo(
-                        Math.cos(midAngle) * outerR,
-                        Math.sin(midAngle) * outerR,
-                        Math.cos(nextAngle) * innerR,
-                        Math.sin(nextAngle) * innerR
-                    );
-                }
-                return shape;
-            }
-
-            // Main silhouette
-            const flowerShape = createFlowerShape();
-            const flowerGeom = new THREE.ShapeGeometry(flowerShape, 32);
-            const flower = new THREE.Mesh(flowerGeom, silhouetteMat);
-            flowerGroup.add(flower);
-
-            // Center cutout
-            const centerGeom = new THREE.CircleGeometry(0.12, 32);
-            const centerMat = new THREE.MeshBasicMaterial({ color: 0xfaf5e8 });
-            const center = new THREE.Mesh(centerGeom, centerMat);
-            center.position.z = 0.001;
-            flowerGroup.add(center);
-
-            // Multiple shadow layers (more complex than the flower)
-            const shadowLayers = [];
-            for (let layer = 0; layer < 5; layer++) {
-                const shadowGroup = new THREE.Group();
-
-                // Each layer has progressively more detail
-                for (let i = 0; i < 8 + layer * 4; i++) {
-                    const angle = (i / (8 + layer * 4)) * Math.PI * 2 + layer * 0.1;
-                    const petalShape = new THREE.Shape();
-                    const length = 0.3 + layer * 0.08;
-                    const width = 0.08 + layer * 0.02;
-
-                    petalShape.moveTo(0, 0);
-                    petalShape.bezierCurveTo(width, length * 0.3, width, length * 0.7, 0, length);
-                    petalShape.bezierCurveTo(-width, length * 0.7, -width, length * 0.3, 0, 0);
-
-                    const petalGeom = new THREE.ShapeGeometry(petalShape, 8);
-                    const petal = new THREE.Mesh(petalGeom, shadowMat.clone());
-                    petal.rotation.z = angle;
-                    petal.position.z = -0.1 - layer * 0.1;
-                    shadowGroup.add(petal);
-                }
-
-                // Decorative circles
-                for (let i = 0; i < 6 + layer * 2; i++) {
-                    const angle = (i / (6 + layer * 2)) * Math.PI * 2;
-                    const radius = 0.4 + layer * 0.15;
-                    const circleGeom = new THREE.CircleGeometry(0.03 + layer * 0.01, 16);
-                    const circle = new THREE.Mesh(circleGeom, shadowMat.clone());
-                    circle.position.set(Math.cos(angle) * radius, Math.sin(angle) * radius, -0.1 - layer * 0.1);
-                    shadowGroup.add(circle);
-                }
-
-                shadowGroup.position.set(layer * 0.03, -layer * 0.03, 0);
-                scene.add(shadowGroup);
-                shadowLayers.push(shadowGroup);
-            }
-
-            // Stem silhouette
-            const stemShape = new THREE.Shape();
-            stemShape.moveTo(-0.02, 0);
-            stemShape.lineTo(-0.02, -1);
-            stemShape.lineTo(0.02, -1);
-            stemShape.lineTo(0.02, 0);
-            stemShape.closePath();
-
-            const stemGeom = new THREE.ShapeGeometry(stemShape);
-            const stem = new THREE.Mesh(stemGeom, silhouetteMat);
-            stem.position.y = -0.15;
+            // Stem
+            const stemPoints = [
+                new THREE.Vector3(0, 0.3, 0),
+                new THREE.Vector3(0.04, -0.1, 0.02),
+                new THREE.Vector3(-0.03, -0.6, -0.02),
+                new THREE.Vector3(0.01, -1.25, 0)
+            ];
+            const stemCurve = new THREE.CatmullRomCurve3(stemPoints);
+            const stemGeom = new THREE.TubeGeometry(stemCurve, 24, 0.035, 8, false);
+            const stemMat = new THREE.MeshStandardMaterial({ color: 0x22140c, roughness: 0.85 });
+            const stem = new THREE.Mesh(stemGeom, stemMat);
             flowerGroup.add(stem);
+
+            // Function to generate filigree paper-cut layer
+            function createFiligreeLayer(petalCount, outerR, innerR, color, zOffset) {
+                const shape = new THREE.Shape();
+                for (let i = 0; i < petalCount; i++) {
+                    const a1 = (i / petalCount) * Math.PI * 2;
+                    const aMid = ((i + 0.5) / petalCount) * Math.PI * 2;
+                    const a2 = ((i + 1.0) / petalCount) * Math.PI * 2;
+
+                    const x1 = Math.cos(a1) * innerR;
+                    const y1 = Math.sin(a1) * innerR;
+                    const xMid = Math.cos(aMid) * outerR;
+                    const yMid = Math.sin(aMid) * outerR;
+                    const x2 = Math.cos(a2) * innerR;
+                    const y2 = Math.sin(a2) * innerR;
+
+                    if (i === 0) shape.moveTo(x1, y1);
+                    shape.quadraticCurveTo(xMid * 1.15, yMid * 1.15, x2, y2);
+                }
+
+                // Add decorative lace cutouts (holes)
+                for (let i = 0; i < petalCount; i++) {
+                    const a = ((i + 0.5) / petalCount) * Math.PI * 2;
+                    const holeR = (outerR + innerR) * 0.5;
+                    const hole = new THREE.Path();
+                    const hx = Math.cos(a) * holeR;
+                    const hy = Math.sin(a) * holeR;
+                    hole.absarc(hx, hy, (outerR - innerR) * 0.15, 0, Math.PI * 2, true);
+                    shape.holes.push(hole);
+                }
+
+                const extrude = new THREE.ExtrudeGeometry(shape, {
+                    depth: 0.02,
+                    bevelEnabled: true,
+                    bevelThickness: 0.005,
+                    bevelSize: 0.005,
+                    bevelSegments: 2
+                });
+                extrude.center();
+
+                const mat = new THREE.MeshPhysicalMaterial({
+                    color: color,
+                    roughness: 0.82,
+                    metalness: 0.02,
+                    clearcoat: 0.3,
+                    side: THREE.DoubleSide
+                });
+
+                const mesh = new THREE.Mesh(extrude, mat);
+                mesh.position.set(0, 0.46, zOffset);
+                return mesh;
+            }
+
+            // Create 5 progressive Kirigami layers separated along Z-depth
+            const layers = [];
+            const layerConfigs = [
+                { count: 12, outerR: 1.25, innerR: 0.45, z: 0.16 },
+                { count: 10, outerR: 1.05, innerR: 0.38, z: 0.08 },
+                { count: 8,  outerR: 0.88, innerR: 0.32, z: 0.00 },
+                { count: 7,  outerR: 0.72, innerR: 0.26, z: -0.08 },
+                { count: 6,  outerR: 0.56, innerR: 0.20, z: -0.16 }
+            ];
+
+            layerConfigs.forEach((cfg, idx) => {
+                const mesh = createFiligreeLayer(cfg.count, cfg.outerR, cfg.innerR, layerColors[idx], cfg.z);
+                flowerGroup.add(mesh);
+                layers.push({
+                    mesh,
+                    baseZ: cfg.z,
+                    rotSpeed: (idx % 2 === 0 ? 1 : -1) * (0.05 + idx * 0.02)
+                });
+            });
+
+            // Center Stamen Cluster
+            const stamenCluster = FlowerUtils.createStamenCluster({
+                count: 28,
+                height: 0.24,
+                spread: 0.10,
+                antherColor: 0xfbbf24,
+                filamentColor: 0xd97736
+            });
+            stamenCluster.position.set(0, 0.46, 0.18);
+            stamenCluster.rotation.x = Math.PI / 2;
+            flowerGroup.add(stamenCluster);
+
+            // Glowing Backlit Heart Core
+            const core = FlowerUtils.createGlowingCore({
+                radius: 0.15,
+                color: 0xf97316,
+                glowColor: 0xea580c,
+                emissiveIntensity: 2.5
+            });
+            core.position.set(0, 0.46, -0.05);
+            flowerGroup.add(core);
 
             function animate() {
                 requestAnimationFrame(animate);
                 const elapsed = clock.getElapsedTime();
 
-                // Light moves, creating dynamic shadow positions
-                const lightAngle = elapsed * 0.3;
-                mainLight.position.x = Math.cos(lightAngle) * 3;
-                mainLight.position.y = 2 + Math.sin(lightAngle * 0.5);
-
-                // Shadow layers shift with light
-                shadowLayers.forEach((layer, i) => {
-                    layer.position.x = Math.cos(lightAngle) * 0.05 * (i + 1);
-                    layer.position.y = -Math.sin(lightAngle * 0.5) * 0.03 * (i + 1) - i * 0.03;
+                // Multi-plane parallax breath
+                layers.forEach((l, idx) => {
+                    const breath = Math.sin(elapsed * 1.5 + idx * 0.4) * 0.015;
+                    l.mesh.position.z = l.baseZ + breath;
+                    l.mesh.rotation.z = Math.sin(elapsed * 0.4 + idx) * 0.05;
                 });
 
-                // Gentle rotation
-                flowerGroup.rotation.z = Math.sin(elapsed * 0.5) * 0.05;
+                flowerGroup.position.y = Math.sin(elapsed * 0.8) * 0.02;
+                flowerGroup.rotation.y = Math.sin(elapsed * 0.3) * 0.2;
+
+                core.update(elapsed);
+                atmosphere.update();
+                controls.update();
 
                 renderer.render(scene, camera);
             }

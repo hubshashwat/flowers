@@ -7,12 +7,50 @@
     <title>Pixelated Flower | Flowers For You 🌸</title>
     <link rel="icon" href="../favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="../css/style.css">
+    <style>
+        .voxel-badge {
+            position: fixed;
+            top: 75px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(14, 16, 28, 0.8);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            padding: 8px 24px;
+            border-radius: 30px;
+            color: #ec4899;
+            font-size: 13px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            border: 1px solid rgba(236, 72, 153, 0.25);
+            box-shadow: 0 8px 32px rgba(236, 72, 153, 0.2);
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            pointer-events: none;
+        }
+
+        .voxel-badge span {
+            width: 8px;
+            height: 8px;
+            border-radius: 2px;
+            background: #ec4899;
+            box-shadow: 0 0 10px #ec4899;
+            animation: voxelPulse 1.5s infinite steps(4);
+        }
+
+        @keyframes voxelPulse {
+            0%, 100% { opacity: 0.5; transform: scale(0.85); }
+            50% { opacity: 1; transform: scale(1.2); }
+        }
+    </style>
 </head>
 
 <body>
     <div class="loading-overlay">
         <div class="loading-flower"></div>
-        <p class="loading-text">Rendering pixels...</p>
+        <p class="loading-text">Rasterizing voxel matrix...</p>
     </div>
 
     <div class="flower-page">
@@ -25,9 +63,13 @@
             </a>
         </nav>
         <div id="canvas-container" class="flower-canvas"></div>
+        <div class="voxel-badge">
+            <span></span>
+            Volumetric Voxel • Acrylic Crystal Lattice
+        </div>
         <div class="flower-info">
             <h1>Pixelated Flower</h1>
-            <p>Blocky voxels that smooth into organic form</p>
+            <p>A digitized botanical sculpture built from translucent acrylic voxel units with raster scanline pulses and crystal refractions</p>
         </div>
     </div>
 
@@ -37,148 +79,181 @@
         (function () {
             const container = document.getElementById('canvas-container');
             const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
-                background: 0x1a1a2a
+                background: 0x080912,
+                antialias: true
             });
 
-            camera.position.set(0, 2, 5);
-            camera.lookAt(0, 0.3, 0);
+            FlowerUtils.createStudioEnvironment(renderer, 'dark_luxury');
+            const controls = FlowerUtils.setupOrbitControls(camera, renderer.domElement, {
+                autoRotateSpeed: 0.45,
+                minDistance: 2.2,
+                maxDistance: 8.5
+            });
+
+            camera.position.set(0, 1.2, 3.2);
+            camera.lookAt(0, 0.35, 0);
 
             // Lighting
-            const ambient = new THREE.AmbientLight(0x444466, 0.5);
+            const ambient = new THREE.AmbientLight(0x131a2e, 0.7);
             scene.add(ambient);
-            const mainLight = new THREE.DirectionalLight(0xffffff, 1);
-            mainLight.position.set(3, 5, 3);
-            scene.add(mainLight);
 
-            // Flower group
+            const sunLight = new THREE.DirectionalLight(0xfff0f8, 2.2);
+            sunLight.position.set(5, 8, 4);
+            scene.add(sunLight);
+
+            const magentaRim = new THREE.DirectionalLight(0xec4899, 1.8);
+            magentaRim.position.set(-4, -2, -3);
+            scene.add(magentaRim);
+
+            // Voxel Grid Pedestal
+            const pedestal = FlowerUtils.createPedestal(scene, {
+                radius: 1.8,
+                height: 0.16,
+                y: -1.3,
+                baseColor: 0x0e111a,
+                rimColor: 0xec4899,
+                marble: false
+            });
+
+            // Voxel bits atmosphere
+            const atmosphere = FlowerUtils.createAtmosphere(scene, {
+                count: 110,
+                color: 0xf472b6,
+                size: 0.035,
+                spread: 6.5,
+                driftSpeed: 0.2
+            });
+
+            // Flower Group
             const flowerGroup = new THREE.Group();
             scene.add(flowerGroup);
 
-            // Voxel petal (low poly)
+            // Materials
+            const voxelPetalMat = new THREE.MeshPhysicalMaterial({
+                color: 0xf43f5e,
+                roughness: 0.12,
+                metalness: 0.1,
+                transmission: 0.4,
+                thickness: 0.5,
+                clearcoat: 1.0,
+                clearcoatRoughness: 0.08,
+                side: THREE.DoubleSide
+            });
+
+            const voxelGoldMat = new THREE.MeshPhysicalMaterial({
+                color: 0xfbbf24,
+                roughness: 0.15,
+                metalness: 0.2,
+                transmission: 0.3,
+                clearcoat: 1.0
+            });
+
+            const voxelStemMat = new THREE.MeshStandardMaterial({
+                color: 0x15803d,
+                roughness: 0.35,
+                metalness: 0.1
+            });
+
+            // Voxel Stem (Segmented Stack of Boxes)
+            const stemVoxels = [];
+            for (let i = 0; i < 11; i++) {
+                const boxGeom = new THREE.BoxGeometry(0.065, 0.12, 0.065);
+                const box = new THREE.Mesh(boxGeom, voxelStemMat);
+                const xOff = Math.sin(i * 0.4) * 0.02;
+                box.position.set(xOff, -1.2 + i * 0.14, 0);
+                flowerGroup.add(box);
+                stemVoxels.push(box);
+            }
+
+            // Voxel Leaves
+            [-0.4, -0.8].forEach((ly, lIdx) => {
+                const leafGroup = new THREE.Group();
+                leafGroup.position.set(lIdx === 0 ? 0.04 : -0.04, ly, 0);
+                for (let v = 0; v < 4; v++) {
+                    const lBox = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.05, 0.12), voxelStemMat);
+                    lBox.position.set((v * 0.08) * (lIdx === 0 ? 1 : -1), v * 0.04, 0);
+                    leafGroup.add(lBox);
+                }
+                flowerGroup.add(leafGroup);
+            });
+
+            // Multi-Tier Flared 3D Voxel Petals
+            const voxelTiers = [
+                { count: 8, rows: 6, rotX: 1.05, y: 0.36, scale: 1.15 },
+                { count: 7, rows: 5, rotX: 0.78, y: 0.40, scale: 0.95 },
+                { count: 5, rows: 4, rotX: 0.50, y: 0.44, scale: 0.75 }
+            ];
             const voxelPetals = [];
-            const smoothPetals = [];
 
-            const petalColors = [0xff6688, 0xff7799, 0xff88aa, 0xff99bb];
+            voxelTiers.forEach((tier, tIdx) => {
+                for (let p = 0; p < tier.count; p++) {
+                    const pAngle = (p / tier.count) * Math.PI * 2 + (tIdx * 0.4);
+                    const pivot = new THREE.Group();
+                    pivot.position.y = tier.y;
+                    pivot.rotation.y = pAngle;
 
-            // Create voxel flower
-            for (let ring = 0; ring < 3; ring++) {
-                const count = ring === 0 ? 5 : 8;
-                for (let i = 0; i < count; i++) {
-                    const angle = (i / count) * Math.PI * 2 + ring * 0.2;
-                    const radius = 0.15 + ring * 0.15;
+                    const blocks = [];
+                    for (let row = 0; row < tier.rows; row++) {
+                        const cols = row < 3 ? row + 2 : tier.rows + 1 - row;
+                        for (let c = 0; c < cols; c++) {
+                            const bGeom = new THREE.BoxGeometry(0.08 * tier.scale, 0.08 * tier.scale, 0.08 * tier.scale);
+                            const bMesh = new THREE.Mesh(bGeom, voxelPetalMat);
+                            const x = (c - (cols - 1) * 0.5) * 0.09 * tier.scale;
+                            const y = row * 0.13 * tier.scale;
+                            const z = Math.sin(row * 0.4) * 0.09 * tier.scale;
+                            bMesh.position.set(x, y, z);
+                            pivot.add(bMesh);
+                            blocks.push({ mesh: bMesh, baseY: y, row });
+                        }
+                    }
+                    pivot.rotation.x = tier.rotX;
+                    flowerGroup.add(pivot);
+                    voxelPetals.push({ pivot, blocks, baseRotX: tier.rotX, phase: p * 0.5 + tIdx });
+                }
+            });
 
-                    // Voxel version (cubes)
-                    const voxelGeom = new THREE.BoxGeometry(0.12, 0.25, 0.08);
-                    const voxelMat = new THREE.MeshStandardMaterial({
-                        color: petalColors[ring % petalColors.length],
-                        roughness: 0.6
-                    });
-                    const voxel = new THREE.Mesh(voxelGeom, voxelMat);
-                    voxel.position.set(
-                        Math.cos(angle) * radius,
-                        0.3 + ring * 0.05,
-                        Math.sin(angle) * radius
-                    );
-                    voxel.rotation.y = -angle;
-                    voxel.rotation.x = -0.4 - ring * 0.1;
-                    flowerGroup.add(voxel);
-                    voxelPetals.push(voxel);
-
-                    // Smooth version (shaped petals)
-                    const shape = new THREE.Shape();
-                    shape.moveTo(0, 0);
-                    shape.bezierCurveTo(0.08, 0.05, 0.1, 0.15, 0.06, 0.25);
-                    shape.bezierCurveTo(0.02, 0.3, -0.02, 0.3, -0.06, 0.25);
-                    shape.bezierCurveTo(-0.1, 0.15, -0.08, 0.05, 0, 0);
-
-                    const smoothGeom = new THREE.ShapeGeometry(shape, 16);
-                    const smoothMat = new THREE.MeshStandardMaterial({
-                        color: petalColors[ring % petalColors.length],
-                        side: THREE.DoubleSide,
-                        roughness: 0.5
-                    });
-                    const smooth = new THREE.Mesh(smoothGeom, smoothMat);
-                    smooth.position.copy(voxel.position);
-                    smooth.rotation.copy(voxel.rotation);
-                    smooth.rotation.x += Math.PI / 2;
-                    smooth.visible = false;
-                    flowerGroup.add(smooth);
-                    smoothPetals.push(smooth);
+            // Voxel Center Cluster
+            const centerGroup = new THREE.Group();
+            centerGroup.position.y = 0.44;
+            for (let cx = -1; cx <= 1; cx++) {
+                for (let cz = -1; cz <= 1; cz++) {
+                    const cBox = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.12, 0.07), voxelGoldMat);
+                    cBox.position.set(cx * 0.075, Math.abs(cx * cz) * -0.02, cz * 0.075);
+                    centerGroup.add(cBox);
                 }
             }
+            flowerGroup.add(centerGroup);
 
-            // Center - voxel
-            const voxelCenterGeom = new THREE.BoxGeometry(0.15, 0.15, 0.15);
-            const voxelCenterMat = new THREE.MeshStandardMaterial({ color: 0xffcc44 });
-            const voxelCenter = new THREE.Mesh(voxelCenterGeom, voxelCenterMat);
-            voxelCenter.position.y = 0.35;
-            flowerGroup.add(voxelCenter);
-
-            // Center - smooth
-            const smoothCenterGeom = new THREE.SphereGeometry(0.1, 32, 32);
-            const smoothCenter = new THREE.Mesh(smoothCenterGeom, voxelCenterMat.clone());
-            smoothCenter.position.y = 0.35;
-            smoothCenter.visible = false;
-            flowerGroup.add(smoothCenter);
-
-            // Stem - voxel
-            const stemVoxels = [];
-            for (let i = 0; i < 8; i++) {
-                const vGeom = new THREE.BoxGeometry(0.08, 0.12, 0.08);
-                const vMat = new THREE.MeshStandardMaterial({ color: 0x558855 });
-                const v = new THREE.Mesh(vGeom, vMat);
-                v.position.y = 0.2 - i * 0.12;
-                flowerGroup.add(v);
-                stemVoxels.push(v);
-            }
-
-            // Stem - smooth
-            const stemCurve = new THREE.CatmullRomCurve3([
-                new THREE.Vector3(0, 0.25, 0),
-                new THREE.Vector3(0.02, 0, 0.01),
-                new THREE.Vector3(0, -0.7, 0)
-            ]);
-            const stemGeom = new THREE.TubeGeometry(stemCurve, 16, 0.03, 8, false);
-            const stemMat = new THREE.MeshStandardMaterial({ color: 0x558855 });
-            const smoothStem = new THREE.Mesh(stemGeom, stemMat);
-            smoothStem.visible = false;
-            flowerGroup.add(smoothStem);
-
-            // Resolution control
-            let resolution = 0; // 0 = voxel, 1 = smooth
-            let resDirection = 1;
+            // Core
+            const core = FlowerUtils.createGlowingCore({
+                radius: 0.13,
+                color: 0xf43f5e,
+                glowColor: 0xec4899,
+                emissiveIntensity: 2.0
+            });
+            core.position.y = 0.52;
+            flowerGroup.add(core);
 
             function animate() {
                 requestAnimationFrame(animate);
                 const elapsed = clock.getElapsedTime();
 
-                // Transition resolution
-                resolution += resDirection * 0.005;
-                if (resolution >= 1) { resolution = 1; resDirection = -1; }
-                if (resolution <= 0) { resolution = 0; resDirection = 1; }
-
-                // Morph between voxel and smooth
-                voxelPetals.forEach((voxel, i) => {
-                    voxel.visible = resolution < 0.5;
-                    voxel.scale.setScalar(1 + (1 - resolution) * 0.1);
+                // Dynamic scanline pulse traveling up the voxel flower
+                voxelPetals.forEach(vp => {
+                    vp.blocks.forEach(b => {
+                        const pulse = Math.sin(elapsed * 3.0 - b.row * 0.6 + vp.phase) * 0.015;
+                        b.mesh.position.y = b.baseY + pulse;
+                    });
+                    vp.pivot.rotation.x = vp.baseRotX + Math.sin(elapsed * 1.5 + vp.phase) * 0.03;
                 });
 
-                smoothPetals.forEach((smooth, i) => {
-                    smooth.visible = resolution >= 0.5;
-                    smooth.scale.setScalar(0.8 + resolution * 0.4);
-                });
+                centerGroup.rotation.y = elapsed * 0.4;
+                flowerGroup.position.y = Math.sin(elapsed * 0.8) * 0.02;
+                flowerGroup.rotation.y = elapsed * 0.1;
 
-                voxelCenter.visible = resolution < 0.5;
-                smoothCenter.visible = resolution >= 0.5;
-
-                stemVoxels.forEach(v => v.visible = resolution < 0.5);
-                smoothStem.visible = resolution >= 0.5;
-
-                // Rotate
-                flowerGroup.rotation.y = elapsed * 0.15;
-
-                camera.position.x = Math.sin(elapsed * 0.1) * 0.5;
-                camera.lookAt(0, 0.3, 0);
+                core.update(elapsed);
+                atmosphere.update();
+                controls.update();
 
                 renderer.render(scene, camera);
             }

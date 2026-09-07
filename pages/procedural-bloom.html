@@ -37,234 +37,190 @@
         </div>
     </div>
 
-    <!-- Three.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="../js/utils.js"></script>
-
     <script>
-        // Procedural Bloom - Parametric petal generation with vertex animation
         (function () {
             const container = document.getElementById('canvas-container');
             const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
-                background: 0x0a0a12
+                background: 0x0a060e,
+                cameraPos: [0, 1.4, 3.8],
+                controls: {
+                    target: new THREE.Vector3(0, 0.45, 0),
+                    minDistance: 2.0,
+                    maxDistance: 7.0,
+                    autoRotate: true,
+                    autoRotateSpeed: 0.35
+                }
             });
 
-            camera.position.set(0, 2, 6);
-            camera.lookAt(0, 1, 0);
+            // Studio Environment & Lighting
+            FlowerUtils.createStudioEnvironment(renderer, 'warm_sunset');
 
-            // Lighting
-            const ambient = new THREE.AmbientLight(0xffffff, 0.3);
-            scene.add(ambient);
+            const ambientLight = new THREE.AmbientLight(0x201026, 1.2);
+            scene.add(ambientLight);
 
-            const mainLight = new THREE.DirectionalLight(0xffeedd, 1.2);
-            mainLight.position.set(5, 10, 5);
-            mainLight.castShadow = true;
-            scene.add(mainLight);
+            const keyLight = new THREE.DirectionalLight(0xffeedd, 2.2);
+            keyLight.position.set(4, 6, 3);
+            scene.add(keyLight);
 
-            const rimLight = new THREE.DirectionalLight(0xff9999, 0.5);
-            rimLight.position.set(-5, 5, -5);
+            const rimLight = new THREE.DirectionalLight(0xff66aa, 2.4);
+            rimLight.position.set(-4, 2, -3);
             scene.add(rimLight);
 
-            // Flower group
-            const flowerGroup = new THREE.Group();
-            scene.add(flowerGroup);
+            // Luxury Pedestal
+            const pedestal = FlowerUtils.createPedestal({
+                radius: 1.85,
+                height: 0.16,
+                y: -0.78,
+                color: 0x100816,
+                metalness: 0.95,
+                roughness: 0.12,
+                rimColor: 0xff4488
+            });
+            scene.add(pedestal);
 
-            // Petal material with gradient effect
-            const petalMaterial = new THREE.MeshStandardMaterial({
-                color: 0xff6b9d,
-                roughness: 0.6,
-                metalness: 0.1,
-                side: THREE.DoubleSide
+            // Floating Atmosphere Sparks
+            const atmosphere = FlowerUtils.createAtmosphere(scene, {
+                count: 130,
+                color: 0xff99bb,
+                size: 0.025,
+                spread: 5.0,
+                ySpread: 3.5
             });
 
-            // Generate procedural petal shape
-            function createProceduralPetal(index, totalPetals) {
-                const shape = new THREE.Shape();
-                const width = 0.25 + Math.random() * 0.1;
-                const length = 0.8 + Math.random() * 0.3;
+            // Flower Group
+            const flower = new THREE.Group();
+            flower.position.y = 0.35;
+            scene.add(flower);
 
-                // Add noise to control points for unique petals
-                const noise1 = (Math.random() - 0.5) * 0.1;
-                const noise2 = (Math.random() - 0.5) * 0.1;
-
-                shape.moveTo(0, 0);
-                shape.bezierCurveTo(
-                    width + noise1, length * 0.3,
-                    width * 1.2 + noise2, length * 0.6,
-                    width * 0.5, length
-                );
-                shape.bezierCurveTo(
-                    0, length * 1.1,
-                    0, length * 1.1,
-                    -width * 0.5, length
-                );
-                shape.bezierCurveTo(
-                    -width * 1.2 - noise2, length * 0.6,
-                    -width - noise1, length * 0.3,
-                    0, 0
-                );
-
-                const geometry = new THREE.ShapeGeometry(shape, 32);
-
-                // Bend the petal
-                const positions = geometry.attributes.position;
-                for (let i = 0; i < positions.count; i++) {
-                    const y = positions.getY(i);
-                    const normalizedY = y / length;
-                    // Add curvature
-                    const z = Math.sin(normalizedY * Math.PI * 0.5) * 0.3;
-                    positions.setZ(i, z);
-                    // Add slight wave
-                    const wave = Math.sin(normalizedY * Math.PI * 2) * 0.02;
-                    positions.setX(i, positions.getX(i) + wave);
-                }
-                positions.needsUpdate = true;
-                geometry.computeVertexNormals();
-
-                return geometry;
-            }
-
-            // Create multiple layers of petals
-            const petalLayers = [
-                { count: 5, radius: 0.1, scale: 1, yOffset: 0.1 },
-                { count: 8, radius: 0.25, scale: 0.85, yOffset: 0.05 },
-                { count: 13, radius: 0.4, scale: 0.7, yOffset: 0 }
+            // 3 Tiers of Parametrically Generated Petals
+            const tiers = [
+                { count: 12, length: 1.18, width: 0.42, curl: 0.8, wave: 0.28, angle: 0.82, y: 0.0, color: 0xd92b6b },
+                { count: 9,  length: 0.95, width: 0.36, curl: 0.62, wave: 0.22, angle: 0.58, y: 0.06, color: 0xeb4886 },
+                { count: 7,  length: 0.7,  width: 0.28, curl: 0.42, wave: 0.18, angle: 0.38, y: 0.12, color: 0xff70a6 }
             ];
 
-            const petals = [];
-            const petalData = [];
+            const allPetals = [];
 
-            petalLayers.forEach((layer, layerIndex) => {
-                for (let i = 0; i < layer.count; i++) {
-                    const angle = (i / layer.count) * Math.PI * 2;
-                    const geometry = createProceduralPetal(i, layer.count);
+            tiers.forEach((tier, tIdx) => {
+                for (let i = 0; i < tier.count; i++) {
+                    const angle = (i / tier.count) * Math.PI * 2 + (tIdx * 0.35);
 
-                    // Color variation per layer
-                    const hue = 0.95 + layerIndex * 0.02;
-                    const saturation = 0.7 - layerIndex * 0.1;
-                    const lightness = 0.6 + layerIndex * 0.05;
-                    const color = new THREE.Color().setHSL(hue, saturation, lightness);
-
-                    const material = petalMaterial.clone();
-                    material.color = color;
-
-                    const petal = new THREE.Mesh(geometry, material);
-                    petal.rotation.x = -Math.PI / 2 + 0.3 + layerIndex * 0.15;
-                    petal.rotation.z = angle;
-                    petal.position.y = layer.yOffset;
-                    petal.position.x = Math.cos(angle) * layer.radius;
-                    petal.position.z = Math.sin(angle) * layer.radius;
-                    petal.scale.setScalar(layer.scale);
-
-                    flowerGroup.add(petal);
-                    petals.push(petal);
-                    petalData.push({
-                        originalRotationX: petal.rotation.x,
-                        originalScale: layer.scale,
-                        phase: Math.random() * Math.PI * 2,
-                        speed: 0.5 + Math.random() * 0.5
+                    // Procedural unique petal geometry with per-petal noise variation
+                    const noiseCurl = tier.curl + (Math.random() - 0.5) * 0.12;
+                    const noiseWave = tier.wave + (Math.random() - 0.5) * 0.08;
+                    const geom = FlowerUtils.createCurvedPetalGeometry({
+                        length: tier.length * (0.95 + Math.random() * 0.1),
+                        width: tier.width * (0.95 + Math.random() * 0.1),
+                        curl: noiseCurl,
+                        wave: noiseWave,
+                        segmentsL: 24,
+                        segmentsW: 16
                     });
+
+                    const mat = new THREE.MeshPhysicalMaterial({
+                        color: tier.color,
+                        emissive: 0x4a0a22,
+                        emissiveIntensity: 0.4,
+                        roughness: 0.3,
+                        metalness: 0.15,
+                        clearcoat: 0.8,
+                        clearcoatRoughness: 0.2,
+                        side: THREE.DoubleSide
+                    });
+
+                    const mesh = new THREE.Mesh(geom, mat);
+                    mesh.position.y = tier.y;
+                    mesh.rotation.y = angle;
+                    mesh.rotation.x = tier.angle;
+                    mesh.userData = {
+                        origRotX: tier.angle,
+                        angle,
+                        scaleMax: 1.0,
+                        freq: 1.8 + tIdx * 0.5,
+                        phase: angle + tIdx
+                    };
+                    mesh.scale.setScalar(0.01); // Start small for bloom
+                    flower.add(mesh);
+                    allPetals.push(mesh);
                 }
             });
 
-            // Flower center
-            const centerGeometry = new THREE.SphereGeometry(0.15, 32, 32);
-            const centerMaterial = new THREE.MeshStandardMaterial({
-                color: 0xffdd44,
-                roughness: 0.8,
-                metalness: 0.2
+            // Golden Core & Botanical Stamens
+            const core = FlowerUtils.createGlowingCore(flower, {
+                radius: 0.22,
+                color: 0xffaa22,
+                innerColor: 0xffffff,
+                y: 0.18
             });
-            const center = new THREE.Mesh(centerGeometry, centerMaterial);
-            center.position.y = 0.1;
-            flowerGroup.add(center);
 
-            // Stem
+            FlowerUtils.createStamenCluster(flower, {
+                count: 36,
+                radius: 0.14,
+                height: 0.34,
+                spread: 0.38,
+                stemColor: 0x995522,
+                antherColor: 0xffdd44,
+                y: 0.15
+            });
+
+            // Organic Stem
             const stemCurve = new THREE.CatmullRomCurve3([
-                new THREE.Vector3(0, 0, 0),
-                new THREE.Vector3(0.05, -0.5, 0.02),
-                new THREE.Vector3(-0.03, -1, -0.01),
-                new THREE.Vector3(0, -1.8, 0)
+                new THREE.Vector3(0, 0.05, 0),
+                new THREE.Vector3(0.03, -0.28, 0.02),
+                new THREE.Vector3(-0.02, -0.55, -0.01),
+                new THREE.Vector3(0, -0.78, 0)
             ]);
-            const stemGeometry = new THREE.TubeGeometry(stemCurve, 20, 0.03, 8, false);
-            const stemMaterial = new THREE.MeshStandardMaterial({
-                color: 0x2d5a27,
-                roughness: 0.9
+            const stemGeom = new THREE.TubeGeometry(stemCurve, 32, 0.032, 12, false);
+            const stemMat = new THREE.MeshPhysicalMaterial({
+                color: 0x182b14,
+                emissive: 0x081406,
+                emissiveIntensity: 0.4,
+                metalness: 0.4,
+                roughness: 0.35,
+                clearcoat: 0.7
             });
-            const stem = new THREE.Mesh(stemGeometry, stemMaterial);
-            flowerGroup.add(stem);
+            const stemMesh = new THREE.Mesh(stemGeom, stemMat);
+            flower.add(stemMesh);
 
-            // Ground plane with gradient
-            const groundGeometry = new THREE.CircleGeometry(10, 64);
-            const groundMaterial = new THREE.MeshStandardMaterial({
-                color: 0x1a1a24,
-                roughness: 1
-            });
-            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-            ground.rotation.x = -Math.PI / 2;
-            ground.position.y = -1.8;
-            ground.receiveShadow = true;
-            scene.add(ground);
-
-            // Particle system for ambient effect
-            const particles = FlowerUtils.createParticleSystem(100, {
-                size: 0.02,
-                color: 0xffaacc,
-                spread: 4,
-                opacity: 0.6
-            });
-            particles.position.y = -1;
-            scene.add(particles);
-
-            // Animation state
             let bloomProgress = 0;
-            const bloomDuration = 3; // seconds
+            const bloomDuration = 2.4; // seconds
 
-            // Animation loop
             function animate() {
                 requestAnimationFrame(animate);
-                const delta = clock.getDelta();
                 const elapsed = clock.getElapsedTime();
+                const delta = clock.getDelta();
 
                 // Bloom animation
-                if (bloomProgress < 1) {
-                    bloomProgress = Math.min(bloomProgress + delta / bloomDuration, 1);
+                if (bloomProgress < 1.0) {
+                    bloomProgress = Math.min(bloomProgress + delta / bloomDuration, 1.0);
                     const eased = FlowerUtils.easing.easeOutBack(bloomProgress);
-
-                    petals.forEach((petal, i) => {
-                        const data = petalData[i];
-                        petal.scale.setScalar(data.originalScale * eased);
-                    });
+                    for (let i = 0; i < allPetals.length; i++) {
+                        allPetals[i].scale.setScalar(allPetals[i].userData.scaleMax * Math.max(0.01, eased));
+                    }
                 }
 
-                // Gentle petal movement
-                petals.forEach((petal, i) => {
-                    const data = petalData[i];
-                    const wave = Math.sin(elapsed * data.speed + data.phase) * 0.02;
-                    petal.rotation.x = data.originalRotationX + wave;
-                });
+                // Gentle natural breathing
+                flower.position.y = 0.35 + Math.sin(elapsed * 1.5) * 0.035;
 
-                // Rotate flower slowly
-                flowerGroup.rotation.y += delta * 0.1;
+                for (let i = 0; i < allPetals.length; i++) {
+                    const p = allPetals[i];
+                    const wave = Math.sin(elapsed * p.userData.freq + p.userData.phase) * 0.035;
+                    p.rotation.x = p.userData.origRotX + wave;
+                }
 
-                // Update particles
-                FlowerUtils.updateParticles(particles, delta, 4);
-
-                // Gentle camera movement
-                camera.position.x = Math.sin(elapsed * 0.2) * 0.5;
-                camera.position.y = 2 + Math.sin(elapsed * 0.15) * 0.2;
-                camera.lookAt(0, 0.5, 0);
-
+                core.pulse(elapsed, 1.8);
+                atmosphere.update();
                 renderer.render(scene, camera);
             }
 
-            // Handle resize
             window.addEventListener('resize', () => {
                 camera.aspect = window.innerWidth / window.innerHeight;
                 camera.updateProjectionMatrix();
                 renderer.setSize(window.innerWidth, window.innerHeight);
             });
 
-            // Start animation
             animate();
             FlowerUtils.hideLoading();
         })();

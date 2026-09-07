@@ -37,137 +37,163 @@
         (function () {
             const container = document.getElementById('canvas-container');
             const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
-                background: 0x0a0a0a
+                background: 0x050608,
+                cameraPos: [0, 1.4, 3.8],
+                controls: {
+                    target: new THREE.Vector3(0, 0.45, 0),
+                    minDistance: 2.0,
+                    maxDistance: 7.0,
+                    autoRotate: true,
+                    autoRotateSpeed: 0.25
+                }
             });
 
-            renderer.toneMapping = THREE.ACESFilmicToneMapping;
-            renderer.toneMappingExposure = 1.2;
+            // Studio Environment & Lighting
+            FlowerUtils.createStudioEnvironment(renderer, 'crystal_ice');
 
-            camera.position.set(0, 1.5, 4);
-            camera.lookAt(0, 0.3, 0);
+            const ambientLight = new THREE.AmbientLight(0x141820, 1.2);
+            scene.add(ambientLight);
 
-            // Minimal lighting - single soft light
-            const mainLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            mainLight.position.set(2, 5, 3);
-            scene.add(mainLight);
+            const softKeyLight = new THREE.DirectionalLight(0xfff8f0, 2.2);
+            softKeyLight.position.set(3, 6, 3);
+            scene.add(softKeyLight);
 
-            const ambient = new THREE.AmbientLight(0xffffff, 0.15);
-            scene.add(ambient);
+            const coolFillLight = new THREE.DirectionalLight(0xd0e8ff, 1.4);
+            coolFillLight.position.set(-3, 2, -3);
+            scene.add(coolFillLight);
 
-            // Very subtle rim light
-            const rimLight = new THREE.DirectionalLight(0xffffff, 0.2);
-            rimLight.position.set(-2, 2, -3);
-            scene.add(rimLight);
+            // Luxury Dark Basalt River Stone Pedestal with Water Ripple Ring
+            const pedestal = FlowerUtils.createPedestal({
+                radius: 1.85,
+                height: 0.14,
+                y: -0.78,
+                color: 0x080a0c,
+                metalness: 0.9,
+                roughness: 0.18,
+                rimColor: 0x90b8d0
+            });
+            scene.add(pedestal);
 
-            // Flower group
-            const flowerGroup = new THREE.Group();
-            scene.add(flowerGroup);
+            // Minimal Atmosphere Motes
+            const atmosphere = FlowerUtils.createAtmosphere(scene, {
+                count: 80,
+                color: 0xd8eeff,
+                size: 0.022,
+                spread: 4.5,
+                ySpread: 3.0
+            });
 
-            // Simple, elegant petal
-            function createSimplePetal() {
-                const shape = new THREE.Shape();
-                shape.moveTo(0, 0);
-                shape.bezierCurveTo(0.12, 0.08, 0.15, 0.3, 0.1, 0.5);
-                shape.bezierCurveTo(0.05, 0.62, -0.05, 0.62, -0.1, 0.5);
-                shape.bezierCurveTo(-0.15, 0.3, -0.12, 0.08, 0, 0);
+            // Flower Group
+            const flower = new THREE.Group();
+            flower.position.y = 0.35;
+            scene.add(flower);
 
-                const geom = new THREE.ShapeGeometry(shape, 32);
-
-                // Gentle curve
-                const positions = geom.attributes.position;
-                for (let i = 0; i < positions.count; i++) {
-                    const y = positions.getY(i);
-                    positions.setZ(i, Math.sin(y * Math.PI * 0.8) * 0.08);
-                }
-                positions.needsUpdate = true;
-                geom.computeVertexNormals();
-
-                return geom;
-            }
-
-            // Pure white material
-            const petalMat = new THREE.MeshStandardMaterial({
+            // Porcelain White Translucent Petal Material
+            const petalMat = new THREE.MeshPhysicalMaterial({
                 color: 0xffffff,
-                roughness: 0.4,
-                metalness: 0,
+                emissive: 0x222630,
+                emissiveIntensity: 0.2,
+                roughness: 0.15,
+                metalness: 0.05,
+                transmission: 0.45,
+                ior: 1.52,
+                clearcoat: 1.0,
+                clearcoatRoughness: 0.1,
+                sheen: new THREE.Color(0xffffff),
                 side: THREE.DoubleSide
             });
 
-            // Create petals - just 5 for minimalism
-            const petalCount = 5;
-            const petals = [];
+            // 2 Tiers of Organic Zen Petals (7 outer, 5 inner)
+            const tiers = [
+                { count: 7, length: 1.12, width: 0.44, curl: 0.75, wave: 0.22, angle: 0.78, y: 0.0 },
+                { count: 5, length: 0.86, width: 0.38, curl: 0.55, wave: 0.18, angle: 0.52, y: 0.06 }
+            ];
 
-            for (let i = 0; i < petalCount; i++) {
-                const geom = createSimplePetal();
-                const petal = new THREE.Mesh(geom, petalMat.clone());
-                const angle = (i / petalCount) * Math.PI * 2;
+            const allPetals = [];
 
-                petal.rotation.z = angle;
-                petal.rotation.x = -Math.PI / 2 + 0.5;
-                petal.position.y = 0.3;
+            tiers.forEach((tier, tIdx) => {
+                const geom = FlowerUtils.createCurvedPetalGeometry({
+                    length: tier.length,
+                    width: tier.width,
+                    curl: tier.curl,
+                    wave: tier.wave,
+                    segmentsL: 24,
+                    segmentsW: 16
+                });
 
-                flowerGroup.add(petal);
-                petals.push({ mesh: petal, phase: i * 0.5 });
-            }
-
-            // Simple center
-            const centerGeom = new THREE.SphereGeometry(0.06, 32, 32);
-            const centerMat = new THREE.MeshStandardMaterial({
-                color: 0xffffee,
-                roughness: 0.6
+                for (let i = 0; i < tier.count; i++) {
+                    const angle = (i / tier.count) * Math.PI * 2 + (tIdx * 0.45);
+                    const mesh = new THREE.Mesh(geom, petalMat);
+                    mesh.position.y = tier.y;
+                    mesh.rotation.y = angle;
+                    mesh.rotation.x = tier.angle;
+                    mesh.userData = {
+                        origRotX: tier.angle,
+                        angle,
+                        freq: 1.4 + tIdx * 0.4
+                    };
+                    flower.add(mesh);
+                    allPetals.push(mesh);
+                }
             });
-            const center = new THREE.Mesh(centerGeom, centerMat);
-            center.position.y = 0.35;
-            flowerGroup.add(center);
 
-            // Thin stem
+            // Pure Optical Dewdrop resting on outer petal
+            const dewdrop = FlowerUtils.createDewdrop({ radius: 0.038 });
+            dewdrop.position.set(0.38, 0.18, 0.2);
+            flower.add(dewdrop);
+
+            // Delicate Minimalist Golden Pistil & Stamens
+            const core = FlowerUtils.createGlowingCore(flower, {
+                radius: 0.18,
+                color: 0xffe899,
+                innerColor: 0xffffff,
+                y: 0.18
+            });
+
+            FlowerUtils.createStamenCluster(flower, {
+                count: 28,
+                radius: 0.11,
+                height: 0.28,
+                spread: 0.32,
+                stemColor: 0x998855,
+                antherColor: 0xffea88,
+                y: 0.15
+            });
+
+            // Slender Bamboo-Green Stem
             const stemCurve = new THREE.CatmullRomCurve3([
-                new THREE.Vector3(0, 0.25, 0),
-                new THREE.Vector3(0.01, 0, 0),
-                new THREE.Vector3(-0.005, -0.4, 0),
-                new THREE.Vector3(0, -0.8, 0)
+                new THREE.Vector3(0, 0.05, 0),
+                new THREE.Vector3(0.02, -0.28, 0.015),
+                new THREE.Vector3(-0.015, -0.55, -0.01),
+                new THREE.Vector3(0, -0.78, 0)
             ]);
-            const stemGeom = new THREE.TubeGeometry(stemCurve, 16, 0.015, 6, false);
-            const stemMat = new THREE.MeshStandardMaterial({
-                color: 0x3a5a3a,
-                roughness: 0.8
+            const stemGeom = new THREE.TubeGeometry(stemCurve, 32, 0.022, 12, false);
+            const stemMat = new THREE.MeshPhysicalMaterial({
+                color: 0x223820,
+                emissive: 0x081608,
+                emissiveIntensity: 0.3,
+                roughness: 0.35,
+                metalness: 0.3,
+                clearcoat: 0.8
             });
-            const stem = new THREE.Mesh(stemGeom, stemMat);
-            flowerGroup.add(stem);
+            const stemMesh = new THREE.Mesh(stemGeom, stemMat);
+            flower.add(stemMesh);
 
-            // Minimal ground - just a hint
-            const groundGeom = new THREE.CircleGeometry(3, 64);
-            const groundMat = new THREE.MeshStandardMaterial({
-                color: 0x080808,
-                roughness: 1
-            });
-            const ground = new THREE.Mesh(groundGeom, groundMat);
-            ground.rotation.x = -Math.PI / 2;
-            ground.position.y = -0.8;
-            scene.add(ground);
-
-            // Very slow animation
             function animate() {
                 requestAnimationFrame(animate);
                 const elapsed = clock.getElapsedTime();
 
-                // Extremely gentle petal breathing
-                petals.forEach(p => {
-                    const breathe = Math.sin(elapsed * 0.3 + p.phase) * 0.005;
-                    p.mesh.rotation.x = -Math.PI / 2 + 0.5 + breathe;
-                });
+                // Extremely peaceful meditative breathing
+                flower.position.y = 0.35 + Math.sin(elapsed * 1.1) * 0.025;
 
-                // Barely perceptible rotation
-                flowerGroup.rotation.y = elapsed * 0.02;
+                for (let i = 0; i < allPetals.length; i++) {
+                    const p = allPetals[i];
+                    const wave = Math.sin(elapsed * p.userData.freq + p.userData.angle) * 0.02;
+                    p.rotation.x = p.userData.origRotX + wave;
+                }
 
-                // Subtle light intensity variation
-                mainLight.intensity = 0.75 + Math.sin(elapsed * 0.2) * 0.05;
-
-                // Very slow camera movement
-                camera.position.x = Math.sin(elapsed * 0.05) * 0.2;
-                camera.position.y = 1.5 + Math.sin(elapsed * 0.03) * 0.05;
-                camera.lookAt(0, 0.25, 0);
-
+                core.pulse(elapsed, 1.2);
+                atmosphere.update();
                 renderer.render(scene, camera);
             }
 

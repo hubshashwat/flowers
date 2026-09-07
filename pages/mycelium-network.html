@@ -3,16 +3,65 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>Mycelium Network Flower | Flowers For You 🌸</title>
     <link rel="icon" href="../favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="../css/style.css">
+    <style>
+        .mycelium-badge {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            background: rgba(10, 18, 16, 0.8);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(52, 211, 153, 0.3);
+            border-radius: 999px;
+            padding: 8px 18px;
+            font-size: 0.8rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: #6ee7b7;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 30;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+            pointer-events: none;
+        }
+
+        .mycelium-node {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #10b981;
+            box-shadow: 0 0 10px #10b981;
+            animation: hyphaePulse 2s infinite ease-in-out;
+        }
+
+        @keyframes hyphaePulse {
+            0%, 100% { transform: scale(1); opacity: 0.7; }
+            50% { transform: scale(1.4); opacity: 1; box-shadow: 0 0 16px #34d399; }
+        }
+
+        @media (max-width: 600px) {
+            .mycelium-badge {
+                top: auto;
+                bottom: 84px;
+                right: 50%;
+                transform: translateX(50%);
+                font-size: 0.72rem;
+                padding: 6px 14px;
+            }
+        }
+    </style>
 </head>
 
 <body>
     <div class="loading-overlay">
         <div class="loading-flower"></div>
-        <p class="loading-text">Growing network...</p>
+        <p class="loading-text">Branching mycorrhizal hyphae network...</p>
     </div>
 
     <div class="flower-page">
@@ -25,9 +74,13 @@
             </a>
         </nav>
         <div id="canvas-container" class="flower-canvas"></div>
+        <div class="mycelium-badge">
+            <span class="mycelium-node"></span>
+            <span>Bio-Electric Hyphae Web</span>
+        </div>
         <div class="flower-info">
             <h1>Mycelium Network Flower</h1>
-            <p>Connected to glowing underground roots with traveling pulses</p>
+            <p>An otherworldly fungal blossom sustained by a luminous subterranean hyphae web conducting bio-electric signals</p>
         </div>
     </div>
 
@@ -36,211 +89,338 @@
     <script>
         (function () {
             const container = document.getElementById('canvas-container');
-            const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
-                background: 0x0a0808
+            const { scene, camera, renderer, clock, controls } = FlowerUtils.initScene(container, {
+                background: 0x050908,
+                cameraPos: [0, 1.6, 5.0],
+                enableOrbit: true,
+                autoRotate: false
             });
 
-            camera.position.set(0, 1, 5);
-            camera.lookAt(0, 0, 0);
+            camera.lookAt(0, 0.1, 0);
+            if (controls) {
+                controls.target.set(0, 0.1, 0);
+                controls.enableDamping = true;
+                controls.dampingFactor = 0.05;
+                controls.maxDistance = 10;
+                controls.minDistance = 2;
+                controls.maxPolarAngle = Math.PI / 2 + 0.2;
+            }
 
-            // Underground ambient
-            const ambient = new THREE.AmbientLight(0x221111, 0.3);
+            // Subterranean Cavern & Bioluminescent Lighting
+            const ambient = new THREE.AmbientLight(0x0c1a16, 0.85);
             scene.add(ambient);
 
-            // Ground plane (semi-transparent)
-            const groundGeom = new THREE.PlaneGeometry(8, 8);
-            const groundMat = new THREE.MeshBasicMaterial({
-                color: 0x1a1010,
+            const topKeyLight = new THREE.DirectionalLight(0xe6fff5, 1.2);
+            topKeyLight.position.set(4, 7, 4);
+            topKeyLight.castShadow = true;
+            scene.add(topKeyLight);
+
+            // Bioluminescent glow point in cap
+            const capLight = new THREE.PointLight(0x34d399, 2.5, 7);
+            capLight.position.set(0, 0.75, 0);
+            scene.add(capLight);
+
+            // Subterranean root glow point
+            const rootLight = new THREE.PointLight(0x06b6d4, 1.8, 6);
+            rootLight.position.set(0, -0.6, 0);
+            scene.add(rootLight);
+
+            // Luxury Obsidian Pedestal beneath the Mycelial Root System
+            const dioramaGroup = new THREE.Group();
+
+            const plinthGeom = new THREE.CylinderGeometry(2.4, 2.6, 0.25, 48);
+            const plinthMat = new THREE.MeshStandardMaterial({
+                color: 0x070b09,
+                roughness: 0.15,
+                metalness: 0.9
+            });
+            const plinth = new THREE.Mesh(plinthGeom, plinthMat);
+            plinth.position.y = -1.25;
+            dioramaGroup.add(plinth);
+
+            // Inlaid glowing bio-luminescent ring on pedestal rim
+            const rimGeom = new THREE.TorusGeometry(2.4, 0.025, 16, 64);
+            const rimMat = new THREE.MeshStandardMaterial({
+                color: 0x34d399,
+                emissive: 0x10b981,
+                emissiveIntensity: 0.6,
+                roughness: 0.2,
+                metalness: 0.8
+            });
+            const rimMesh = new THREE.Mesh(rimGeom, rimMat);
+            rimMesh.rotation.x = Math.PI / 2;
+            rimMesh.position.y = -1.12;
+            dioramaGroup.add(rimMesh);
+
+            scene.add(dioramaGroup);
+
+            // Branching 3D Mycorrhizal Network (Subterranean Hyphae)
+            const hyphaeGroup = new THREE.Group();
+            scene.add(hyphaeGroup);
+
+            const hyphaeMaterial = new THREE.MeshStandardMaterial({
+                color: 0x059669,
+                emissive: 0x065f46,
+                emissiveIntensity: 0.5,
+                roughness: 0.4,
+                metalness: 0.3,
                 transparent: true,
-                opacity: 0.8
+                opacity: 0.85
             });
-            const ground = new THREE.Mesh(groundGeom, groundMat);
-            ground.rotation.x = -Math.PI / 2;
-            ground.position.y = 0;
-            scene.add(ground);
 
-            // Mycelium network (underground roots)
-            const roots = [];
-            const rootMat = new THREE.MeshBasicMaterial({ color: 0x886644, transparent: true, opacity: 0.6 });
+            const hyphaePaths = [];
 
-            function createRoot(startPoint, direction, depth) {
-                if (depth > 4) return;
+            // Procedural Hyphae Generator
+            function generateHyphae(start, dir, depth, maxDepth) {
+                if (depth > maxDepth) return;
 
-                const length = 0.3 + Math.random() * 0.4;
-                const endPoint = startPoint.clone().add(direction.clone().multiplyScalar(length));
+                const len = 0.35 + Math.random() * 0.4;
+                const end = start.clone().add(dir.clone().multiplyScalar(len));
 
-                const curve = new THREE.CatmullRomCurve3([
-                    startPoint,
-                    startPoint.clone().lerp(endPoint, 0.5).add(new THREE.Vector3(
-                        (Math.random() - 0.5) * 0.1,
-                        (Math.random() - 0.5) * 0.05,
-                        (Math.random() - 0.5) * 0.1
-                    )),
-                    endPoint
-                ]);
+                // Add organic curvature
+                const mid = start.clone().lerp(end, 0.5).add(new THREE.Vector3(
+                    (Math.random() - 0.5) * 0.15,
+                    (Math.random() - 0.5) * 0.08,
+                    (Math.random() - 0.5) * 0.15
+                ));
 
-                const thickness = 0.015 * Math.pow(0.7, depth);
-                const rootGeom = new THREE.TubeGeometry(curve, 8, thickness, 6, false);
-                const root = new THREE.Mesh(rootGeom, rootMat.clone());
-                root.userData = { startPoint: startPoint.clone(), endPoint: endPoint.clone() };
-                scene.add(root);
-                roots.push(root);
+                const curve = new THREE.CatmullRomCurve3([start, mid, end]);
+                const radius = Math.max(0.006, 0.022 * Math.pow(0.65, depth));
+                const geom = new THREE.TubeGeometry(curve, 10, radius, 6, false);
+                const mesh = new THREE.Mesh(geom, hyphaeMaterial);
+                hyphaeGroup.add(mesh);
 
-                // Branch
-                if (Math.random() > 0.3) {
-                    const branchDir = direction.clone().applyAxisAngle(
+                hyphaePaths.push(curve);
+
+                // Branching into 1 or 2 directions
+                const branches = Math.random() > 0.4 ? 2 : 1;
+                for (let b = 0; b < branches; b++) {
+                    const branchDir = dir.clone().applyAxisAngle(
                         new THREE.Vector3(0, 1, 0),
-                        (Math.random() - 0.5) * Math.PI * 0.5
+                        (Math.random() - 0.5) * 1.2
                     );
-                    branchDir.y -= 0.2;
+                    branchDir.y += (Math.random() - 0.5) * 0.3 - 0.1;
                     branchDir.normalize();
-                    createRoot(endPoint, branchDir, depth + 1);
-                }
-
-                // Continue
-                if (Math.random() > 0.4) {
-                    const continueDir = direction.clone().applyAxisAngle(
-                        new THREE.Vector3(0, 1, 0),
-                        (Math.random() - 0.5) * 0.3
-                    );
-                    continueDir.y -= 0.1;
-                    continueDir.normalize();
-                    createRoot(endPoint, continueDir, depth + 1);
+                    generateHyphae(end, branchDir, depth + 1, maxDepth);
                 }
             }
 
-            // Create root network
-            const rootStarts = 6;
-            for (let i = 0; i < rootStarts; i++) {
-                const angle = (i / rootStarts) * Math.PI * 2;
-                const startPoint = new THREE.Vector3(0, -0.1, 0);
-                const direction = new THREE.Vector3(Math.cos(angle), -0.5, Math.sin(angle)).normalize();
-                createRoot(startPoint, direction, 0);
+            // Generate 8 Primary Mycelium Trunks radiating outward beneath soil
+            for (let i = 0; i < 8; i++) {
+                const angle = (i / 8) * Math.PI * 2;
+                const start = new THREE.Vector3(0, -0.05, 0);
+                const dir = new THREE.Vector3(
+                    Math.cos(angle),
+                    -0.25 - Math.random() * 0.2,
+                    Math.sin(angle)
+                ).normalize();
+                generateHyphae(start, dir, 0, 4);
             }
 
-            // Traveling pulses
+            // Traveling Bio-Electric Pulses (Action Potentials)
+            const pulseCount = 28;
             const pulses = [];
-            for (let i = 0; i < 15; i++) {
-                const pulseGeom = new THREE.SphereGeometry(0.02, 8, 8);
-                const pulseMat = new THREE.MeshBasicMaterial({ color: 0xaaffaa, transparent: true, opacity: 0.8 });
-                const pulse = new THREE.Mesh(pulseGeom, pulseMat);
-                pulse.userData = {
-                    rootIndex: Math.floor(Math.random() * roots.length),
-                    progress: Math.random(),
-                    speed: 0.005 + Math.random() * 0.01,
-                    direction: Math.random() > 0.5 ? 1 : -1
-                };
-                scene.add(pulse);
-                pulses.push(pulse);
+            const pulseGeom = new THREE.SphereGeometry(0.024, 8, 8);
+            const pulseMat = new THREE.MeshBasicMaterial({ color: 0x6ee7b7 });
 
-                // Pulse light
-                const pulseLight = new THREE.PointLight(0x88ff88, 0.3, 0.5);
-                pulse.add(pulseLight);
+            for (let i = 0; i < pulseCount; i++) {
+                if (hyphaePaths.length === 0) break;
+                const pathIdx = Math.floor(Math.random() * hyphaePaths.length);
+                const mesh = new THREE.Mesh(pulseGeom, pulseMat);
+                scene.add(mesh);
+
+                pulses.push({
+                    mesh: mesh,
+                    path: hyphaePaths[pathIdx],
+                    t: Math.random(),
+                    speed: 0.004 + Math.random() * 0.008
+                });
             }
 
-            // Flower above ground
-            const flowerGroup = new THREE.Group();
-            flowerGroup.position.y = 0.3;
-            scene.add(flowerGroup);
+            // Above-Ground Bioluminescent Fungal Bloom
+            const flowerRoot = new THREE.Group();
+            flowerRoot.position.set(0, 0, 0);
+            scene.add(flowerRoot);
 
-            // Organic mushroom-like flower
-            const petalMat = new THREE.MeshStandardMaterial({
-                color: 0xddccaa,
-                side: THREE.DoubleSide,
-                roughness: 0.8
+            // Fibrous Glowing Stalk
+            const stalkCurve = new THREE.CatmullRomCurve3([
+                new THREE.Vector3(0, 0, 0),
+                new THREE.Vector3(0.03, 0.25, 0.02),
+                new THREE.Vector3(-0.02, 0.55, -0.01),
+                new THREE.Vector3(0, 0.8, 0)
+            ]);
+            const stalkGeom = new THREE.TubeGeometry(stalkCurve, 24, 0.05, 12, false);
+            const stalkMat = new THREE.MeshStandardMaterial({
+                color: 0x103828,
+                emissive: 0x064e3b,
+                emissiveIntensity: 0.3,
+                roughness: 0.4,
+                metalness: 0.2
+            });
+            const stalk = new THREE.Mesh(stalkGeom, stalkMat);
+            flowerRoot.add(stalk);
+
+            // Bioluminescent Fungal Petals / Cap Tiers
+            const capMaterial = new THREE.MeshPhysicalMaterial({
+                color: 0x10b981,
+                emissive: 0x065f46,
+                emissiveIntensity: 0.5,
+                roughness: 0.25,
+                metalness: 0.15,
+                transmission: 0.45,
+                transparent: true,
+                opacity: 0.94,
+                ior: 1.48,
+                clearcoat: 0.8,
+                clearcoatRoughness: 0.2,
+                side: THREE.DoubleSide
             });
 
-            // Petals (cap-like)
-            const petalCount = 8;
-            const petals = [];
-            for (let i = 0; i < petalCount; i++) {
-                const shape = new THREE.Shape();
-                shape.moveTo(0, 0);
-                shape.bezierCurveTo(0.15, 0.05, 0.18, 0.2, 0.1, 0.35);
-                shape.bezierCurveTo(0.03, 0.42, -0.03, 0.42, -0.1, 0.35);
-                shape.bezierCurveTo(-0.18, 0.2, -0.15, 0.05, 0, 0);
+            // Sculpted Fungal Petals
+            const capTiers = [
+                { count: 8, length: 1.05, width: 0.48, rotX: 0.75, y: 0.80 },
+                { count: 7, length: 0.80, width: 0.38, rotX: 0.55, y: 0.85 },
+                { count: 6, length: 0.55, width: 0.28, rotX: 0.35, y: 0.90 }
+            ];
 
-                const geom = new THREE.ShapeGeometry(shape, 12);
-                const petal = new THREE.Mesh(geom, petalMat.clone());
-                const angle = (i / petalCount) * Math.PI * 2;
-                petal.rotation.z = angle;
-                petal.rotation.x = -Math.PI / 2 + 0.6;
-                petal.userData.phase = i * 0.4;
-                flowerGroup.add(petal);
-                petals.push(petal);
+            const capPetals = [];
+
+            capTiers.forEach((tData, tIdx) => {
+                const tGroup = new THREE.Group();
+                tGroup.position.y = tData.y;
+
+                const geom = FlowerUtils.createCurvedPetalGeometry(tData.width, tData.length, {
+                    cup: 0.28,
+                    curl: 0.15
+                });
+
+                for (let i = 0; i < tData.count; i++) {
+                    const angle = (i / tData.count) * Math.PI * 2 + (tIdx * 0.35);
+                    const pivot = new THREE.Group();
+                    pivot.rotation.y = angle;
+
+                    const mesh = new THREE.Mesh(geom, capMaterial);
+                    mesh.castShadow = true;
+                    mesh.rotation.x = tData.rotX;
+
+                    pivot.add(mesh);
+                    tGroup.add(pivot);
+
+                    capPetals.push({
+                        mesh: mesh,
+                        baseRotX: tData.rotX,
+                        phase: i * 0.3 + tIdx * 0.6
+                    });
+                }
+                flowerRoot.add(tGroup);
+            });
+
+            // Glowing Spore Gland Core
+            const coreGroup = new THREE.Group();
+            coreGroup.position.y = 0.92;
+
+            const glandGeom = new THREE.SphereGeometry(0.18, 24, 24);
+            const glandMat = new THREE.MeshStandardMaterial({
+                color: 0x6ee7b7,
+                emissive: 0x34d399,
+                emissiveIntensity: 0.8,
+                roughness: 0.2,
+                metalness: 0.3
+            });
+            const gland = new THREE.Mesh(glandGeom, glandMat);
+            coreGroup.add(gland);
+
+            // Underside Luminescent Gills
+            const gillCount = 24;
+            const gillMat = new THREE.MeshBasicMaterial({
+                color: 0xa7f3d0,
+                transparent: true,
+                opacity: 0.6
+            });
+            for (let i = 0; i < gillCount; i++) {
+                const angle = (i / gillCount) * Math.PI * 2;
+                const gillGeom = new THREE.PlaneGeometry(0.04, 0.35);
+                const gill = new THREE.Mesh(gillGeom, gillMat);
+                gill.position.set(Math.cos(angle) * 0.16, -0.06, Math.sin(angle) * 0.16);
+                gill.rotation.y = angle + Math.PI / 2;
+                gill.rotation.x = 0.4;
+                coreGroup.add(gill);
             }
 
-            // Stem
-            const stemCurve = new THREE.CatmullRomCurve3([
-                new THREE.Vector3(0, 0.1, 0),
-                new THREE.Vector3(0.02, -0.1, 0.01),
-                new THREE.Vector3(0, -0.3, 0)
-            ]);
-            const stemGeom = new THREE.TubeGeometry(stemCurve, 12, 0.03, 8, false);
-            const stemMat = new THREE.MeshStandardMaterial({ color: 0x998877, roughness: 0.8 });
-            const stem = new THREE.Mesh(stemGeom, stemMat);
-            flowerGroup.add(stem);
+            flowerRoot.add(coreGroup);
 
-            // Center (spore-like)
-            const centerGeom = new THREE.SphereGeometry(0.06, 16, 16);
-            const centerMat = new THREE.MeshBasicMaterial({ color: 0xffeecc });
-            const center = new THREE.Mesh(centerGeom, centerMat);
-            center.position.y = 0.12;
-            flowerGroup.add(center);
+            // Floating Bioluminescent Spore Cloud
+            const sporeCount = 120;
+            const sporeGeom = new THREE.BufferGeometry();
+            const sporePos = new Float32Array(sporeCount * 3);
+            const sporeData = [];
 
-            // Lighting
-            const flowerLight = new THREE.PointLight(0xffeeaa, 0.5, 2);
-            flowerLight.position.y = 0.5;
-            scene.add(flowerLight);
+            for (let i = 0; i < sporeCount; i++) {
+                sporePos[i * 3] = (Math.random() - 0.5) * 2.5;
+                sporePos[i * 3 + 1] = 0.2 + Math.random() * 2.2;
+                sporePos[i * 3 + 2] = (Math.random() - 0.5) * 2.5;
+
+                sporeData.push({
+                    speedY: 0.003 + Math.random() * 0.006,
+                    driftX: (Math.random() - 0.5) * 0.003,
+                    driftZ: (Math.random() - 0.5) * 0.003,
+                    startY: 0.2
+                });
+            }
+
+            sporeGeom.setAttribute('position', new THREE.BufferAttribute(sporePos, 3));
+            const sporeMat = new THREE.PointsMaterial({
+                color: 0x6ee7b7,
+                size: 0.038,
+                transparent: true,
+                opacity: 0.8,
+                blending: THREE.AdditiveBlending
+            });
+            const spores = new THREE.Points(sporeGeom, sporeMat);
+            scene.add(spores);
 
             function animate() {
                 requestAnimationFrame(animate);
                 const elapsed = clock.getElapsedTime();
 
-                // Pulses travel along roots
-                pulses.forEach(pulse => {
-                    const root = roots[pulse.userData.rootIndex];
-                    if (!root) return;
+                // Cap breathing and bioluminescent rhythm
+                capPetals.forEach(cp => {
+                    const breath = Math.sin(elapsed * 1.8 + cp.phase) * 0.035;
+                    cp.mesh.rotation.x = cp.baseRotX + breath;
+                });
 
-                    pulse.userData.progress += pulse.userData.speed * pulse.userData.direction;
+                // Spore gland bio-pulse
+                const pulseScale = 1.0 + Math.sin(elapsed * 2.2) * 0.05;
+                coreGroup.scale.set(pulseScale, pulseScale, pulseScale);
+                capLight.intensity = 2.2 + Math.sin(elapsed * 2.2) * 0.5;
 
-                    if (pulse.userData.progress > 1 || pulse.userData.progress < 0) {
-                        // Jump to another root or reverse
-                        if (Math.random() > 0.5) {
-                            pulse.userData.rootIndex = Math.floor(Math.random() * roots.length);
-                            pulse.userData.progress = pulse.userData.direction > 0 ? 0 : 1;
-                        } else {
-                            pulse.userData.direction *= -1;
-                        }
+                // Animate bio-electric pulses along hyphae
+                pulses.forEach(p => {
+                    p.t += p.speed;
+                    if (p.t > 1.0) p.t = 0;
+                    const point = p.path.getPoint(p.t);
+                    p.mesh.position.copy(point);
+                });
+
+                // Ascending spore drift
+                const sPos = sporeGeom.attributes.position.array;
+                for (let i = 0; i < sporeCount; i++) {
+                    const sp = sporeData[i];
+                    sPos[i * 3] += sp.driftX;
+                    sPos[i * 3 + 1] += sp.speedY;
+                    sPos[i * 3 + 2] += sp.driftZ;
+
+                    if (sPos[i * 3 + 1] > 2.4) {
+                        sPos[i * 3 + 1] = sp.startY;
                     }
+                }
+                sporeGeom.attributes.position.needsUpdate = true;
 
-                    const t = pulse.userData.progress;
-                    const start = root.userData.startPoint;
-                    const end = root.userData.endPoint;
-                    pulse.position.lerpVectors(start, end, t);
-                });
+                // Slow rotation of entire subterranean network and flower
+                hyphaeGroup.rotation.y = elapsed * 0.03;
+                flowerRoot.rotation.y = elapsed * 0.03;
 
-                // Flower glows when pulse arrives at base
-                let nearFlower = false;
-                pulses.forEach(pulse => {
-                    if (pulse.position.y > -0.2 && pulse.position.length() < 0.3) {
-                        nearFlower = true;
-                    }
-                });
-                flowerLight.intensity = nearFlower ? 1 : 0.3 + Math.sin(elapsed * 2) * 0.1;
-
-                // Petals breathe
-                petals.forEach(petal => {
-                    const breathe = Math.sin(elapsed * 0.5 + petal.userData.phase) * 0.03;
-                    petal.rotation.x = -Math.PI / 2 + 0.6 + breathe;
-                });
-
-                // Center pulses
-                center.scale.setScalar(1 + (nearFlower ? 0.3 : 0) + Math.sin(elapsed * 3) * 0.05);
-
-                camera.position.x = Math.sin(elapsed * 0.08) * 0.5;
-                camera.lookAt(0, 0, 0);
-
+                if (controls) controls.update();
                 renderer.render(scene, camera);
             }
 

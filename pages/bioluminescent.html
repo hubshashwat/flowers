@@ -36,197 +36,240 @@
     <script>
         (function () {
             const container = document.getElementById('canvas-container');
-            const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
-                background: 0x000508
+            const { scene, camera, renderer, clock, controls } = FlowerUtils.initScene(container, {
+                background: 0x02070e,
+                environmentTheme: 'dark_luxury',
+                controls: {
+                    target: new THREE.Vector3(0, 0.45, 0),
+                    minDistance: 2.2,
+                    maxDistance: 6.5,
+                    autoRotate: true,
+                    autoRotateSpeed: 0.35
+                }
             });
 
-            camera.position.set(0, 2, 5);
-            camera.lookAt(0, 0.5, 0);
+            camera.position.set(0, 1.4, 3.6);
+            camera.lookAt(0, 0.45, 0);
 
-            // Minimal ambient (deep sea darkness)
-            const ambient = new THREE.AmbientLight(0x001122, 0.2);
+            // Abyssal lighting
+            const ambient = new THREE.AmbientLight(0x061828, 0.5);
             scene.add(ambient);
+
+            const moonLight = new THREE.DirectionalLight(0x4090d0, 1.2);
+            moonLight.position.set(2, 5, 2);
+            scene.add(moonLight);
+
+            const bioRimLight = new THREE.PointLight(0x00f5d4, 2.0, 8);
+            bioRimLight.position.set(0, 3, -2.5);
+            scene.add(bioRimLight);
+
+            // Abyssal pedestal pool
+            const pedestal = FlowerUtils.createPedestal(scene, {
+                radius: 1.7,
+                color: 0x030d18,
+                roughness: 0.15,
+                metalness: 0.8,
+                y: -0.8
+            });
+
+            // Glowing bioluminescent pool ring
+            const ringGeom = new THREE.RingGeometry(1.25, 1.28, 64);
+            const ringMat = new THREE.MeshBasicMaterial({
+                color: 0x00f5d4,
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.6
+            });
+            const ring = new THREE.Mesh(ringGeom, ringMat);
+            ring.rotation.x = -Math.PI / 2;
+            ring.position.y = -0.79;
+            scene.add(ring);
+
+            // Floating bioluminescent plankton atmosphere
+            const atmosphere = FlowerUtils.createAtmosphere(scene, {
+                count: 110,
+                color: 0x00f5d4,
+                spread: 4.5,
+                size: 0.028,
+                speed: 0.25
+            });
 
             // Flower group
             const flowerGroup = new THREE.Group();
             scene.add(flowerGroup);
 
-            // Bioluminescent material
-            function createBioMaterial(color) {
-                return new THREE.MeshBasicMaterial({
-                    color: color,
-                    transparent: true,
-                    opacity: 0.8,
+            // Abyssal velvet petal material
+            const darkVelvetMat = new THREE.MeshPhysicalMaterial({
+                color: 0x06182a,
+                roughness: 0.35,
+                metalness: 0.1,
+                transmission: 0.2,
+                thickness: 0.5,
+                clearcoat: 0.3,
+                side: THREE.DoubleSide
+            });
+
+            function createBioGlowMat(col = 0x00f5d4) {
+                return new THREE.MeshPhysicalMaterial({
+                    color: 0x031220,
+                    emissive: new THREE.Color(col),
+                    emissiveIntensity: 2.0,
+                    roughness: 0.2,
+                    metalness: 0.8,
                     side: THREE.DoubleSide
                 });
             }
 
-            // Create glowing petal
-            function createBioPetal() {
-                const group = new THREE.Group();
-
-                const shape = new THREE.Shape();
-                shape.moveTo(0, 0);
-                shape.bezierCurveTo(0.15, 0.1, 0.18, 0.4, 0.1, 0.6);
-                shape.bezierCurveTo(0.03, 0.72, -0.03, 0.72, -0.1, 0.6);
-                shape.bezierCurveTo(-0.18, 0.4, -0.15, 0.1, 0, 0);
-
-                const geom = new THREE.ShapeGeometry(shape, 16);
-                const petal = new THREE.Mesh(geom, createBioMaterial(0x00aaff));
-                group.add(petal);
-
-                // Glowing veins
-                const veinMat = new THREE.LineBasicMaterial({ color: 0x00ffff });
-                for (let v = 0; v < 3; v++) {
-                    const points = [
-                        new THREE.Vector3(0, 0, 0.001),
-                        new THREE.Vector3((v - 1) * 0.03, 0.3, 0.001),
-                        new THREE.Vector3((v - 1) * 0.05, 0.6, 0.001)
-                    ];
-                    const curve = new THREE.CatmullRomCurve3(points);
-                    const veinGeom = new THREE.BufferGeometry().setFromPoints(curve.getPoints(10));
-                    const vein = new THREE.Line(veinGeom, veinMat.clone());
-                    group.add(vein);
-                }
-
-                // Add point light for glow
-                const light = new THREE.PointLight(0x00aaff, 0.3, 1);
-                light.position.set(0, 0.3, 0);
-                group.add(light);
-
-                return group;
-            }
-
-            // Create petals
-            const petalCount = 6;
             const petals = [];
-            for (let i = 0; i < petalCount; i++) {
-                const petal = createBioPetal();
-                const angle = (i / petalCount) * Math.PI * 2;
-                petal.rotation.z = angle;
-                petal.rotation.x = -Math.PI / 2 + 0.5;
-                petal.position.y = 0.5;
-                petal.userData.phase = i * 0.5;
-                flowerGroup.add(petal);
-                petals.push(petal);
+
+            // Outer bioluminescent petals
+            const outerCount = 7;
+            for (let i = 0; i < outerCount; i++) {
+                const group = new THREE.Group();
+                const geom = FlowerUtils.createCurvedPetalGeometry(0.55, 1.2, {
+                    curl: 0.28,
+                    cup: 0.22,
+                    flare: 0.28,
+                    ruffle: 0.03,
+                    uSegments: 24,
+                    vSegments: 32
+                });
+
+                const basePetal = new THREE.Mesh(geom, darkVelvetMat);
+                group.add(basePetal);
+
+                // Bioluminescent edge rim
+                const glowMat = createBioGlowMat(i % 2 === 0 ? 0x00f5d4 : 0x00bbf9);
+                const glowMesh = new THREE.Mesh(geom, glowMat);
+                glowMesh.scale.set(1.015, 1.015, 1.015);
+                glowMesh.position.z = -0.005;
+                group.add(glowMesh);
+
+                const angle = (i / outerCount) * Math.PI * 2;
+                group.rotation.z = angle;
+                group.rotation.x = -Math.PI / 2 + 0.52;
+                group.position.y = 0.44;
+                group.userData = { phase: i * 0.45, baseRotX: group.rotation.x, glowMat };
+                flowerGroup.add(group);
+                petals.push(group);
             }
 
-            // Glowing center
-            const centerGeom = new THREE.SphereGeometry(0.1, 32, 32);
-            const centerMat = createBioMaterial(0x00ffaa);
-            const center = new THREE.Mesh(centerGeom, centerMat);
-            center.position.y = 0.55;
-            flowerGroup.add(center);
+            // Middle bioluminescent petals
+            const midCount = 7;
+            for (let i = 0; i < midCount; i++) {
+                const group = new THREE.Group();
+                const geom = FlowerUtils.createCurvedPetalGeometry(0.42, 0.92, {
+                    curl: 0.36,
+                    cup: 0.26,
+                    flare: 0.16,
+                    ruffle: 0.02,
+                    uSegments: 20,
+                    vSegments: 28
+                });
 
-            const centerLight = new THREE.PointLight(0x00ffaa, 1, 3);
-            centerLight.position.y = 0.55;
-            flowerGroup.add(centerLight);
+                const basePetal = new THREE.Mesh(geom, darkVelvetMat);
+                group.add(basePetal);
 
-            // Stem
-            const stemCurve = new THREE.CatmullRomCurve3([
-                new THREE.Vector3(0, 0.4, 0),
-                new THREE.Vector3(0.02, 0, 0.01),
-                new THREE.Vector3(0, -0.8, 0)
-            ]);
-            const stemGeom = new THREE.TubeGeometry(stemCurve, 16, 0.025, 8, false);
-            const stemMat = createBioMaterial(0x004466);
-            const stem = new THREE.Mesh(stemGeom, stemMat);
+                const glowMat = createBioGlowMat(i % 2 !== 0 ? 0x00f5d4 : 0x70e000);
+                const glowMesh = new THREE.Mesh(geom, glowMat);
+                glowMesh.scale.set(1.015, 1.015, 1.015);
+                group.add(glowMesh);
+
+                const angle = (i / midCount) * Math.PI * 2 + Math.PI / outerCount;
+                group.rotation.z = angle;
+                group.rotation.x = -Math.PI / 2 + 0.32;
+                group.position.y = 0.47;
+                group.userData = { phase: i * 0.55 + 2, baseRotX: group.rotation.x, glowMat };
+                flowerGroup.add(group);
+                petals.push(group);
+            }
+
+            // Bioluminescent glowing stamen filaments
+            const stamens = FlowerUtils.createStamenCluster({
+                count: 24,
+                radius: 0.12,
+                height: 0.3,
+                filamentColor: 0x00bbf9,
+                pollenColor: 0x00f5d4,
+                pollenEmissive: 0x00f5d4
+            });
+            stamens.position.y = 0.49;
+            flowerGroup.add(stamens);
+
+            // Glowing abyssal core
+            const bioCore = FlowerUtils.createGlowingCore({
+                radius: 0.13,
+                innerColor: 0xffffff,
+                glowColor: 0x00f5d4,
+                emissiveIntensity: 2.2
+            });
+            bioCore.group.position.y = 0.51;
+            flowerGroup.add(bioCore.group);
+
+            // Deep organic stem
+            const stemPoints = [
+                new THREE.Vector3(0, 0.44, 0),
+                new THREE.Vector3(0.02, 0.2, 0.01),
+                new THREE.Vector3(-0.015, -0.1, -0.01),
+                new THREE.Vector3(0.01, -0.45, 0.005),
+                new THREE.Vector3(0, -0.78, 0)
+            ];
+            const stemCurve = new THREE.CatmullRomCurve3(stemPoints);
+            const stemGeom = new THREE.TubeGeometry(stemCurve, 32, 0.035, 16, false);
+            const stem = new THREE.Mesh(stemGeom, darkVelvetMat);
             flowerGroup.add(stem);
 
-            // Orbiting creatures (small glowing organisms)
-            const creatures = [];
-            for (let i = 0; i < 12; i++) {
-                const creatureGeom = new THREE.SphereGeometry(0.02 + Math.random() * 0.02, 8, 8);
-                const creatureMat = new THREE.MeshBasicMaterial({
-                    color: new THREE.Color().setHSL(0.5 + Math.random() * 0.2, 1, 0.6),
+            // Orbiting luminous abyssal organisms
+            const organisms = [];
+            const orgGeom = new THREE.SphereGeometry(0.03, 12, 12);
+            for (let i = 0; i < 8; i++) {
+                const orgMat = new THREE.MeshBasicMaterial({
+                    color: i % 2 === 0 ? 0x00f5d4 : 0x00bbf9,
                     transparent: true,
-                    opacity: 0.8
+                    opacity: 0.85
                 });
-                const creature = new THREE.Mesh(creatureGeom, creatureMat);
+                const org = new THREE.Mesh(orgGeom, orgMat);
+                const light = new THREE.PointLight(orgMat.color, 0.4, 1.2);
+                org.add(light);
 
-                const creatureLight = new THREE.PointLight(creatureMat.color, 0.2, 0.5);
-                creature.add(creatureLight);
-
-                creature.userData = {
-                    orbitRadius: 0.6 + Math.random() * 0.8,
-                    orbitSpeed: 0.5 + Math.random() * 0.5,
-                    orbitOffset: Math.random() * Math.PI * 2,
-                    yOffset: (Math.random() - 0.5) * 1,
-                    verticalSpeed: 0.3 + Math.random() * 0.3
+                org.userData = {
+                    radius: 0.8 + Math.random() * 0.6,
+                    speed: 0.6 + Math.random() * 0.4,
+                    offset: Math.random() * Math.PI * 2,
+                    yBase: 0.3 + (i / 8) * 0.4,
+                    ySpeed: 0.8 + Math.random() * 0.5
                 };
-
-                scene.add(creature);
-                creatures.push(creature);
+                scene.add(org);
+                organisms.push(org);
             }
-
-            // Floating particles (plankton)
-            const planktonCount = 100;
-            const planktonGeom = new THREE.BufferGeometry();
-            const planktonPos = new Float32Array(planktonCount * 3);
-            for (let i = 0; i < planktonCount; i++) {
-                planktonPos[i * 3] = (Math.random() - 0.5) * 4;
-                planktonPos[i * 3 + 1] = Math.random() * 3 - 0.5;
-                planktonPos[i * 3 + 2] = (Math.random() - 0.5) * 4;
-            }
-            planktonGeom.setAttribute('position', new THREE.BufferAttribute(planktonPos, 3));
-            const planktonMat = new THREE.PointsMaterial({
-                color: 0x00ffff,
-                size: 0.02,
-                transparent: true,
-                opacity: 0.4
-            });
-            const plankton = new THREE.Points(planktonGeom, planktonMat);
-            scene.add(plankton);
 
             function animate() {
                 requestAnimationFrame(animate);
+                const delta = clock.getDelta();
                 const elapsed = clock.getElapsedTime();
 
-                // Petal glow pulse
-                petals.forEach((petal, i) => {
-                    const pulse = Math.sin(elapsed * 2 + petal.userData.phase) * 0.5 + 0.5;
-                    petal.children[0].material.opacity = 0.5 + pulse * 0.4;
-
-                    // Sway
-                    petal.rotation.x = -Math.PI / 2 + 0.5 + Math.sin(elapsed + petal.userData.phase) * 0.05;
+                // Gentle pulsing bioluminescence
+                const pulse = Math.sin(elapsed * 2.2) * 0.5 + 0.5;
+                petals.forEach(p => {
+                    const breathe = Math.sin(elapsed * 0.7 + p.userData.phase) * 0.018;
+                    p.rotation.x = p.userData.baseRotX + breathe;
+                    p.userData.glowMat.emissiveIntensity = 1.4 + pulse * 1.0;
                 });
 
-                // Center pulse
-                const centerPulse = Math.sin(elapsed * 3) * 0.5 + 0.5;
-                centerLight.intensity = 0.5 + centerPulse * 0.8;
-                center.scale.setScalar(1 + centerPulse * 0.1);
-
-                // Creatures orbit
-                creatures.forEach(creature => {
-                    const angle = elapsed * creature.userData.orbitSpeed + creature.userData.orbitOffset;
-                    creature.position.x = Math.cos(angle) * creature.userData.orbitRadius;
-                    creature.position.z = Math.sin(angle) * creature.userData.orbitRadius;
-                    creature.position.y = 0.5 + creature.userData.yOffset + Math.sin(elapsed * creature.userData.verticalSpeed) * 0.2;
+                // Organisms orbit
+                organisms.forEach(org => {
+                    const angle = elapsed * org.userData.speed + org.userData.offset;
+                    org.position.x = Math.cos(angle) * org.userData.radius;
+                    org.position.z = Math.sin(angle) * org.userData.radius;
+                    org.position.y = org.userData.yBase + Math.sin(elapsed * org.userData.ySpeed) * 0.15;
                 });
 
-                // Plankton drift
-                const pPos = planktonGeom.attributes.position.array;
-                for (let i = 0; i < planktonCount; i++) {
-                    pPos[i * 3 + 1] += 0.002;
-                    if (pPos[i * 3 + 1] > 2.5) {
-                        pPos[i * 3 + 1] = -0.5;
-                    }
-                }
-                planktonGeom.attributes.position.needsUpdate = true;
-
-                flowerGroup.rotation.y = elapsed * 0.05;
-
-                camera.position.x = Math.sin(elapsed * 0.1) * 0.5;
-                camera.lookAt(0, 0.5, 0);
+                bioCore.update(elapsed);
+                atmosphere.update(elapsed, delta);
+                if (controls) controls.update(delta);
 
                 renderer.render(scene, camera);
             }
-
-            window.addEventListener('resize', () => {
-                camera.aspect = window.innerWidth / window.innerHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(window.innerWidth, window.innerHeight);
-            });
 
             animate();
             FlowerUtils.hideLoading();

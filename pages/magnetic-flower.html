@@ -7,12 +7,50 @@
     <title>Magnetic Flower | Flowers For You 🌸</title>
     <link rel="icon" href="../favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="../css/style.css">
+    <style>
+        .flux-badge {
+            position: fixed;
+            top: 75px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(10, 14, 28, 0.8);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            padding: 8px 24px;
+            border-radius: 30px;
+            color: #818cf8;
+            font-size: 13px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            border: 1px solid rgba(129, 140, 248, 0.25);
+            box-shadow: 0 8px 32px rgba(99, 102, 241, 0.2);
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            pointer-events: none;
+        }
+
+        .flux-badge span {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #818cf8;
+            box-shadow: 0 0 10px #818cf8;
+            animation: fluxPulse 2s infinite ease-in-out;
+        }
+
+        @keyframes fluxPulse {
+            0%, 100% { opacity: 0.5; transform: scale(0.9); }
+            50% { opacity: 1; transform: scale(1.2); }
+        }
+    </style>
 </head>
 
 <body>
     <div class="loading-overlay">
         <div class="loading-flower"></div>
-        <p class="loading-text">Aligning fields...</p>
+        <p class="loading-text">Aligning magnetic flux dipoles...</p>
     </div>
 
     <div class="flower-page">
@@ -25,9 +63,13 @@
             </a>
         </nav>
         <div id="canvas-container" class="flower-canvas"></div>
+        <div class="flux-badge">
+            <span></span>
+            Electromagnetic Field • Toroidal Flux
+        </div>
         <div class="flower-info">
             <h1>Magnetic Flower</h1>
-            <p>Petals attract and repel from invisible magnetic fields</p>
+            <p>Neodymium ferrofluid petals aligned to invisible magnetic field loops with streaming flux dipole particles</p>
         </div>
     </div>
 
@@ -37,166 +79,233 @@
         (function () {
             const container = document.getElementById('canvas-container');
             const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
-                background: 0x050508
+                background: 0x070810,
+                antialias: true
             });
 
-            camera.position.set(0, 2, 5);
-            camera.lookAt(0, 0.5, 0);
+            FlowerUtils.createStudioEnvironment(renderer, 'dark_luxury');
+            const controls = FlowerUtils.setupOrbitControls(camera, renderer.domElement, {
+                autoRotateSpeed: 0.45,
+                minDistance: 2.2,
+                maxDistance: 8.5
+            });
+
+            camera.position.set(0, 1.4, 3.6);
+            camera.lookAt(0, 0.35, 0);
 
             // Lighting
-            const ambient = new THREE.AmbientLight(0x222244, 0.5);
+            const ambient = new THREE.AmbientLight(0x131a30, 0.7);
             scene.add(ambient);
-            const mainLight = new THREE.DirectionalLight(0x6688ff, 1);
-            mainLight.position.set(3, 5, 3);
-            scene.add(mainLight);
 
-            // Flower group
+            const sunLight = new THREE.DirectionalLight(0xe0e7ff, 2.2);
+            sunLight.position.set(5, 8, 4);
+            scene.add(sunLight);
+
+            const cobaltRim = new THREE.DirectionalLight(0x6366f1, 1.8);
+            cobaltRim.position.set(-4, -2, -3);
+            scene.add(cobaltRim);
+
+            // Obsidian Pedestal with Magnetic Induction Ring
+            const pedestal = FlowerUtils.createPedestal(scene, {
+                radius: 1.8,
+                height: 0.16,
+                y: -1.3,
+                baseColor: 0x0b0f19,
+                rimColor: 0x6366f1,
+                marble: true
+            });
+
+            // Atmosphere
+            const atmosphere = FlowerUtils.createAtmosphere(scene, {
+                count: 110,
+                color: 0x818cf8,
+                size: 0.035,
+                spread: 6.5,
+                driftSpeed: 0.2
+            });
+
+            // Flower Group
             const flowerGroup = new THREE.Group();
             scene.add(flowerGroup);
 
-            // Magnetic field visualization
-            const fieldLines = [];
-            for (let i = 0; i < 8; i++) {
-                const curve = new THREE.EllipseCurve(0, 0, 1.5 + i * 0.2, 2 + i * 0.3, 0, Math.PI * 2, false, 0);
-                const points = curve.getPoints(50);
-                const geom = new THREE.BufferGeometry().setFromPoints(points);
-                const mat = new THREE.LineBasicMaterial({ color: 0x4466ff, transparent: true, opacity: 0.1 });
-                const line = new THREE.Line(geom, mat);
-                line.rotation.x = Math.PI / 2;
-                line.position.y = 0.5;
-                scene.add(line);
-                fieldLines.push(line);
-            }
-
-            // Create petal with iron veins
-            function createMagneticPetal() {
-                const group = new THREE.Group();
-
-                const shape = new THREE.Shape();
-                shape.moveTo(0, 0);
-                shape.bezierCurveTo(0.15, 0.1, 0.18, 0.4, 0.1, 0.65);
-                shape.bezierCurveTo(0.03, 0.78, -0.03, 0.78, -0.1, 0.65);
-                shape.bezierCurveTo(-0.18, 0.4, -0.15, 0.1, 0, 0);
-
-                const petalGeom = new THREE.ShapeGeometry(shape, 24);
-                const positions = petalGeom.attributes.position;
-                for (let i = 0; i < positions.count; i++) {
-                    const y = positions.getY(i);
-                    positions.setZ(i, Math.sin(y * Math.PI * 0.6) * 0.08);
-                }
-                positions.needsUpdate = true;
-                petalGeom.computeVertexNormals();
-
-                const petalMat = new THREE.MeshStandardMaterial({
-                    color: 0x334455,
-                    roughness: 0.4,
-                    metalness: 0.6,
-                    side: THREE.DoubleSide
-                });
-                const petal = new THREE.Mesh(petalGeom, petalMat);
-                group.add(petal);
-
-                // Iron veins
-                const veinMat = new THREE.MeshBasicMaterial({ color: 0x66aaff, transparent: true, opacity: 0.6 });
-                for (let v = 0; v < 3; v++) {
-                    const veinGeom = new THREE.PlaneGeometry(0.01, 0.4);
-                    const vein = new THREE.Mesh(veinGeom, veinMat.clone());
-                    vein.position.set((v - 1) * 0.04, 0.3, 0.01);
-                    vein.rotation.z = (v - 1) * 0.1;
-                    group.add(vein);
-                    group.userData.veins = group.userData.veins || [];
-                    group.userData.veins.push(vein);
-                }
-
-                return group;
-            }
-
-            // Create petals
-            const petalCount = 8;
-            const petals = [];
-            for (let i = 0; i < petalCount; i++) {
-                const petal = createMagneticPetal();
-                const angle = (i / petalCount) * Math.PI * 2;
-                petal.rotation.z = angle;
-                petal.rotation.x = -Math.PI / 2 + 0.4;
-                petal.position.y = 0.5;
-                petal.userData.baseAngle = angle;
-                petal.userData.phase = i * 0.5;
-                flowerGroup.add(petal);
-                petals.push(petal);
-            }
-
-            // Center
-            const centerGeom = new THREE.SphereGeometry(0.1, 32, 32);
-            const centerMat = new THREE.MeshStandardMaterial({ color: 0x445566, metalness: 0.8, roughness: 0.2 });
-            const center = new THREE.Mesh(centerGeom, centerMat);
-            center.position.y = 0.55;
-            flowerGroup.add(center);
-
-            // Compass ring
-            const compassGeom = new THREE.TorusGeometry(0.8, 0.02, 8, 64);
-            const compassMat = new THREE.MeshStandardMaterial({ color: 0x88aaff, metalness: 0.9, roughness: 0.1 });
-            const compass = new THREE.Mesh(compassGeom, compassMat);
-            compass.position.y = 0.5;
-            compass.rotation.x = Math.PI / 2;
-            scene.add(compass);
-
-            // Compass needle
-            const needleGeom = new THREE.ConeGeometry(0.03, 0.3, 8);
-            const needleMat = new THREE.MeshStandardMaterial({ color: 0xff4444, metalness: 0.8 });
-            const needle = new THREE.Mesh(needleGeom, needleMat);
-            needle.position.set(0.6, 0.5, 0);
-            needle.rotation.z = -Math.PI / 2;
-            scene.add(needle);
+            // Ferrofluid Petal Material
+            const ferroMat = new THREE.MeshPhysicalMaterial({
+                color: 0x1e1e2d,
+                metalness: 0.95,
+                roughness: 0.15,
+                clearcoat: 1.0,
+                clearcoatRoughness: 0.1,
+                side: THREE.DoubleSide
+            });
 
             // Stem
-            const stemCurve = new THREE.CatmullRomCurve3([
-                new THREE.Vector3(0, 0.4, 0),
-                new THREE.Vector3(0.02, 0, 0.01),
-                new THREE.Vector3(0, -0.8, 0)
-            ]);
-            const stemGeom = new THREE.TubeGeometry(stemCurve, 16, 0.025, 8, false);
-            const stemMat = new THREE.MeshStandardMaterial({ color: 0x334455, metalness: 0.5 });
+            const stemPoints = [
+                new THREE.Vector3(0, 0.3, 0),
+                new THREE.Vector3(0.04, -0.1, 0.02),
+                new THREE.Vector3(-0.03, -0.6, -0.02),
+                new THREE.Vector3(0.01, -1.25, 0)
+            ];
+            const stemCurve = new THREE.CatmullRomCurve3(stemPoints);
+            const stemGeom = new THREE.TubeGeometry(stemCurve, 32, 0.038, 12, false);
+            const stemMat = new THREE.MeshStandardMaterial({
+                color: 0x272738,
+                metalness: 0.9,
+                roughness: 0.25
+            });
             const stem = new THREE.Mesh(stemGeom, stemMat);
             flowerGroup.add(stem);
 
-            // Magnetic field variables
-            let fieldAngle = 0;
+            // Petals
+            const tiers = [
+                { count: 10, length: 1.25, width: 0.46, curl: 0.65, wave: 0.22, y: 0.38, rotX: 0.95 },
+                { count: 8,  length: 1.05, width: 0.40, curl: 0.55, wave: 0.18, y: 0.42, rotX: 0.72 },
+                { count: 6,  length: 0.85, width: 0.34, curl: 0.45, wave: 0.15, y: 0.46, rotX: 0.50 }
+            ];
+
+            const petalMeshes = [];
+
+            tiers.forEach((tier, tIdx) => {
+                const geom = FlowerUtils.createCurvedPetalGeometry({
+                    length: tier.length,
+                    width: tier.width,
+                    curl: tier.curl,
+                    wave: tier.wave,
+                    segmentsW: 14,
+                    segmentsL: 24
+                });
+
+                for (let i = 0; i < tier.count; i++) {
+                    const angle = (i / tier.count) * Math.PI * 2 + (tIdx * 0.4);
+                    const pivot = new THREE.Group();
+                    pivot.position.set(0, tier.y, 0);
+                    pivot.rotation.y = angle;
+
+                    const mesh = new THREE.Mesh(geom, ferroMat);
+                    mesh.rotation.x = tier.rotX;
+
+                    // Luminous magnetic flux vein along petal spine
+                    const veinGeom = new THREE.CylinderGeometry(0.008, 0.008, tier.length * 0.8, 6);
+                    veinGeom.translate(0, tier.length * 0.45, 0.015);
+                    const veinMat = new THREE.MeshBasicMaterial({ color: 0x6366f1 });
+                    const vein = new THREE.Mesh(veinGeom, veinMat);
+                    mesh.add(vein);
+
+                    pivot.add(mesh);
+                    flowerGroup.add(pivot);
+
+                    petalMeshes.push({
+                        mesh,
+                        pivot,
+                        tier: tIdx,
+                        baseRotX: tier.rotX,
+                        phase: i * 0.5 + tIdx * 1.2
+                    });
+                }
+            });
+
+            // 3D Toroidal Magnetic Flux Loops
+            const fluxLoops = [];
+            const loopCount = 8;
+            const fluxMat = new THREE.LineBasicMaterial({
+                color: 0x818cf8,
+                transparent: true,
+                opacity: 0.4
+            });
+
+            for (let i = 0; i < loopCount; i++) {
+                const angle = (i / loopCount) * Math.PI * 2;
+                const points = [];
+                for (let a = 0; a <= 40; a++) {
+                    const t = (a / 40) * Math.PI * 2;
+                    const r = 1.35 * Math.sin(t * 0.5);
+                    const y = 0.5 + Math.cos(t) * 0.9;
+                    const x = Math.cos(angle) * r;
+                    const z = Math.sin(angle) * r;
+                    points.push(new THREE.Vector3(x, y, z));
+                }
+                const loopGeom = new THREE.BufferGeometry().setFromPoints(points);
+                const line = new THREE.Line(loopGeom, fluxMat);
+                flowerGroup.add(line);
+                fluxLoops.push(line);
+            }
+
+            // Magnetic Dipole Streaming Particles
+            const particleCount = 80;
+            const pGeom = new THREE.BufferGeometry();
+            const pPositions = new Float32Array(particleCount * 3);
+            const pData = [];
+
+            for (let i = 0; i < particleCount; i++) {
+                pData.push({
+                    loopIndex: i % loopCount,
+                    t: Math.random() * Math.PI * 2,
+                    speed: 0.8 + Math.random() * 0.6
+                });
+            }
+            pGeom.setAttribute('position', new THREE.BufferAttribute(pPositions, 3));
+            const pMat = new THREE.PointsMaterial({
+                color: 0xc7d2fe,
+                size: 0.05,
+                transparent: true,
+                opacity: 0.85,
+                blending: THREE.AdditiveBlending
+            });
+            const fluxParticles = new THREE.Points(pGeom, pMat);
+            flowerGroup.add(fluxParticles);
+
+            // Stamen Cluster & Magnetic Monopole Core
+            const stamenCluster = FlowerUtils.createStamenCluster({
+                count: 32,
+                height: 0.32,
+                spread: 0.14,
+                antherColor: 0x818cf8,
+                filamentColor: 0x475569
+            });
+            stamenCluster.position.y = 0.48;
+            flowerGroup.add(stamenCluster);
+
+            const core = FlowerUtils.createGlowingCore({
+                radius: 0.14,
+                color: 0x4f46e5,
+                glowColor: 0x6366f1,
+                emissiveIntensity: 2.2
+            });
+            core.position.y = 0.52;
+            flowerGroup.add(core);
 
             function animate() {
                 requestAnimationFrame(animate);
                 const elapsed = clock.getElapsedTime();
 
-                fieldAngle = elapsed * 0.3;
-
-                // Petals respond to magnetic field
-                petals.forEach((petal, i) => {
-                    const alignment = Math.sin(fieldAngle + petal.userData.phase);
-                    const attraction = alignment * 0.15;
-                    petal.rotation.x = -Math.PI / 2 + 0.4 + attraction;
-
-                    // Veins glow when aligned
-                    if (petal.userData.veins) {
-                        petal.userData.veins.forEach(vein => {
-                            vein.material.opacity = 0.3 + Math.abs(alignment) * 0.7;
-                        });
-                    }
+                // Petal magnetic attraction oscillation
+                petalMeshes.forEach(p => {
+                    const fluxWave = Math.sin(elapsed * 2.2 + p.phase) * 0.03;
+                    p.mesh.rotation.x = p.baseRotX + fluxWave;
                 });
 
-                // Compass reacts
-                compass.rotation.z = fieldAngle * 2;
-                needle.rotation.y = fieldAngle * 3;
-                needle.position.x = 0.6 + Math.sin(elapsed) * 0.1;
+                // Update particles along magnetic loops
+                const posArr = pGeom.attributes.position.array;
+                for (let i = 0; i < particleCount; i++) {
+                    const d = pData[i];
+                    d.t = (d.t + 0.015 * d.speed) % (Math.PI * 2);
+                    const angle = (d.loopIndex / loopCount) * Math.PI * 2;
+                    const r = 1.35 * Math.sin(d.t * 0.5);
+                    const y = 0.5 + Math.cos(d.t) * 0.9;
+                    const x = Math.cos(angle) * r;
+                    const z = Math.sin(angle) * r;
 
-                // Field lines pulse
-                fieldLines.forEach((line, i) => {
-                    line.material.opacity = 0.05 + Math.abs(Math.sin(elapsed * 0.5 + i * 0.3)) * 0.1;
-                });
+                    posArr[i * 3] = x;
+                    posArr[i * 3 + 1] = y;
+                    posArr[i * 3 + 2] = z;
+                }
+                pGeom.attributes.position.needsUpdate = true;
 
+                flowerGroup.position.y = Math.sin(elapsed * 0.8) * 0.02;
                 flowerGroup.rotation.y = elapsed * 0.1;
 
-                camera.position.x = Math.sin(elapsed * 0.1) * 0.5;
-                camera.lookAt(0, 0.5, 0);
+                core.update(elapsed);
+                atmosphere.update();
+                controls.update();
 
                 renderer.render(scene, camera);
             }

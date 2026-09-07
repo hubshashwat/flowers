@@ -36,184 +36,207 @@
     <script>
         (function () {
             const container = document.getElementById('canvas-container');
-            const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
-                background: 0x1a1515
-            });
-
-            renderer.toneMapping = THREE.ACESFilmicToneMapping;
-
-            camera.position.set(0, 2, 5);
-            camera.lookAt(0, 0.5, 0);
-
-            // Lighting
-            const ambient = new THREE.AmbientLight(0x443344, 0.5);
-            scene.add(ambient);
-            const mainLight = new THREE.PointLight(0xaa88ff, 2, 10);
-            mainLight.position.set(0, 2, 2);
-            scene.add(mainLight);
-            const backLight = new THREE.PointLight(0xff88aa, 1, 10);
-            backLight.position.set(-2, 1, -2);
-            scene.add(backLight);
-
-            // Geode shell (two halves)
-            const shellMat = new THREE.MeshStandardMaterial({
-                color: 0x443333,
-                roughness: 0.9,
-                metalness: 0.1
-            });
-
-            // Create rough rock geometry
-            function createRockHalf(isLeft) {
-                const geom = new THREE.SphereGeometry(0.6, 16, 16, 0, Math.PI);
-                const positions = geom.attributes.position;
-
-                for (let i = 0; i < positions.count; i++) {
-                    const x = positions.getX(i);
-                    const y = positions.getY(i);
-                    const z = positions.getZ(i);
-                    const noise = (Math.random() - 0.5) * 0.1;
-                    positions.setX(i, x + noise);
-                    positions.setY(i, y + noise);
-                    positions.setZ(i, z + noise);
+            const { scene, camera, renderer, clock, controls } = FlowerUtils.initScene(container, {
+                background: 0x09060e,
+                environmentTheme: 'crystal_ice',
+                controls: {
+                    target: new THREE.Vector3(0, 0.45, 0),
+                    minDistance: 2.2,
+                    maxDistance: 6.5,
+                    autoRotate: true,
+                    autoRotateSpeed: 0.35
                 }
-                positions.needsUpdate = true;
-                geom.computeVertexNormals();
-
-                const mesh = new THREE.Mesh(geom, shellMat);
-                mesh.rotation.y = isLeft ? 0 : Math.PI;
-                return mesh;
-            }
-
-            const leftShell = createRockHalf(true);
-            leftShell.position.set(-0.1, 0.5, 0);
-            scene.add(leftShell);
-
-            const rightShell = createRockHalf(false);
-            rightShell.position.set(0.1, 0.5, 0);
-            scene.add(rightShell);
-
-            // Crystal flower inside
-            const crystalGroup = new THREE.Group();
-            crystalGroup.position.y = 0.5;
-            scene.add(crystalGroup);
-
-            // Crystal material
-            const crystalMat = new THREE.MeshPhysicalMaterial({
-                color: 0xaa66ff,
-                metalness: 0.1,
-                roughness: 0.1,
-                transmission: 0.3,
-                thickness: 0.5,
-                transparent: true,
-                opacity: 0.9
             });
 
-            // Create crystal petals
-            const petalCount = 8;
-            const petals = [];
-            for (let i = 0; i < petalCount; i++) {
-                const geom = new THREE.ConeGeometry(0.08, 0.4, 6);
-                const petal = new THREE.Mesh(geom, crystalMat.clone());
-                petal.material.color.setHSL(0.75 + Math.random() * 0.1, 0.6, 0.6);
+            camera.position.set(0, 1.5, 3.6);
+            camera.lookAt(0, 0.45, 0);
 
-                const angle = (i / petalCount) * Math.PI * 2;
-                petal.position.set(
-                    Math.cos(angle) * 0.15,
-                    0.1,
-                    Math.sin(angle) * 0.15
-                );
-                petal.rotation.z = -angle;
-                petal.rotation.x = -0.8;
-                petal.scale.setScalar(0);
-                crystalGroup.add(petal);
-                petals.push(petal);
-            }
+            // Studio gemological lighting
+            const ambient = new THREE.AmbientLight(0xf0e0ff, 0.5);
+            scene.add(ambient);
 
-            // Center crystal cluster
-            for (let i = 0; i < 5; i++) {
-                const geom = new THREE.OctahedronGeometry(0.04 + Math.random() * 0.03, 0);
-                const crystal = new THREE.Mesh(geom, crystalMat.clone());
-                crystal.material.color.setHSL(0.8, 0.7, 0.7);
-                crystal.position.set(
-                    (Math.random() - 0.5) * 0.1,
-                    Math.random() * 0.1,
-                    (Math.random() - 0.5) * 0.1
-                );
-                crystal.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
-                crystalGroup.add(crystal);
-                petals.push(crystal);
-            }
+            const keyLight = new THREE.DirectionalLight(0xfff5ea, 2.2);
+            keyLight.position.set(3.5, 5.5, 3.5);
+            scene.add(keyLight);
 
-            // Light rays (scattered from crystals)
-            const rayCount = 20;
-            const rays = [];
-            for (let i = 0; i < rayCount; i++) {
-                const rayGeom = new THREE.CylinderGeometry(0.002, 0.01, 1, 4);
-                const rayMat = new THREE.MeshBasicMaterial({
-                    color: 0xaa88ff,
-                    transparent: true,
-                    opacity: 0
+            const violetFill = new THREE.DirectionalLight(0xa55eea, 1.4);
+            violetFill.position.set(-3.5, 3, -2);
+            scene.add(violetFill);
+
+            const rimLight = new THREE.PointLight(0xf368e0, 2.0, 8);
+            rimLight.position.set(0, 3, -2.5);
+            scene.add(rimLight);
+
+            // Pedestal & crystal atmosphere
+            const pedestal = FlowerUtils.createPedestal(scene, {
+                radius: 1.7,
+                color: 0x0f0b18,
+                roughness: 0.2,
+                metalness: 0.7,
+                y: -0.8
+            });
+
+            const atmosphere = FlowerUtils.createAtmosphere(scene, {
+                count: 100,
+                color: 0xdfb0ff,
+                spread: 4.5,
+                size: 0.03
+            });
+
+            // Geode flower group
+            const flowerGroup = new THREE.Group();
+            scene.add(flowerGroup);
+
+            // Outer geode mineral shell material (obsidian & gold flecks)
+            const rockMat = new THREE.MeshStandardMaterial({
+                color: 0x221d28,
+                roughness: 0.75,
+                metalness: 0.25,
+                side: THREE.DoubleSide
+            });
+
+            // Amethyst Crystal Materials
+            const amethystMat = new THREE.MeshPhysicalMaterial({
+                color: 0x9b59b6,
+                metalness: 0.05,
+                roughness: 0.08,
+                transmission: 0.8,
+                thickness: 0.7,
+                ior: 1.55,
+                clearcoat: 1.0,
+                clearcoatRoughness: 0.06,
+                side: THREE.DoubleSide
+            });
+
+            const deepAmethystMat = new THREE.MeshPhysicalMaterial({
+                color: 0x6c2999,
+                metalness: 0.08,
+                roughness: 0.12,
+                transmission: 0.7,
+                thickness: 0.85,
+                ior: 1.55,
+                clearcoat: 1.0,
+                side: THREE.DoubleSide
+            });
+
+            const quartzMat = new THREE.MeshPhysicalMaterial({
+                color: 0xf1e5ff,
+                metalness: 0.02,
+                roughness: 0.04,
+                transmission: 0.94,
+                thickness: 0.6,
+                ior: 1.54,
+                clearcoat: 1.0,
+                side: THREE.DoubleSide
+            });
+
+            // Layer 1: Outer Mineral Rock Petals (The Geode Crust)
+            const shellCount = 7;
+            const shellPetals = [];
+            for (let i = 0; i < shellCount; i++) {
+                const geom = FlowerUtils.createCurvedPetalGeometry(0.55, 1.15, {
+                    curl: 0.25,
+                    cup: 0.26,
+                    flare: 0.18,
+                    ruffle: 0.04,
+                    uSegments: 24,
+                    vSegments: 32
                 });
-                const ray = new THREE.Mesh(rayGeom, rayMat);
-                ray.position.set(0, 0.5, 0);
-                ray.rotation.set(
-                    Math.random() * Math.PI - Math.PI / 2,
-                    Math.random() * Math.PI * 2,
-                    0
-                );
-                scene.add(ray);
-                rays.push(ray);
+                const petal = new THREE.Mesh(geom, rockMat);
+                const angle = (i / shellCount) * Math.PI * 2;
+                petal.rotation.z = angle;
+                petal.rotation.x = -Math.PI / 2 + 0.55;
+                petal.position.y = 0.44;
+                petal.userData = { phase: i * 0.4, baseRotX: petal.rotation.x };
+                flowerGroup.add(petal);
+                shellPetals.push(petal);
             }
 
-            let openProgress = 0;
-            let openDirection = 1;
+            // Layer 2: Middle Amethyst Crystal Blades
+            const crystalCount = 9;
+            const crystalPetals = [];
+            for (let i = 0; i < crystalCount; i++) {
+                const geom = FlowerUtils.createCurvedPetalGeometry(0.42, 0.92, {
+                    curl: 0.32,
+                    cup: 0.22,
+                    flare: 0.22,
+                    ruffle: 0.02,
+                    uSegments: 20,
+                    vSegments: 28
+                });
+                const petal = new THREE.Mesh(geom, i % 2 === 0 ? amethystMat : deepAmethystMat);
+                const angle = (i / crystalCount) * Math.PI * 2 + 0.25;
+                petal.rotation.z = angle;
+                petal.rotation.x = -Math.PI / 2 + 0.35;
+                petal.position.y = 0.47;
+                petal.userData = { phase: i * 0.5 + 2, baseRotX: petal.rotation.x };
+                flowerGroup.add(petal);
+                crystalPetals.push(petal);
+            }
+
+            // Layer 3: Inner Prismatic Quartz Cluster (Faceted Shards)
+            const clusterGroup = new THREE.Group();
+            clusterGroup.position.y = 0.5;
+            flowerGroup.add(clusterGroup);
+
+            const shardCount = 14;
+            for (let s = 0; s < shardCount; s++) {
+                const height = 0.3 + (s % 4) * 0.08;
+                const radius = 0.045 + (s % 3) * 0.015;
+                const shardGeom = FlowerUtils.createFacetedCrystalGeometry(radius, height, 6);
+                const shard = new THREE.Mesh(shardGeom, s % 3 === 0 ? quartzMat : amethystMat);
+
+                const angle = (s / shardCount) * Math.PI * 2;
+                const r = 0.08 + (s % 3) * 0.05;
+                shard.position.set(Math.cos(angle) * r, 0.06, Math.sin(angle) * r);
+                shard.rotation.set((Math.random() - 0.5) * 0.5, angle, (Math.random() - 0.5) * 0.5);
+                clusterGroup.add(shard);
+            }
+
+            // Glowing inner geode heart
+            const geodeCore = FlowerUtils.createGlowingCore({
+                radius: 0.13,
+                innerColor: 0xffffff,
+                glowColor: 0x9b59b6,
+                emissiveIntensity: 2.2
+            });
+            geodeCore.group.position.y = 0.52;
+            flowerGroup.add(geodeCore.group);
+
+            // Mineral stem
+            const stemPoints = [
+                new THREE.Vector3(0, 0.44, 0),
+                new THREE.Vector3(0.02, 0.2, 0.01),
+                new THREE.Vector3(-0.015, -0.1, -0.01),
+                new THREE.Vector3(0.01, -0.45, 0.005),
+                new THREE.Vector3(0, -0.78, 0)
+            ];
+            const stemCurve = new THREE.CatmullRomCurve3(stemPoints);
+            const stemGeom = new THREE.TubeGeometry(stemCurve, 32, 0.038, 16, false);
+            const stem = new THREE.Mesh(stemGeom, rockMat);
+            flowerGroup.add(stem);
 
             function animate() {
                 requestAnimationFrame(animate);
+                const delta = clock.getDelta();
                 const elapsed = clock.getElapsedTime();
 
-                // Open/close cycle
-                openProgress += openDirection * 0.004;
-                if (openProgress > 1) { openProgress = 1; openDirection = -1; }
-                if (openProgress < 0) { openProgress = 0; openDirection = 1; }
-
-                // Animate shells opening
-                const shellOpen = openProgress * 0.8;
-                leftShell.position.x = -0.1 - shellOpen * 0.5;
-                leftShell.rotation.y = shellOpen * 0.5;
-                rightShell.position.x = 0.1 + shellOpen * 0.5;
-                rightShell.rotation.y = Math.PI - shellOpen * 0.5;
-
-                // Reveal crystals
-                petals.forEach((petal, i) => {
-                    const delay = i * 0.05;
-                    const crystalProgress = Math.max(0, Math.min(1, (openProgress - 0.3 - delay) * 2));
-                    petal.scale.setScalar(crystalProgress);
+                // Dynamic geode breathing
+                const cycle = Math.sin(elapsed * 0.7);
+                shellPetals.forEach(p => {
+                    p.rotation.x = p.userData.baseRotX + cycle * 0.03;
+                });
+                crystalPetals.forEach(p => {
+                    p.rotation.x = p.userData.baseRotX + cycle * 0.04;
                 });
 
-                // Light rays appear
-                rays.forEach((ray, i) => {
-                    const rayProgress = Math.max(0, (openProgress - 0.5) * 3);
-                    ray.material.opacity = rayProgress * 0.3 * Math.abs(Math.sin(elapsed * 2 + i));
-                    ray.rotation.z += 0.01;
-                });
-
-                // Crystal glow
-                mainLight.intensity = 1 + openProgress * 2;
-
-                crystalGroup.rotation.y = elapsed * 0.1;
-
-                camera.position.x = Math.sin(elapsed * 0.1) * 0.5;
-                camera.lookAt(0, 0.5, 0);
+                // Core pulse & atmosphere
+                geodeCore.update(elapsed);
+                atmosphere.update(elapsed, delta);
+                if (controls) controls.update(delta);
 
                 renderer.render(scene, camera);
             }
-
-            window.addEventListener('resize', () => {
-                camera.aspect = window.innerWidth / window.innerHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(window.innerWidth, window.innerHeight);
-            });
 
             animate();
             FlowerUtils.hideLoading();

@@ -7,12 +7,50 @@
     <title>Sound-Wave Flower | Flowers For You 🌸</title>
     <link rel="icon" href="../favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="../css/style.css">
+    <style>
+        .audio-badge {
+            position: fixed;
+            top: 75px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(14, 10, 26, 0.8);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            padding: 8px 24px;
+            border-radius: 30px;
+            color: #a78bfa;
+            font-size: 13px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            border: 1px solid rgba(167, 139, 250, 0.25);
+            box-shadow: 0 8px 32px rgba(139, 92, 246, 0.2);
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            pointer-events: none;
+        }
+
+        .audio-badge span {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #a78bfa;
+            box-shadow: 0 0 10px #a78bfa;
+            animation: audioBeat 1.2s infinite ease-in-out;
+        }
+
+        @keyframes audioBeat {
+            0%, 100% { opacity: 0.4; transform: scale(0.85); }
+            50% { opacity: 1; transform: scale(1.3); }
+        }
+    </style>
 </head>
 
 <body>
     <div class="loading-overlay">
         <div class="loading-flower"></div>
-        <p class="loading-text">Listening...</p>
+        <p class="loading-text">Tuning harmonic frequencies...</p>
     </div>
 
     <div class="flower-page">
@@ -25,9 +63,13 @@
             </a>
         </nav>
         <div id="canvas-container" class="flower-canvas"></div>
+        <div class="audio-badge">
+            <span></span>
+            Cymatic Resonance • 432 Hz Sub-Bass
+        </div>
         <div class="flower-info">
             <h1>Sound-Wave Flower</h1>
-            <p>Petals deform to simulated audio frequencies</p>
+            <p>Harmonic cymatic petal membranes deforming to acoustic frequency spectra with pulsating sub-bass shockwave wavefronts</p>
         </div>
     </div>
 
@@ -37,155 +79,215 @@
         (function () {
             const container = document.getElementById('canvas-container');
             const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
-                background: 0x0a0a12
+                background: 0x090714,
+                antialias: true
             });
 
-            camera.position.set(0, 2, 4.5);
-            camera.lookAt(0, 0.5, 0);
+            FlowerUtils.createStudioEnvironment(renderer, 'dark_luxury');
+            const controls = FlowerUtils.setupOrbitControls(camera, renderer.domElement, {
+                autoRotateSpeed: 0.4,
+                minDistance: 2.2,
+                maxDistance: 8.5
+            });
+
+            camera.position.set(0, 1.4, 3.6);
+            camera.lookAt(0, 0.35, 0);
 
             // Lighting
-            const ambient = new THREE.AmbientLight(0x222244, 0.4);
+            const ambient = new THREE.AmbientLight(0x1a1230, 0.7);
             scene.add(ambient);
-            const mainLight = new THREE.DirectionalLight(0xaaaaff, 1);
-            mainLight.position.set(3, 5, 3);
-            scene.add(mainLight);
 
-            // Flower group
+            const sunLight = new THREE.DirectionalLight(0xf5f3ff, 2.2);
+            sunLight.position.set(5, 8, 4);
+            scene.add(sunLight);
+
+            const violetRim = new THREE.DirectionalLight(0x8b5cf6, 1.8);
+            violetRim.position.set(-4, -2, -3);
+            scene.add(violetRim);
+
+            // Audio Chamber Pedestal
+            const pedestal = FlowerUtils.createPedestal(scene, {
+                radius: 1.8,
+                height: 0.16,
+                y: -1.3,
+                baseColor: 0x0f0b1a,
+                rimColor: 0x8b5cf6,
+                marble: true
+            });
+
+            // Atmosphere
+            const atmosphere = FlowerUtils.createAtmosphere(scene, {
+                count: 110,
+                color: 0xc4b5fd,
+                size: 0.035,
+                spread: 6.5,
+                driftSpeed: 0.2
+            });
+
+            // Flower Group
             const flowerGroup = new THREE.Group();
             scene.add(flowerGroup);
 
-            // Create deformable petal
-            function createSoundPetal() {
-                const shape = new THREE.Shape();
-                shape.moveTo(0, 0);
-                shape.bezierCurveTo(0.18, 0.1, 0.22, 0.45, 0.12, 0.7);
-                shape.bezierCurveTo(0.04, 0.85, -0.04, 0.85, -0.12, 0.7);
-                shape.bezierCurveTo(-0.22, 0.45, -0.18, 0.1, 0, 0);
+            // Materials
+            const cymaticPetalMat = new THREE.MeshPhysicalMaterial({
+                color: 0x6366f1,
+                emissive: 0x2e1065,
+                emissiveIntensity: 0.35,
+                metalness: 0.85,
+                roughness: 0.2,
+                clearcoat: 0.9,
+                clearcoatRoughness: 0.1,
+                side: THREE.DoubleSide
+            });
 
-                const geom = new THREE.ShapeGeometry(shape, 32);
-                const mat = new THREE.MeshStandardMaterial({
-                    color: 0x6688ff,
-                    side: THREE.DoubleSide,
-                    roughness: 0.4
+            // Stem
+            const stemPoints = [
+                new THREE.Vector3(0, 0.3, 0),
+                new THREE.Vector3(0.04, -0.1, 0.02),
+                new THREE.Vector3(-0.03, -0.6, -0.02),
+                new THREE.Vector3(0.01, -1.25, 0)
+            ];
+            const stemCurve = new THREE.CatmullRomCurve3(stemPoints);
+            const stemGeom = new THREE.TubeGeometry(stemCurve, 32, 0.038, 12, false);
+            const stemMat = new THREE.MeshStandardMaterial({
+                color: 0x2e1065,
+                metalness: 0.8,
+                roughness: 0.3
+            });
+            const stem = new THREE.Mesh(stemGeom, stemMat);
+            flowerGroup.add(stem);
+
+            // Petals
+            const tiers = [
+                { count: 10, length: 1.25, width: 0.48, curl: 0.65, wave: 0.25, y: 0.38, rotX: 0.95, freq: 2.2 },
+                { count: 8,  length: 1.05, width: 0.42, curl: 0.55, wave: 0.22, y: 0.42, rotX: 0.72, freq: 3.4 },
+                { count: 6,  length: 0.85, width: 0.36, curl: 0.45, wave: 0.18, y: 0.46, rotX: 0.48, freq: 5.0 }
+            ];
+
+            const petalMeshes = [];
+
+            tiers.forEach((tier, tIdx) => {
+                const geom = FlowerUtils.createCurvedPetalGeometry({
+                    length: tier.length,
+                    width: tier.width,
+                    curl: tier.curl,
+                    wave: tier.wave,
+                    segmentsW: 14,
+                    segmentsL: 26
                 });
 
-                const petal = new THREE.Mesh(geom, mat);
-                petal.userData.originalPositions = geom.attributes.position.array.slice();
-                return petal;
-            }
+                for (let i = 0; i < tier.count; i++) {
+                    const angle = (i / tier.count) * Math.PI * 2 + (tIdx * 0.4);
+                    const pivot = new THREE.Group();
+                    pivot.position.set(0, tier.y, 0);
+                    pivot.rotation.y = angle;
 
-            // Create petals
-            const petalCount = 8;
-            const petals = [];
-            for (let i = 0; i < petalCount; i++) {
-                const petal = createSoundPetal();
-                const angle = (i / petalCount) * Math.PI * 2;
-                petal.rotation.z = angle;
-                petal.rotation.x = -Math.PI / 2 + 0.4;
-                petal.position.y = 0.5;
-                petal.userData.freqBand = i % 4; // 0=bass, 1=low-mid, 2=high-mid, 3=treble
-                flowerGroup.add(petal);
-                petals.push(petal);
-            }
+                    const mesh = new THREE.Mesh(geom, cymaticPetalMat);
+                    mesh.rotation.x = tier.rotX;
 
-            // Center (pulsing speaker-like)
-            const centerGeom = new THREE.SphereGeometry(0.12, 32, 32);
-            const centerMat = new THREE.MeshStandardMaterial({ color: 0x4466aa, roughness: 0.3 });
-            const center = new THREE.Mesh(centerGeom, centerMat);
-            center.position.y = 0.55;
-            flowerGroup.add(center);
+                    pivot.add(mesh);
+                    flowerGroup.add(pivot);
 
-            // Concentric rings (speaker cone)
-            for (let r = 0; r < 3; r++) {
-                const ringGeom = new THREE.TorusGeometry(0.06 + r * 0.025, 0.005, 8, 32);
-                const ringMat = new THREE.MeshBasicMaterial({ color: 0x8899ff, transparent: true, opacity: 0.5 });
+                    petalMeshes.push({
+                        mesh,
+                        pivot,
+                        tier: tIdx,
+                        baseRotX: tier.rotX,
+                        freq: tier.freq,
+                        phase: i * 0.6 + tIdx * 1.5
+                    });
+                }
+            });
+
+            // Center Sub-Bass Acoustic Driver Rings
+            for (let r = 0; r < 4; r++) {
+                const ringGeom = new THREE.TorusGeometry(0.06 + r * 0.035, 0.007, 8, 32);
+                const ringMat = new THREE.MeshStandardMaterial({
+                    color: 0x8b5cf6,
+                    metalness: 0.9,
+                    roughness: 0.2
+                });
                 const ring = new THREE.Mesh(ringGeom, ringMat);
-                ring.position.y = 0.55;
+                ring.position.y = 0.46 + r * 0.02;
                 ring.rotation.x = Math.PI / 2;
                 flowerGroup.add(ring);
             }
 
-            // Stem
-            const stemCurve = new THREE.CatmullRomCurve3([
-                new THREE.Vector3(0, 0.4, 0),
-                new THREE.Vector3(0.02, 0, 0.01),
-                new THREE.Vector3(0, -0.8, 0)
-            ]);
-            const stemGeom = new THREE.TubeGeometry(stemCurve, 16, 0.025, 8, false);
-            const stemMat = new THREE.MeshStandardMaterial({ color: 0x445566 });
-            const stem = new THREE.Mesh(stemGeom, stemMat);
-            flowerGroup.add(stem);
-
-            // Sound wave visualization rings
+            // Expanding Harmonic Acoustic Wavefront Rings
             const waveRings = [];
-            for (let i = 0; i < 5; i++) {
-                const ringGeom = new THREE.RingGeometry(0.2 + i * 0.3, 0.22 + i * 0.3, 32);
-                const ringMat = new THREE.MeshBasicMaterial({
-                    color: 0x6688ff,
+            const ringCount = 6;
+            for (let i = 0; i < ringCount; i++) {
+                const rGeom = new THREE.RingGeometry(0.3, 0.34, 48);
+                const rMat = new THREE.MeshBasicMaterial({
+                    color: 0xa78bfa,
                     transparent: true,
                     opacity: 0,
                     side: THREE.DoubleSide
                 });
-                const ring = new THREE.Mesh(ringGeom, ringMat);
-                ring.position.y = 0.5;
-                ring.rotation.x = Math.PI / 2;
-                ring.userData.phase = i * 0.3;
-                scene.add(ring);
-                waveRings.push(ring);
+                const rMesh = new THREE.Mesh(rGeom, rMat);
+                rMesh.position.y = 0.52;
+                rMesh.rotation.x = Math.PI / 2;
+                scene.add(rMesh);
+                waveRings.push({
+                    mesh: rMesh,
+                    progress: i / ringCount,
+                    speed: 0.65
+                });
             }
 
-            // Simulated audio frequencies
-            function getSimulatedFrequencies(time) {
-                return {
-                    bass: Math.sin(time * 2) * 0.5 + 0.5,
-                    lowMid: Math.sin(time * 4 + 1) * 0.5 + 0.5,
-                    highMid: Math.sin(time * 6 + 2) * 0.5 + 0.5,
-                    treble: Math.sin(time * 10 + 3) * 0.5 + 0.5
-                };
-            }
+            // Acoustic Stamen Cluster
+            const stamenCluster = FlowerUtils.createStamenCluster({
+                count: 32,
+                height: 0.30,
+                spread: 0.14,
+                antherColor: 0xc4b5fd,
+                filamentColor: 0x7c3aed
+            });
+            stamenCluster.position.y = 0.48;
+            flowerGroup.add(stamenCluster);
+
+            // Sub-Bass Reactor Core
+            const core = FlowerUtils.createGlowingCore({
+                radius: 0.14,
+                color: 0x8b5cf6,
+                glowColor: 0x6d28d9,
+                emissiveIntensity: 2.2
+            });
+            core.position.y = 0.52;
+            flowerGroup.add(core);
 
             function animate() {
                 requestAnimationFrame(animate);
+                const delta = clock.getDelta();
                 const elapsed = clock.getElapsedTime();
 
-                const freq = getSimulatedFrequencies(elapsed);
-                const freqValues = [freq.bass, freq.lowMid, freq.highMid, freq.treble];
+                // Sub-bass beat pulsation
+                const bassBeat = Math.pow(Math.sin(elapsed * 4.0), 4.0);
+                const treblePulse = Math.sin(elapsed * 12.0) * 0.015;
 
-                // Deform petals based on frequency
-                petals.forEach((petal, i) => {
-                    const band = petal.userData.freqBand;
-                    const intensity = freqValues[band];
-
-                    const positions = petal.geometry.attributes.position;
-                    const original = petal.userData.originalPositions;
-
-                    for (let j = 0; j < positions.count; j++) {
-                        const y = original[j * 3 + 1];
-                        // Edge ripple based on frequency
-                        const ripple = Math.sin(y * Math.PI * 4 + elapsed * 10) * intensity * 0.03;
-                        positions.setZ(j, original[j * 3 + 2] + ripple);
-                    }
-                    positions.needsUpdate = true;
-
-                    // Color shift
-                    const hue = 0.6 + intensity * 0.1;
-                    petal.material.color.setHSL(hue, 0.7, 0.5);
+                // Cymatic petal membrane resonance
+                petalMeshes.forEach(p => {
+                    const cymatic = Math.sin(elapsed * p.freq * 2.0 + p.phase) * (0.04 + bassBeat * 0.05) + treblePulse;
+                    p.mesh.rotation.x = p.baseRotX + cymatic;
                 });
 
-                // Center expands with bass
-                center.scale.setScalar(1 + freq.bass * 0.3);
+                // Acoustic shockwave wavefront expansion
+                waveRings.forEach(w => {
+                    w.progress += delta * w.speed;
+                    if (w.progress > 1.0) w.progress = 0;
 
-                // Wave rings
-                waveRings.forEach((ring, i) => {
-                    const waveProgress = (elapsed * 0.5 + ring.userData.phase) % 1;
-                    ring.scale.setScalar(1 + waveProgress * 2);
-                    ring.material.opacity = (1 - waveProgress) * freq.bass * 0.5;
+                    const scale = 0.5 + w.progress * 4.5;
+                    w.mesh.scale.setScalar(scale);
+                    w.mesh.position.y = 0.52 + w.progress * 0.4;
+                    w.mesh.material.opacity = Math.sin(w.progress * Math.PI) * 0.45;
                 });
 
+                flowerGroup.position.y = Math.sin(elapsed * 0.8) * 0.02;
                 flowerGroup.rotation.y = elapsed * 0.1;
 
-                camera.position.x = Math.sin(elapsed * 0.08) * 0.4;
-                camera.lookAt(0, 0.5, 0);
+                core.update(elapsed);
+                atmosphere.update();
+                controls.update();
 
                 renderer.render(scene, camera);
             }

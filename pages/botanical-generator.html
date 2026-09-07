@@ -8,72 +8,199 @@
     <link rel="icon" href="../favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="../css/style.css">
     <style>
-        .controls {
+        .lab-panel {
             position: fixed;
-            top: 80px;
-            right: 20px;
-            background: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(10px);
+            top: 75px;
+            right: 24px;
+            width: 280px;
+            background: rgba(14, 16, 26, 0.82);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 20px;
             padding: 20px;
-            border-radius: 16px;
-            color: white;
-            z-index: 50;
-            width: 220px;
+            color: #fff;
+            z-index: 60;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+            transition: transform 0.35s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.35s ease;
         }
 
-        .controls h3 {
-            margin: 0 0 15px 0;
+        .lab-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .lab-title {
+            font-size: 13px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            font-weight: 600;
+            color: #f472b6;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .toggle-btn {
+            display: none;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: #fff;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            cursor: pointer;
+            align-items: center;
+            justify-content: center;
             font-size: 14px;
-            color: #ffb6c1;
         }
 
-        .control-group {
+        .control-row {
             margin-bottom: 12px;
         }
 
-        .control-group label {
-            display: block;
-            font-size: 12px;
-            margin-bottom: 4px;
-            opacity: 0.8;
+        .control-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 5px;
         }
 
-        .control-group input[type="range"] {
-            width: 100%;
-            accent-color: #ff6b8a;
-        }
-
-        .control-group input[type="color"] {
-            width: 100%;
-            height: 30px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-
-        .generate-btn {
-            width: 100%;
-            padding: 10px;
-            background: linear-gradient(135deg, #ff6b8a, #ff8fab);
-            border: none;
-            border-radius: 8px;
-            color: white;
+        .control-label span:last-child {
+            color: #f472b6;
             font-weight: 600;
-            cursor: pointer;
-            margin-top: 10px;
         }
 
-        .generate-btn:hover {
-            opacity: 0.9;
+        input[type="range"] {
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 2px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #f472b6;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(244, 114, 182, 0.6);
+        }
+
+        .color-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        .color-block {
+            flex: 1;
+        }
+
+        .color-picker {
+            width: 100%;
+            height: 32px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            cursor: pointer;
+            background: transparent;
+            padding: 2px;
+        }
+
+        .action-btns {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        .lab-btn {
+            flex: 1;
+            padding: 9px;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #ec4899, #f43f5e);
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(236, 72, 153, 0.35);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(236, 72, 153, 0.5);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.08);
+            color: #e2e8f0;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .mobile-pill-btn {
+            display: none;
+            position: fixed;
+            top: 75px;
+            right: 20px;
+            background: rgba(14, 16, 26, 0.85);
+            backdrop-filter: blur(14px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 8px 16px;
+            border-radius: 24px;
+            color: #f472b6;
+            font-size: 12px;
+            font-weight: 600;
+            z-index: 55;
+            cursor: pointer;
         }
 
         @media (max-width: 768px) {
-            .controls {
+            .mobile-pill-btn {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            }
+
+            .lab-panel {
                 top: auto;
-                bottom: 140px;
-                right: 10px;
-                left: 10px;
+                bottom: 120px;
+                right: 16px;
+                left: 16px;
                 width: auto;
+                max-height: 55vh;
+                overflow-y: auto;
+                transform: translateY(120%);
+                opacity: 0;
+                pointer-events: none;
+            }
+
+            .lab-panel.open {
+                transform: translateY(0);
+                opacity: 1;
+                pointer-events: auto;
+            }
+
+            .toggle-btn {
+                display: flex;
             }
         }
     </style>
@@ -82,7 +209,7 @@
 <body>
     <div class="loading-overlay">
         <div class="loading-flower"></div>
-        <p class="loading-text">Preparing lab...</p>
+        <p class="loading-text">Synthesizing botanical DNA...</p>
     </div>
 
     <div class="flower-page">
@@ -95,35 +222,67 @@
             </a>
         </nav>
 
-        <div class="controls">
-            <h3>🧬 Customize Your Flower</h3>
-            <div class="control-group">
-                <label>Petal Count: <span id="petalCountValue">8</span></label>
-                <input type="range" id="petalCount" min="3" max="20" value="8">
+        <button class="mobile-pill-btn" id="mobileOpenBtn">⚙️ Customize</button>
+
+        <div class="lab-panel" id="labPanel">
+            <div class="lab-header">
+                <div class="lab-title">🧬 Botanical Studio</div>
+                <button class="toggle-btn" id="closeLabBtn">✕</button>
             </div>
-            <div class="control-group">
-                <label>Petal Length: <span id="petalLengthValue">1.0</span></label>
-                <input type="range" id="petalLength" min="0.5" max="2" step="0.1" value="1">
+
+            <div class="control-row">
+                <div class="control-label">
+                    <span>Petal Count</span>
+                    <span id="petalCountVal">10</span>
+                </div>
+                <input type="range" id="petalCount" min="4" max="18" value="10">
             </div>
-            <div class="control-group">
-                <label>Curvature: <span id="curvatureValue">0.5</span></label>
-                <input type="range" id="curvature" min="0" max="1" step="0.1" value="0.5">
+
+            <div class="control-row">
+                <div class="control-label">
+                    <span>Petal Curvature</span>
+                    <span id="petalCurlVal">0.65</span>
+                </div>
+                <input type="range" id="petalCurl" min="0.1" max="1.2" step="0.05" value="0.65">
             </div>
-            <div class="control-group">
-                <label>Petal Color</label>
-                <input type="color" id="petalColor" value="#ff6b8a">
+
+            <div class="control-row">
+                <div class="control-label">
+                    <span>Bloom Scale</span>
+                    <span id="petalLengthVal">1.20</span>
+                </div>
+                <input type="range" id="petalLength" min="0.7" max="1.8" step="0.05" value="1.20">
             </div>
-            <div class="control-group">
-                <label>Center Color</label>
-                <input type="color" id="centerColor" value="#ffd700">
+
+            <div class="control-row">
+                <div class="control-label">
+                    <span>Petal Wave</span>
+                    <span id="petalWaveVal">0.24</span>
+                </div>
+                <input type="range" id="petalWave" min="0.0" max="0.5" step="0.02" value="0.24">
             </div>
-            <button class="generate-btn" id="generateBtn">✨ Generate Flower</button>
+
+            <div class="color-row">
+                <div class="color-block">
+                    <div class="control-label"><span>Petal</span></div>
+                    <input type="color" id="petalColor" class="color-picker" value="#ec4899">
+                </div>
+                <div class="color-block">
+                    <div class="control-label"><span>Core Glow</span></div>
+                    <input type="color" id="coreColor" class="color-picker" value="#fbbf24">
+                </div>
+            </div>
+
+            <div class="action-btns">
+                <button class="lab-btn btn-primary" id="randomizeBtn">✨ Randomize</button>
+                <button class="lab-btn btn-secondary" id="resetBtn">↺ Default</button>
+            </div>
         </div>
 
         <div id="canvas-container" class="flower-canvas"></div>
         <div class="flower-info">
             <h1>Botanical Generator</h1>
-            <p>Create your own unique flower with custom parameters</p>
+            <p>Interactive procedural flora studio with real-time parametric morphological synthesis and physical materials</p>
         </div>
     </div>
 
@@ -133,171 +292,295 @@
         (function () {
             const container = document.getElementById('canvas-container');
             const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
-                background: 0x1a1a24
+                background: 0x0a0c14,
+                antialias: true
             });
 
-            camera.position.set(0, 2, 5);
-            camera.lookAt(0, 0.5, 0);
+            FlowerUtils.createStudioEnvironment(renderer, 'dark_luxury');
+            const controls = FlowerUtils.setupOrbitControls(camera, renderer.domElement, {
+                autoRotateSpeed: 0.5,
+                minDistance: 2.2,
+                maxDistance: 8.5
+            });
 
-            // Lighting
+            camera.position.set(0, 1.3, 3.6);
+            camera.lookAt(0, 0.35, 0);
+
+            // Studio Lighting
             const ambient = new THREE.AmbientLight(0xffffff, 0.4);
             scene.add(ambient);
-            const mainLight = new THREE.DirectionalLight(0xffffff, 1);
-            mainLight.position.set(5, 8, 5);
-            scene.add(mainLight);
 
-            // Flower group
+            const keyLight = new THREE.DirectionalLight(0xfff0ea, 2.0);
+            keyLight.position.set(5, 8, 4);
+            scene.add(keyLight);
+
+            const rimLight = new THREE.DirectionalLight(0xf472b6, 1.4);
+            rimLight.position.set(-4, -2, -3);
+            scene.add(rimLight);
+
+            // Marble Pedestal
+            const pedestal = FlowerUtils.createPedestal(scene, {
+                radius: 1.8,
+                height: 0.16,
+                y: -1.3,
+                baseColor: 0x0c0f18,
+                rimColor: 0xf472b6,
+                marble: true
+            });
+
+            // Golden pollen atmosphere
+            const atmosphere = FlowerUtils.createAtmosphere(scene, {
+                count: 120,
+                color: 0xffd166,
+                size: 0.035,
+                spread: 6.5,
+                driftSpeed: 0.2
+            });
+
+            // Flower Group
             let flowerGroup = new THREE.Group();
             scene.add(flowerGroup);
 
-            // Ground
-            const groundGeom = new THREE.CircleGeometry(5, 64);
-            const groundMat = new THREE.MeshStandardMaterial({ color: 0x111118, roughness: 0.9 });
-            const ground = new THREE.Mesh(groundGeom, groundMat);
-            ground.rotation.x = -Math.PI / 2;
-            ground.position.y = -1;
-            scene.add(ground);
-
-            // Parameters
+            // State Parameters
             const params = {
-                petalCount: 8,
-                petalLength: 1,
-                curvature: 0.5,
-                petalColor: '#ff6b8a',
-                centerColor: '#ffd700'
+                count: 10,
+                curl: 0.65,
+                length: 1.20,
+                wave: 0.24,
+                petalColor: '#ec4899',
+                coreColor: '#fbbf24'
             };
 
-            // Create petal geometry
-            function createPetalGeom(length, curvature) {
-                const width = 0.15 * length;
-                const shape = new THREE.Shape();
-                shape.moveTo(0, 0);
-                shape.bezierCurveTo(width, 0.1 * length, width * 1.2, 0.4 * length, width * 0.8, 0.7 * length);
-                shape.bezierCurveTo(width * 0.3, 0.95 * length, -width * 0.3, 0.95 * length, -width * 0.8, 0.7 * length);
-                shape.bezierCurveTo(-width * 1.2, 0.4 * length, -width, 0.1 * length, 0, 0);
+            let petalItems = [];
+            let stamenCluster = null;
+            let glowingCore = null;
 
-                const geom = new THREE.ShapeGeometry(shape, 24);
-                const positions = geom.attributes.position;
-                for (let i = 0; i < positions.count; i++) {
-                    const y = positions.getY(i);
-                    const normalizedY = y / length;
-                    positions.setZ(i, Math.sin(normalizedY * Math.PI * 0.7) * curvature * 0.3);
-                }
-                positions.needsUpdate = true;
-                geom.computeVertexNormals();
-                return geom;
-            }
-
-            // Generate flower
-            function generateFlower() {
-                // Clear existing
+            function buildFlower() {
+                // Clean up previous
                 while (flowerGroup.children.length > 0) {
                     const child = flowerGroup.children[0];
                     flowerGroup.remove(child);
                     if (child.geometry) child.geometry.dispose();
-                    if (child.material) child.material.dispose();
                 }
+                petalItems = [];
 
-                const petalGeom = createPetalGeom(params.petalLength, params.curvature);
-                const petalMat = new THREE.MeshStandardMaterial({
-                    color: params.petalColor,
-                    side: THREE.DoubleSide,
-                    roughness: 0.5
+                // Natural organic stem
+                const stemPoints = [
+                    new THREE.Vector3(0, 0.3, 0),
+                    new THREE.Vector3(0.04, -0.1, 0.02),
+                    new THREE.Vector3(-0.03, -0.6, -0.02),
+                    new THREE.Vector3(0.01, -1.25, 0)
+                ];
+                const stemCurve = new THREE.CatmullRomCurve3(stemPoints);
+                const stemGeom = new THREE.TubeGeometry(stemCurve, 32, 0.038, 12, false);
+                const stemMat = new THREE.MeshStandardMaterial({
+                    color: 0x1e5028,
+                    roughness: 0.35,
+                    metalness: 0.1
                 });
-
-                // Outer petals
-                for (let i = 0; i < params.petalCount; i++) {
-                    const petal = new THREE.Mesh(petalGeom, petalMat.clone());
-                    const angle = (i / params.petalCount) * Math.PI * 2;
-                    petal.rotation.z = angle;
-                    petal.rotation.x = -Math.PI / 2 + 0.4;
-                    petal.position.y = 0.5;
-                    petal.userData = { phase: i * 0.3 };
-                    flowerGroup.add(petal);
-                }
-
-                // Inner petals (half count)
-                const innerCount = Math.max(3, Math.floor(params.petalCount / 2));
-                const innerGeom = createPetalGeom(params.petalLength * 0.6, params.curvature * 0.8);
-                for (let i = 0; i < innerCount; i++) {
-                    const petal = new THREE.Mesh(innerGeom, petalMat.clone());
-                    const angle = (i / innerCount) * Math.PI * 2 + Math.PI / params.petalCount;
-                    petal.rotation.z = angle;
-                    petal.rotation.x = -Math.PI / 2 + 0.25;
-                    petal.position.y = 0.52;
-                    petal.userData = { phase: i * 0.4 + 1 };
-                    flowerGroup.add(petal);
-                }
-
-                // Center
-                const centerGeom = new THREE.SphereGeometry(0.1, 32, 32);
-                const centerMat = new THREE.MeshStandardMaterial({
-                    color: params.centerColor,
-                    roughness: 0.6
-                });
-                const center = new THREE.Mesh(centerGeom, centerMat);
-                center.position.y = 0.55;
-                flowerGroup.add(center);
-
-                // Stem
-                const stemCurve = new THREE.CatmullRomCurve3([
-                    new THREE.Vector3(0, 0.4, 0),
-                    new THREE.Vector3(0.02, 0, 0.01),
-                    new THREE.Vector3(-0.01, -0.5, -0.01),
-                    new THREE.Vector3(0, -1, 0)
-                ]);
-                const stemGeom = new THREE.TubeGeometry(stemCurve, 16, 0.025, 8, false);
-                const stemMat = new THREE.MeshStandardMaterial({ color: 0x2d5a27 });
                 const stem = new THREE.Mesh(stemGeom, stemMat);
                 flowerGroup.add(stem);
+
+                // Leaves
+                const leafGeom = FlowerUtils.createCurvedPetalGeometry({
+                    length: 0.65,
+                    width: 0.24,
+                    curl: 0.28,
+                    wave: 0.12,
+                    segmentsW: 12,
+                    segmentsL: 18
+                });
+                const leafMat = new THREE.MeshStandardMaterial({ color: 0x246030, roughness: 0.4, side: THREE.DoubleSide });
+                const leaf1 = new THREE.Mesh(leafGeom, leafMat);
+                leaf1.position.set(0.03, -0.3, 0.02);
+                leaf1.rotation.set(0.8, 0.4, 0.6);
+                flowerGroup.add(leaf1);
+
+                const leaf2 = new THREE.Mesh(leafGeom, leafMat);
+                leaf2.position.set(-0.03, -0.7, -0.01);
+                leaf2.rotation.set(0.7, -2.4, -0.5);
+                leaf2.scale.setScalar(0.85);
+                flowerGroup.add(leaf2);
+
+                // Physical Material for Petals
+                const petalMat = new THREE.MeshPhysicalMaterial({
+                    color: new THREE.Color(params.petalColor),
+                    roughness: 0.28,
+                    metalness: 0.08,
+                    clearcoat: 0.9,
+                    clearcoatRoughness: 0.15,
+                    transmission: 0.35,
+                    thickness: 0.6,
+                    side: THREE.DoubleSide
+                });
+
+                // Multi-tier petal distribution
+                const tierConfigs = [
+                    { scale: 1.0, countMult: 1.0, y: 0.38, rotX: 0.98, curlMult: 1.0 },
+                    { scale: 0.82, countMult: 0.8, y: 0.42, rotX: 0.72, curlMult: 0.85 },
+                    { scale: 0.64, countMult: 0.6, y: 0.46, rotX: 0.48, curlMult: 0.7 }
+                ];
+
+                tierConfigs.forEach((tier, tIdx) => {
+                    const tCount = Math.max(3, Math.round(params.count * tier.countMult));
+                    const geom = FlowerUtils.createCurvedPetalGeometry({
+                        length: params.length * tier.scale,
+                        width: params.length * 0.42 * tier.scale,
+                        curl: params.curl * tier.curlMult,
+                        wave: params.wave,
+                        segmentsW: 16,
+                        segmentsL: 26
+                    });
+
+                    for (let i = 0; i < tCount; i++) {
+                        const angle = (i / tCount) * Math.PI * 2 + (tIdx * 0.42);
+                        const pivot = new THREE.Group();
+                        pivot.position.set(0, tier.y, 0);
+                        pivot.rotation.y = angle;
+
+                        const mesh = new THREE.Mesh(geom, petalMat);
+                        mesh.rotation.x = tier.rotX;
+
+                        // Optical dewdrop
+                        if (tIdx === 0 && i % 2 === 0) {
+                            const drop = FlowerUtils.createDewdrop({ radius: 0.024 });
+                            drop.position.set(0, params.length * tier.scale * 0.55, 0.02);
+                            mesh.add(drop);
+                        }
+
+                        pivot.add(mesh);
+                        flowerGroup.add(pivot);
+
+                        petalItems.push({
+                            mesh,
+                            pivot,
+                            baseRotX: tier.rotX,
+                            phase: i * 0.5 + tIdx * 1.2
+                        });
+                    }
+                });
+
+                // Botanical Stamen Cluster
+                stamenCluster = FlowerUtils.createStamenCluster({
+                    count: 36,
+                    height: 0.32,
+                    spread: 0.15,
+                    antherColor: new THREE.Color(params.coreColor),
+                    filamentColor: 0xfffae0
+                });
+                stamenCluster.position.y = 0.48;
+                flowerGroup.add(stamenCluster);
+
+                // Radiant Core
+                glowingCore = FlowerUtils.createGlowingCore({
+                    radius: 0.13,
+                    color: new THREE.Color(params.coreColor),
+                    glowColor: new THREE.Color(params.coreColor),
+                    emissiveIntensity: 1.8
+                });
+                glowingCore.position.y = 0.52;
+                flowerGroup.add(glowingCore);
+
+                // Update pedestal rim light to harmonize
+                if (pedestal && pedestal.ring) {
+                    pedestal.ring.material.color.copy(new THREE.Color(params.petalColor));
+                }
+                rimLight.color.copy(new THREE.Color(params.petalColor));
             }
 
-            // UI Controls
+            // UI Elements & Live Listeners
             const petalCountEl = document.getElementById('petalCount');
+            const petalCurlEl = document.getElementById('petalCurl');
             const petalLengthEl = document.getElementById('petalLength');
-            const curvatureEl = document.getElementById('curvature');
+            const petalWaveEl = document.getElementById('petalWave');
             const petalColorEl = document.getElementById('petalColor');
-            const centerColorEl = document.getElementById('centerColor');
-            const generateBtn = document.getElementById('generateBtn');
+            const coreColorEl = document.getElementById('coreColor');
 
-            function updateValues() {
-                document.getElementById('petalCountValue').textContent = petalCountEl.value;
-                document.getElementById('petalLengthValue').textContent = petalLengthEl.value;
-                document.getElementById('curvatureValue').textContent = curvatureEl.value;
+            const countVal = document.getElementById('petalCountVal');
+            const curlVal = document.getElementById('petalCurlVal');
+            const lengthVal = document.getElementById('petalLengthVal');
+            const waveVal = document.getElementById('petalWaveVal');
+
+            function updateFromUI() {
+                params.count = parseInt(petalCountEl.value);
+                params.curl = parseFloat(petalCurlEl.value);
+                params.length = parseFloat(petalLengthEl.value);
+                params.wave = parseFloat(petalWaveEl.value);
+                params.petalColor = petalColorEl.value;
+                params.coreColor = coreColorEl.value;
+
+                countVal.textContent = params.count;
+                curlVal.textContent = params.curl.toFixed(2);
+                lengthVal.textContent = params.length.toFixed(2);
+                waveVal.textContent = params.wave.toFixed(2);
+
+                buildFlower();
             }
 
-            petalCountEl.addEventListener('input', updateValues);
-            petalLengthEl.addEventListener('input', updateValues);
-            curvatureEl.addEventListener('input', updateValues);
+            petalCountEl.addEventListener('input', updateFromUI);
+            petalCurlEl.addEventListener('input', updateFromUI);
+            petalLengthEl.addEventListener('input', updateFromUI);
+            petalWaveEl.addEventListener('input', updateFromUI);
+            petalColorEl.addEventListener('input', updateFromUI);
+            coreColorEl.addEventListener('input', updateFromUI);
 
-            generateBtn.addEventListener('click', () => {
-                params.petalCount = parseInt(petalCountEl.value);
-                params.petalLength = parseFloat(petalLengthEl.value);
-                params.curvature = parseFloat(curvatureEl.value);
-                params.petalColor = petalColorEl.value;
-                params.centerColor = centerColorEl.value;
-                generateFlower();
+            // Presets generator
+            const presets = [
+                { count: 12, curl: 0.75, length: 1.35, wave: 0.28, petal: '#e11d48', core: '#fde047' },
+                { count: 8,  curl: 0.45, length: 1.45, wave: 0.15, petal: '#38bdf8', core: '#6ee7b7' },
+                { count: 15, curl: 0.95, length: 1.10, wave: 0.35, petal: '#a855f7', core: '#f472b6' },
+                { count: 6,  curl: 0.35, length: 1.25, wave: 0.18, petal: '#f97316', core: '#fef08a' },
+                { count: 14, curl: 0.60, length: 1.30, wave: 0.22, petal: '#ffffff', core: '#fbbf24' }
+            ];
+
+            document.getElementById('randomizeBtn').addEventListener('click', () => {
+                const p = presets[Math.floor(Math.random() * presets.length)];
+                petalCountEl.value = p.count;
+                petalCurlEl.value = p.curl;
+                petalLengthEl.value = p.length;
+                petalWaveEl.value = p.wave;
+                petalColorEl.value = p.petal;
+                coreColorEl.value = p.core;
+                updateFromUI();
             });
 
-            // Initial generation
-            generateFlower();
+            document.getElementById('resetBtn').addEventListener('click', () => {
+                petalCountEl.value = 10;
+                petalCurlEl.value = 0.65;
+                petalLengthEl.value = 1.20;
+                petalWaveEl.value = 0.24;
+                petalColorEl.value = '#ec4899';
+                coreColorEl.value = '#fbbf24';
+                updateFromUI();
+            });
+
+            // Mobile panel toggle
+            const labPanel = document.getElementById('labPanel');
+            const mobileOpenBtn = document.getElementById('mobileOpenBtn');
+            const closeLabBtn = document.getElementById('closeLabBtn');
+
+            mobileOpenBtn.addEventListener('click', () => labPanel.classList.add('open'));
+            closeLabBtn.addEventListener('click', () => labPanel.classList.remove('open'));
+
+            // Initial build
+            buildFlower();
 
             function animate() {
                 requestAnimationFrame(animate);
                 const elapsed = clock.getElapsedTime();
 
-                // Animate petals
-                flowerGroup.children.forEach(child => {
-                    if (child.userData && child.userData.phase !== undefined) {
-                        const wave = Math.sin(elapsed * 0.8 + child.userData.phase) * 0.02;
-                        child.rotation.x += wave * 0.01;
-                    }
+                // Gentle organic breathing
+                petalItems.forEach(item => {
+                    const breath = Math.sin(elapsed * 1.5 + item.phase) * 0.02;
+                    item.mesh.rotation.x = item.baseRotX + breath;
                 });
 
-                flowerGroup.rotation.y = elapsed * 0.15;
+                flowerGroup.position.y = Math.sin(elapsed * 0.8) * 0.02;
+                flowerGroup.rotation.y = Math.sin(elapsed * 0.2) * 0.05;
 
-                camera.position.x = Math.sin(elapsed * 0.1) * 0.5;
-                camera.lookAt(0, 0.3, 0);
+                if (glowingCore) glowingCore.update(elapsed);
+                atmosphere.update();
+                controls.update();
 
                 renderer.render(scene, camera);
             }

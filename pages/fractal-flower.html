@@ -7,12 +7,50 @@
     <title>Fractal Flower | Flowers For You 🌸</title>
     <link rel="icon" href="../favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="../css/style.css">
+    <style>
+        .fractal-badge {
+            position: fixed;
+            top: 75px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(18, 10, 26, 0.8);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            padding: 8px 24px;
+            border-radius: 30px;
+            color: #d8b4fe;
+            font-size: 13px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            border: 1px solid rgba(216, 180, 254, 0.25);
+            box-shadow: 0 8px 32px rgba(168, 85, 247, 0.2);
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            pointer-events: none;
+        }
+
+        .fractal-badge span {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #c084fc;
+            box-shadow: 0 0 10px #c084fc;
+            animation: fractalPulse 2s infinite ease-in-out;
+        }
+
+        @keyframes fractalPulse {
+            0%, 100% { opacity: 0.5; transform: scale(0.85); }
+            50% { opacity: 1; transform: scale(1.25); }
+        }
+    </style>
 </head>
 
 <body>
     <div class="loading-overlay">
         <div class="loading-flower"></div>
-        <p class="loading-text">Generating fractals...</p>
+        <p class="loading-text">Computing recursive fractal iterations...</p>
     </div>
 
     <div class="flower-page">
@@ -25,9 +63,13 @@
             </a>
         </nav>
         <div id="canvas-container" class="flower-canvas"></div>
+        <div class="fractal-badge">
+            <span></span>
+            Recursive Geometry • Infinite Complexity
+        </div>
         <div class="flower-info">
             <h1>Fractal Flower</h1>
-            <p>Petals recursively generate smaller structures—infinite complexity</p>
+            <p>Self-similar recursive crystalline petals branching into infinite geometric sub-structures across dimensional scales</p>
         </div>
     </div>
 
@@ -37,150 +79,186 @@
         (function () {
             const container = document.getElementById('canvas-container');
             const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
-                background: 0x050508
+                background: 0x090610,
+                antialias: true
             });
 
-            camera.position.set(0, 0, 4);
-            camera.lookAt(0, 0, 0);
+            FlowerUtils.createStudioEnvironment(renderer, 'dark_luxury');
+            const controls = FlowerUtils.setupOrbitControls(camera, renderer.domElement, {
+                autoRotateSpeed: 0.45,
+                minDistance: 2.2,
+                maxDistance: 8.5
+            });
+
+            camera.position.set(0, 1.4, 3.6);
+            camera.lookAt(0, 0.35, 0);
 
             // Lighting
-            const ambient = new THREE.AmbientLight(0xffffff, 0.4);
+            const ambient = new THREE.AmbientLight(0x201035, 0.7);
             scene.add(ambient);
 
-            const light1 = new THREE.DirectionalLight(0xff88aa, 0.8);
-            light1.position.set(3, 5, 3);
-            scene.add(light1);
+            const sunLight = new THREE.DirectionalLight(0xfdf4ff, 2.2);
+            sunLight.position.set(5, 8, 4);
+            scene.add(sunLight);
 
-            const light2 = new THREE.DirectionalLight(0x88aaff, 0.5);
-            light2.position.set(-3, 3, -2);
-            scene.add(light2);
+            const purpleRim = new THREE.DirectionalLight(0xc084fc, 1.8);
+            purpleRim.position.set(-4, -2, -3);
+            scene.add(purpleRim);
 
-            // Fractal flower group
+            // Sacred Geometry Pedestal
+            const pedestal = FlowerUtils.createPedestal(scene, {
+                radius: 1.8,
+                height: 0.16,
+                y: -1.3,
+                baseColor: 0x100a1c,
+                rimColor: 0xc084fc,
+                marble: true
+            });
+
+            // Fractal crystal dust atmosphere
+            const atmosphere = FlowerUtils.createAtmosphere(scene, {
+                count: 110,
+                color: 0xd8b4fe,
+                size: 0.035,
+                spread: 6.5,
+                driftSpeed: 0.2
+            });
+
+            // Flower Group
             const flowerGroup = new THREE.Group();
             scene.add(flowerGroup);
 
-            // Petal geometry
-            function createPetalGeom() {
-                const shape = new THREE.Shape();
-                shape.moveTo(0, 0);
-                shape.bezierCurveTo(0.12, 0.05, 0.15, 0.2, 0.1, 0.35);
-                shape.bezierCurveTo(0.05, 0.45, -0.05, 0.45, -0.1, 0.35);
-                shape.bezierCurveTo(-0.15, 0.2, -0.12, 0.05, 0, 0);
-                return new THREE.ShapeGeometry(shape, 16);
-            }
+            // Materials by recursion depth
+            const depthMats = [
+                new THREE.MeshPhysicalMaterial({ color: 0xec4899, roughness: 0.15, transmission: 0.5, thickness: 0.5, clearcoat: 1.0, side: THREE.DoubleSide }),
+                new THREE.MeshPhysicalMaterial({ color: 0xa855f7, roughness: 0.18, transmission: 0.55, thickness: 0.45, clearcoat: 1.0, side: THREE.DoubleSide }),
+                new THREE.MeshPhysicalMaterial({ color: 0x6366f1, roughness: 0.2, transmission: 0.6, thickness: 0.4, clearcoat: 1.0, side: THREE.DoubleSide })
+            ];
 
-            const petalGeom = createPetalGeom();
+            // Stem
+            const stemPoints = [
+                new THREE.Vector3(0, 0.3, 0),
+                new THREE.Vector3(0.04, -0.1, 0.02),
+                new THREE.Vector3(-0.03, -0.6, -0.02),
+                new THREE.Vector3(0.01, -1.25, 0)
+            ];
+            const stemCurve = new THREE.CatmullRomCurve3(stemPoints);
+            const stemGeom = new THREE.TubeGeometry(stemCurve, 32, 0.038, 12, false);
+            const stemMat = new THREE.MeshStandardMaterial({
+                color: 0x3b0764,
+                metalness: 0.85,
+                roughness: 0.25
+            });
+            const stem = new THREE.Mesh(stemGeom, stemMat);
+            flowerGroup.add(stem);
 
-            // Color palette
-            const colors = [0xff6b8a, 0xff8fab, 0xffb3c6, 0xffd6e0, 0xffeef2];
+            // Shared Petal Geometry
+            const basePetalGeom = FlowerUtils.createCurvedPetalGeometry({
+                length: 1.0,
+                width: 0.42,
+                curl: 0.6,
+                wave: 0.2,
+                segmentsW: 10,
+                segmentsL: 16
+            });
 
-            // Recursive fractal generation
-            function createFractalPetal(depth, maxDepth, parentGroup, scale, angle) {
-                if (depth > maxDepth) return;
+            // Recursive Branching Generator
+            const fractalPetals = [];
 
-                const colorIndex = Math.min(depth, colors.length - 1);
-                const mat = new THREE.MeshStandardMaterial({
-                    color: colors[colorIndex],
-                    side: THREE.DoubleSide,
-                    transparent: true,
-                    opacity: 1 - depth * 0.15
-                });
-
-                const petal = new THREE.Mesh(petalGeom, mat);
-                petal.rotation.z = angle;
-                petal.scale.setScalar(scale);
+            function buildFractalBranch(parentGroup, depth, maxDepth, scale, angle, tierIdx) {
+                if (depth >= maxDepth) return;
 
                 const pivot = new THREE.Group();
-                pivot.add(petal);
+                pivot.rotation.y = angle;
+
+                const mesh = new THREE.Mesh(basePetalGeom, depthMats[depth]);
+                mesh.scale.setScalar(scale);
+                mesh.rotation.x = 0.85 - depth * 0.2;
+                pivot.add(mesh);
                 parentGroup.add(pivot);
 
-                // Store for animation
-                petal.userData = { depth, phase: angle };
+                fractalPetals.push({
+                    mesh,
+                    depth,
+                    baseRotX: mesh.rotation.x,
+                    phase: angle + depth
+                });
 
-                // Create child petals at the tip
-                const childCount = depth === 0 ? 5 : 3;
-                const childScale = scale * 0.5;
+                // Spawn child recursive petals at the tip of this petal
+                if (depth < maxDepth - 1) {
+                    const childScale = scale * 0.45;
+                    const childCount = 3;
+                    const tipNode = new THREE.Group();
+                    tipNode.position.set(0, 0.85 * scale, 0);
+                    mesh.add(tipNode);
 
-                for (let i = 0; i < childCount; i++) {
-                    const childAngle = (i / childCount) * Math.PI * 2 - Math.PI / 2;
-                    const childPivot = new THREE.Group();
-                    childPivot.position.y = 0.35 * scale;
-                    childPivot.rotation.z = childAngle * 0.3;
-                    petal.add(childPivot);
-
-                    createFractalPetal(depth + 1, maxDepth, childPivot, childScale, 0);
+                    for (let c = 0; c < childCount; c++) {
+                        const cAngle = ((c - 1) * 0.55);
+                        buildFractalBranch(tipNode, depth + 1, maxDepth, childScale, cAngle, tierIdx);
+                    }
                 }
-
-                return petal;
             }
 
-            // Create main flower with fractal petals
+            // Primary Petal Ring (8-fold symmetry)
             const mainCount = 8;
-            const fractalDepth = 3;
+            const mainRing = new THREE.Group();
+            mainRing.position.y = 0.38;
+            flowerGroup.add(mainRing);
 
             for (let i = 0; i < mainCount; i++) {
                 const angle = (i / mainCount) * Math.PI * 2;
-                const pivot = new THREE.Group();
-                pivot.rotation.x = -Math.PI / 2 + 0.5;
-                pivot.rotation.z = angle;
-                flowerGroup.add(pivot);
-
-                createFractalPetal(0, fractalDepth, pivot, 1, 0);
+                buildFractalBranch(mainRing, 0, 3, 1.15, angle, 0);
             }
 
-            // Center
-            const centerGeom = new THREE.SphereGeometry(0.15, 32, 32);
-            const centerMat = new THREE.MeshStandardMaterial({
-                color: 0xffdd88,
-                roughness: 0.5,
-                metalness: 0.2
-            });
-            const center = new THREE.Mesh(centerGeom, centerMat);
-            flowerGroup.add(center);
+            // Secondary Inner Ring (6-fold symmetry)
+            const innerRing = new THREE.Group();
+            innerRing.position.y = 0.44;
+            flowerGroup.add(innerRing);
 
-            // Inner glow
-            const glowGeom = new THREE.SphereGeometry(0.25, 16, 16);
-            const glowMat = new THREE.MeshBasicMaterial({
-                color: 0xffaa66,
-                transparent: true,
-                opacity: 0.3
-            });
-            const glow = new THREE.Mesh(glowGeom, glowMat);
-            flowerGroup.add(glow);
+            for (let i = 0; i < 6; i++) {
+                const angle = (i / 6) * Math.PI * 2 + 0.3;
+                buildFractalBranch(innerRing, 0, 2, 0.85, angle, 1);
+            }
 
-            // Zoom animation
-            let zoomLevel = 1;
-            let zoomDirection = 1;
-            const minZoom = 0.8;
-            const maxZoom = 2.5;
-            const zoomSpeed = 0.2;
+            // Center Stamen Cluster
+            const stamenCluster = FlowerUtils.createStamenCluster({
+                count: 32,
+                height: 0.30,
+                spread: 0.14,
+                antherColor: 0xf472b6,
+                filamentColor: 0xe879f9
+            });
+            stamenCluster.position.y = 0.48;
+            flowerGroup.add(stamenCluster);
+
+            // Glowing Singularity Core
+            const core = FlowerUtils.createGlowingCore({
+                radius: 0.14,
+                color: 0xc084fc,
+                glowColor: 0xa855f7,
+                emissiveIntensity: 2.2
+            });
+            core.position.y = 0.52;
+            flowerGroup.add(core);
 
             function animate() {
                 requestAnimationFrame(animate);
                 const elapsed = clock.getElapsedTime();
-                const delta = clock.getDelta();
 
-                // Gentle zoom in and out
-                zoomLevel += delta * zoomSpeed * zoomDirection;
-                if (zoomLevel > maxZoom) zoomDirection = -1;
-                if (zoomLevel < minZoom) zoomDirection = 1;
-
-                camera.position.z = 4 / zoomLevel;
-
-                // Rotation
-                flowerGroup.rotation.z = elapsed * 0.1;
-                flowerGroup.rotation.x = Math.sin(elapsed * 0.2) * 0.1;
-
-                // Pulsing glow
-                glow.scale.setScalar(1 + Math.sin(elapsed * 2) * 0.1);
-
-                // Gentle breathing of petals
-                flowerGroup.traverse(obj => {
-                    if (obj.isMesh && obj.userData.depth !== undefined) {
-                        const breathe = Math.sin(elapsed * 1.5 + obj.userData.phase) * 0.02;
-                        obj.rotation.x = breathe;
-                    }
+                // Harmonic recursive oscillation across fractal depth levels
+                fractalPetals.forEach(p => {
+                    const wave = Math.sin(elapsed * (2.0 + p.depth * 1.5) + p.phase) * (0.04 / (p.depth + 1));
+                    p.mesh.rotation.x = p.baseRotX + wave;
                 });
+
+                mainRing.rotation.y = elapsed * 0.1;
+                innerRing.rotation.y = -elapsed * 0.15;
+
+                flowerGroup.position.y = Math.sin(elapsed * 0.8) * 0.02;
+
+                core.update(elapsed);
+                atmosphere.update();
+                controls.update();
 
                 renderer.render(scene, camera);
             }

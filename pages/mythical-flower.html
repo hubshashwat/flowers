@@ -3,16 +3,63 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>Mythical Flower | Flowers For You 🌸</title>
     <link rel="icon" href="../favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="../css/style.css">
+    <style>
+        .mythic-badge {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            background: rgba(18, 12, 34, 0.8);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(245, 158, 11, 0.35);
+            border-radius: 999px;
+            padding: 8px 18px;
+            font-size: 0.8rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: #fde68a;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 30;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+            pointer-events: none;
+        }
+
+        .mythic-rune {
+            font-size: 1rem;
+            color: #38bdf8;
+            text-shadow: 0 0 10px #38bdf8;
+            animation: runeGlow 2.5s infinite ease-in-out;
+        }
+
+        @keyframes runeGlow {
+            0%, 100% { transform: scale(1); opacity: 0.8; filter: hue-rotate(0deg); }
+            50% { transform: scale(1.2); opacity: 1; filter: hue-rotate(45deg); text-shadow: 0 0 18px #f59e0b; }
+        }
+
+        @media (max-width: 600px) {
+            .mythic-badge {
+                top: auto;
+                bottom: 84px;
+                right: 50%;
+                transform: translateX(50%);
+                font-size: 0.72rem;
+                padding: 6px 14px;
+            }
+        }
+    </style>
 </head>
 
 <body>
     <div class="loading-overlay">
         <div class="loading-flower"></div>
-        <p class="loading-text">Summoning magic...</p>
+        <p class="loading-text">Awakening celestial astral runes...</p>
     </div>
 
     <div class="flower-page">
@@ -25,9 +72,13 @@
             </a>
         </nav>
         <div id="canvas-container" class="flower-canvas"></div>
+        <div class="mythic-badge">
+            <span class="mythic-rune">✦</span>
+            <span>Celestial Astral Blossom</span>
+        </div>
         <div class="flower-info">
             <h1>Mythical Flower</h1>
-            <p>A legendary flower with glowing runes, floating motion, and magical particles</p>
+            <p>A legendary astral bloom forged in obsidian and royal starlight, ringed with revolving celestial astrolabe mandalas</p>
         </div>
     </div>
 
@@ -36,284 +87,338 @@
     <script>
         (function () {
             const container = document.getElementById('canvas-container');
-            const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
-                background: 0x050510
+            const { scene, camera, renderer, clock, controls } = FlowerUtils.initScene(container, {
+                background: 0x05040d,
+                cameraPos: [0, 2.2, 5.2],
+                enableOrbit: true,
+                autoRotate: false
             });
 
-            camera.position.set(0, 2, 5);
-            camera.lookAt(0, 0.5, 0);
+            camera.lookAt(0, 0.4, 0);
+            if (controls) {
+                controls.target.set(0, 0.4, 0);
+                controls.enableDamping = true;
+                controls.dampingFactor = 0.05;
+                controls.maxDistance = 10;
+                controls.minDistance = 2;
+                controls.maxPolarAngle = Math.PI / 2 + 0.15;
+            }
 
-            // Mystical lighting
-            const ambient = new THREE.AmbientLight(0x1a1a3a, 0.3);
+            // Mystical Celestial Lighting
+            const ambient = new THREE.AmbientLight(0x181028, 0.85);
             scene.add(ambient);
 
-            const mainLight = new THREE.DirectionalLight(0x8844ff, 0.6);
-            mainLight.position.set(3, 5, 3);
-            scene.add(mainLight);
+            const stellarKeyLight = new THREE.DirectionalLight(0xfff6ea, 1.4);
+            stellarKeyLight.position.set(4, 8, 5);
+            stellarKeyLight.castShadow = true;
+            scene.add(stellarKeyLight);
 
-            const magicLight = new THREE.PointLight(0x44ddff, 1.5, 8);
-            magicLight.position.set(0, 1, 0);
-            scene.add(magicLight);
+            const astralFill = new THREE.DirectionalLight(0x818cf8, 0.9);
+            astralFill.position.set(-5, 4, -4);
+            scene.add(astralFill);
 
-            const accentLight = new THREE.PointLight(0xff44aa, 0.8, 6);
-            accentLight.position.set(-2, 2, 2);
-            scene.add(accentLight);
+            // Core Supernova Light
+            const coreStarLight = new THREE.PointLight(0xf59e0b, 2.5, 8);
+            coreStarLight.position.set(0, 0.45, 0);
+            scene.add(coreStarLight);
 
-            // Flower group - floats
-            const flowerGroup = new THREE.Group();
-            scene.add(flowerGroup);
+            const runeCyanLight = new THREE.PointLight(0x38bdf8, 1.8, 6);
+            runeCyanLight.position.set(0, 1.0, 0);
+            scene.add(runeCyanLight);
 
-            // Create mystical petal with rune texture
-            function createMythicalPetal() {
-                const group = new THREE.Group();
-
-                // Base petal
-                const shape = new THREE.Shape();
-                shape.moveTo(0, 0);
-                shape.bezierCurveTo(0.18, 0.1, 0.22, 0.4, 0.14, 0.7);
-                shape.bezierCurveTo(0.06, 0.85, -0.06, 0.85, -0.14, 0.7);
-                shape.bezierCurveTo(-0.22, 0.4, -0.18, 0.1, 0, 0);
-
-                const petalGeom = new THREE.ShapeGeometry(shape, 32);
-                const positions = petalGeom.attributes.position;
-                for (let i = 0; i < positions.count; i++) {
-                    const y = positions.getY(i);
-                    positions.setZ(i, Math.sin(y * Math.PI * 0.7) * 0.12);
-                }
-                positions.needsUpdate = true;
-                petalGeom.computeVertexNormals();
-
-                const petalMat = new THREE.MeshStandardMaterial({
-                    color: 0x2a1a4a,
-                    roughness: 0.4,
-                    metalness: 0.3,
-                    side: THREE.DoubleSide
-                });
-                const petal = new THREE.Mesh(petalGeom, petalMat);
-                group.add(petal);
-
-                // Glowing rune on petal
-                const runeMat = new THREE.MeshBasicMaterial({
-                    color: 0x44ffff,
-                    transparent: true,
-                    opacity: 0.8,
-                    side: THREE.DoubleSide
-                });
-
-                // Simple rune shape (geometric)
-                const runeShape = new THREE.Shape();
-                runeShape.moveTo(0, 0.2);
-                runeShape.lineTo(0.03, 0.35);
-                runeShape.lineTo(0, 0.5);
-                runeShape.lineTo(-0.03, 0.35);
-                runeShape.lineTo(0, 0.2);
-
-                const runeGeom = new THREE.ShapeGeometry(runeShape, 8);
-                const rune = new THREE.Mesh(runeGeom, runeMat);
-                rune.position.z = 0.02;
-                group.add(rune);
-
-                // Cross line
-                const lineGeom = new THREE.PlaneGeometry(0.08, 0.01);
-                const line = new THREE.Mesh(lineGeom, runeMat.clone());
-                line.position.set(0, 0.35, 0.02);
-                group.add(line);
-
-                group.userData.runes = [rune, line];
-                return group;
-            }
-
-            // Create petals
-            const petalCount = 8;
-            const petals = [];
-
-            for (let i = 0; i < petalCount; i++) {
-                const petalGroup = createMythicalPetal();
-                const angle = (i / petalCount) * Math.PI * 2;
-
-                petalGroup.rotation.z = angle;
-                petalGroup.rotation.x = -Math.PI / 2 + 0.5;
-                petalGroup.position.y = 0.5;
-
-                flowerGroup.add(petalGroup);
-                petals.push({
-                    group: petalGroup,
-                    runes: petalGroup.userData.runes,
-                    phase: i * 0.3
-                });
-            }
-
-            // Inner petals
-            for (let i = 0; i < 5; i++) {
-                const petalGroup = createMythicalPetal();
-                const angle = (i / 5) * Math.PI * 2 + 0.3;
-
-                petalGroup.rotation.z = angle;
-                petalGroup.rotation.x = -Math.PI / 2 + 0.3;
-                petalGroup.position.y = 0.52;
-                petalGroup.scale.setScalar(0.6);
-
-                flowerGroup.add(petalGroup);
-                petals.push({
-                    group: petalGroup,
-                    runes: petalGroup.userData.runes,
-                    phase: i * 0.4 + 2
-                });
-            }
-
-            // Magical core
-            const coreGeom = new THREE.SphereGeometry(0.12, 32, 32);
-            const coreMat = new THREE.MeshBasicMaterial({
-                color: 0x44ffff,
-                transparent: true,
-                opacity: 0.9
+            // Obsidian Pedestal with Astrolabe Engravings
+            const plinthGroup = new THREE.Group();
+            const plinthGeom = new THREE.CylinderGeometry(2.3, 2.5, 0.25, 48);
+            const plinthMat = new THREE.MeshStandardMaterial({
+                color: 0x080612,
+                roughness: 0.15,
+                metalness: 0.9
             });
-            const core = new THREE.Mesh(coreGeom, coreMat);
-            core.position.y = 0.55;
-            flowerGroup.add(core);
+            const plinth = new THREE.Mesh(plinthGeom, plinthMat);
+            plinth.position.y = -1.2;
+            plinthGroup.add(plinth);
 
-            // Core glow layers
-            [0.2, 0.35, 0.5].forEach((size, i) => {
-                const glowGeom = new THREE.SphereGeometry(size, 16, 16);
-                const glowMat = new THREE.MeshBasicMaterial({
-                    color: i === 1 ? 0xff44aa : 0x44ffff,
-                    transparent: true,
-                    opacity: 0.15 - i * 0.03,
-                    blending: THREE.AdditiveBlending
-                });
-                const glow = new THREE.Mesh(glowGeom, glowMat);
-                glow.position.y = 0.55;
-                flowerGroup.add(glow);
+            // Inlaid Gold Astrological Ring
+            const rimGeom = new THREE.TorusGeometry(2.3, 0.025, 16, 64);
+            const goldMat = new THREE.MeshStandardMaterial({
+                color: 0xf59e0b,
+                metalness: 0.95,
+                roughness: 0.2
             });
+            const rimMesh = new THREE.Mesh(rimGeom, goldMat);
+            rimMesh.rotation.x = Math.PI / 2;
+            rimMesh.position.y = -1.07;
+            plinthGroup.add(rimMesh);
 
-            // Mystical stem
-            const stemCurve = new THREE.CatmullRomCurve3([
-                new THREE.Vector3(0, 0.4, 0),
-                new THREE.Vector3(0.03, 0.1, 0.02),
-                new THREE.Vector3(-0.02, -0.3, -0.01),
-                new THREE.Vector3(0, -0.8, 0)
-            ]);
-            const stemGeom = new THREE.TubeGeometry(stemCurve, 20, 0.028, 8, false);
-            const stemMat = new THREE.MeshStandardMaterial({
-                color: 0x2a3a4a,
-                roughness: 0.6,
-                metalness: 0.2
+            // Inner Astrolabe Inlay
+            const innerRimGeom = new THREE.TorusGeometry(1.5, 0.015, 16, 48);
+            const cyanMat = new THREE.MeshStandardMaterial({
+                color: 0x38bdf8,
+                emissive: 0x0284c7,
+                emissiveIntensity: 0.5,
+                metalness: 0.9,
+                roughness: 0.2
             });
-            const stem = new THREE.Mesh(stemGeom, stemMat);
-            flowerGroup.add(stem);
+            const innerRimMesh = new THREE.Mesh(innerRimGeom, cyanMat);
+            innerRimMesh.rotation.x = Math.PI / 2;
+            innerRimMesh.position.y = -1.07;
+            plinthGroup.add(innerRimMesh);
 
-            // Magical particles orbiting
-            const particleCount = 100;
-            const particleGeom = new THREE.BufferGeometry();
-            const particlePos = new Float32Array(particleCount * 3);
-            const particleData = [];
+            scene.add(plinthGroup);
 
-            for (let i = 0; i < particleCount; i++) {
-                const angle = Math.random() * Math.PI * 2;
-                const radius = 0.5 + Math.random() * 1.5;
-                const height = (Math.random() - 0.5) * 2;
+            // Flower Main Group (Floating)
+            const flowerRoot = new THREE.Group();
+            flowerRoot.position.set(0, 0.1, 0);
+            scene.add(flowerRoot);
 
-                particlePos[i * 3] = Math.cos(angle) * radius;
-                particlePos[i * 3 + 1] = height;
-                particlePos[i * 3 + 2] = Math.sin(angle) * radius;
-
-                particleData.push({
-                    angle,
-                    radius,
-                    height,
-                    speed: 0.3 + Math.random() * 0.5,
-                    vertSpeed: (Math.random() - 0.5) * 0.2
-                });
-            }
-
-            particleGeom.setAttribute('position', new THREE.BufferAttribute(particlePos, 3));
-            const particleMat = new THREE.PointsMaterial({
-                size: 0.04,
-                color: 0x88ffff,
-                transparent: true,
-                opacity: 0.8,
-                blending: THREE.AdditiveBlending
-            });
-            const particles = new THREE.Points(particleGeom, particleMat);
-            scene.add(particles);
-
-            // Ground with magic circle
-            const groundGeom = new THREE.RingGeometry(0.8, 2, 64);
-            const groundMat = new THREE.MeshBasicMaterial({
-                color: 0x44ffff,
-                transparent: true,
-                opacity: 0.1,
+            // Royal Celestial Amethyst & Gold Trim Materials
+            const outerMat = new THREE.MeshPhysicalMaterial({
+                color: 0x1f1035,
+                emissive: 0x0c051a,
+                roughness: 0.35,
+                metalness: 0.3,
+                clearcoat: 1.0,
+                clearcoatRoughness: 0.1,
+                sheen: new THREE.Color(0xa855f7),
                 side: THREE.DoubleSide
             });
-            const ground = new THREE.Mesh(groundGeom, groundMat);
-            ground.rotation.x = -Math.PI / 2;
-            ground.position.y = -0.8;
-            scene.add(ground);
 
-            // Inner circle
-            const innerCircleGeom = new THREE.RingGeometry(0.3, 0.5, 32);
-            const innerCircle = new THREE.Mesh(innerCircleGeom, groundMat.clone());
-            innerCircle.rotation.x = -Math.PI / 2;
-            innerCircle.position.y = -0.79;
-            scene.add(innerCircle);
+            const innerMat = new THREE.MeshPhysicalMaterial({
+                color: 0x3b1259,
+                emissive: 0x18052b,
+                roughness: 0.25,
+                metalness: 0.35,
+                clearcoat: 1.0,
+                sheen: new THREE.Color(0xf472b6),
+                side: THREE.DoubleSide
+            });
 
-            // Floating animation base
-            let floatOffset = 0;
+            const coreMat = new THREE.MeshPhysicalMaterial({
+                color: 0x581c87,
+                emissive: 0x2e0854,
+                roughness: 0.2,
+                metalness: 0.4,
+                clearcoat: 1.0,
+                side: THREE.DoubleSide
+            });
+
+            // Sculpted Wing-like Petals
+            const tiers = [
+                { count: 12, width: 0.52, length: 1.45, rotX: 0.78, y: 0.36, mat: outerMat },
+                { count: 10, width: 0.44, length: 1.20, rotX: 0.58, y: 0.38, mat: outerMat },
+                { count: 8,  width: 0.36, length: 0.95, rotX: 0.42, y: 0.40, mat: innerMat },
+                { count: 6,  width: 0.28, length: 0.70, rotX: 0.26, y: 0.42, mat: coreMat }
+            ];
+
+            const petalMeshes = [];
+
+            tiers.forEach((tData, tIdx) => {
+                const tGroup = new THREE.Group();
+                tGroup.position.y = tData.y;
+
+                const geom = FlowerUtils.createCurvedPetalGeometry(tData.width, tData.length, {
+                    curl: 0.28,
+                    cup: 0.22,
+                    flare: 0.18
+                });
+
+                for (let i = 0; i < tData.count; i++) {
+                    const angle = (i / tData.count) * Math.PI * 2 + (tIdx * 0.3);
+                    const pivot = new THREE.Group();
+                    pivot.rotation.y = angle;
+
+                    const mesh = new THREE.Mesh(geom, tData.mat);
+                    mesh.castShadow = true;
+                    mesh.receiveShadow = true;
+                    mesh.rotation.x = tData.rotX;
+
+                    // Glowing Golden Rune on Petal Center Spine
+                    const runeMesh = new THREE.Mesh(
+                        new THREE.PlaneGeometry(0.04, tData.length * 0.4),
+                        new THREE.MeshBasicMaterial({
+                            color: (i % 2 === 0) ? 0xf59e0b : 0x38bdf8,
+                            transparent: true,
+                            opacity: 0.85,
+                            side: THREE.DoubleSide
+                        })
+                    );
+                    runeMesh.position.set(0, tData.length * 0.45, 0.03);
+                    mesh.add(runeMesh);
+
+                    pivot.add(mesh);
+                    tGroup.add(pivot);
+
+                    petalMeshes.push({
+                        mesh: mesh,
+                        baseRotX: tData.rotX,
+                        phase: i * 0.3 + tIdx * 0.5
+                    });
+                }
+                flowerRoot.add(tGroup);
+            });
+
+            // Floating Celestial Astrolabe Rings (Revolving in space around flower)
+            const astrolabeGroup = new THREE.Group();
+            astrolabeGroup.position.y = 0.5;
+
+            const ring1Geom = new THREE.TorusGeometry(1.65, 0.015, 12, 64);
+            const ring1 = new THREE.Mesh(ring1Geom, goldMat);
+            ring1.rotation.x = 0.4;
+            astrolabeGroup.add(ring1);
+
+            const ring2Geom = new THREE.TorusGeometry(1.35, 0.012, 12, 64);
+            const ring2 = new THREE.Mesh(ring2Geom, cyanMat);
+            ring2.rotation.y = 0.6;
+            ring2.rotation.x = -0.3;
+            astrolabeGroup.add(ring2);
+
+            // Orbiting Glyphs on Rings
+            for (let i = 0; i < 6; i++) {
+                const a = (i / 6) * Math.PI * 2;
+                const glyph = new THREE.Mesh(
+                    new THREE.OctahedronGeometry(0.045, 0),
+                    goldMat
+                );
+                glyph.position.set(Math.cos(a) * 1.65, Math.sin(a) * 0.4, Math.sin(a) * 1.65);
+                astrolabeGroup.add(glyph);
+            }
+
+            flowerRoot.add(astrolabeGroup);
+
+            // Central Astral Supernova / Star Core
+            const coreGroup = new THREE.Group();
+            coreGroup.position.y = 0.45;
+
+            const starGeom = new THREE.OctahedronGeometry(0.20, 2);
+            const starMat = new THREE.MeshPhysicalMaterial({
+                color: 0xffffff,
+                emissive: 0xf59e0b,
+                emissiveIntensity: 1.2,
+                roughness: 0.1,
+                metalness: 0.2,
+                transmission: 0.8,
+                ior: 2.2,
+                clearcoat: 1.0
+            });
+            const starMesh = new THREE.Mesh(starGeom, starMat);
+            coreGroup.add(starMesh);
+
+            // Golden Starlight Rays / Anthers
+            const rayCount = 24;
+            for (let i = 0; i < rayCount; i++) {
+                const angle = (i / rayCount) * Math.PI * 2;
+                const r = 0.08 + (i % 3) * 0.04;
+                const h = 0.22;
+
+                const ray = new THREE.Mesh(
+                    new THREE.ConeGeometry(0.01, h, 6),
+                    goldMat
+                );
+                ray.position.set(Math.cos(angle) * r, h * 0.5, Math.sin(angle) * r);
+                ray.rotation.x = (Math.random() - 0.5) * 0.3;
+                ray.rotation.z = (Math.random() - 0.5) * 0.3;
+                coreGroup.add(ray);
+            }
+
+            flowerRoot.add(coreGroup);
+
+            // Ornate Astral Obsidian Stem
+            const stemCurve = new THREE.CatmullRomCurve3([
+                new THREE.Vector3(0, 0.38, 0),
+                new THREE.Vector3(0.03, -0.2, 0.02),
+                new THREE.Vector3(-0.02, -0.7, -0.01),
+                new THREE.Vector3(0, -1.2, 0)
+            ]);
+            const stemGeom = new THREE.TubeGeometry(stemCurve, 32, 0.045, 12, false);
+            const stemMat = new THREE.MeshStandardMaterial({
+                color: 0x120a1f,
+                roughness: 0.4,
+                metalness: 0.6
+            });
+            const stemMesh = new THREE.Mesh(stemGeom, stemMat);
+            flowerRoot.add(stemMesh);
+
+            // Celestial Stardust Nebula Particles
+            const particleCount = 180;
+            const pGeom = new THREE.BufferGeometry();
+            const pPos = new Float32Array(particleCount * 3);
+            const pColors = new Float32Array(particleCount * 3);
+            const pData = [];
+
+            for (let i = 0; i < particleCount; i++) {
+                const r = 0.8 + Math.random() * 2.2;
+                const theta = Math.random() * Math.PI * 2;
+                const y = -0.4 + Math.random() * 2.6;
+
+                pPos[i * 3] = r * Math.cos(theta);
+                pPos[i * 3 + 1] = y;
+                pPos[i * 3 + 2] = r * Math.sin(theta);
+
+                pData.push({
+                    speed: 0.003 + Math.random() * 0.007,
+                    radius: r,
+                    theta: theta,
+                    yBase: y
+                });
+
+                const isGold = Math.random() > 0.4;
+                const c = isGold ? new THREE.Color(0xf59e0b) : new THREE.Color(0x38bdf8);
+                pColors[i * 3] = c.r;
+                pColors[i * 3 + 1] = c.g;
+                pColors[i * 3 + 2] = c.b;
+            }
+
+            pGeom.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+            pGeom.setAttribute('color', new THREE.BufferAttribute(pColors, 3));
+
+            const pMat = new THREE.PointsMaterial({
+                size: 0.045,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.85,
+                blending: THREE.AdditiveBlending
+            });
+            const particles = new THREE.Points(pGeom, pMat);
+            scene.add(particles);
 
             function animate() {
                 requestAnimationFrame(animate);
                 const elapsed = clock.getElapsedTime();
 
-                // Floating motion
-                floatOffset = Math.sin(elapsed * 0.8) * 0.1;
-                flowerGroup.position.y = floatOffset;
-
-                // Rune glow pulsing
-                petals.forEach(p => {
-                    const pulse = 0.5 + Math.sin(elapsed * 2 + p.phase) * 0.5;
-                    p.runes.forEach(rune => {
-                        rune.material.opacity = 0.4 + pulse * 0.6;
-                    });
-
-                    // Gentle petal movement
-                    const wave = Math.sin(elapsed * 0.6 + p.phase) * 0.02;
-                    p.group.rotation.x += wave * 0.01;
+                // Petal breathing wave
+                petalMeshes.forEach(pm => {
+                    const wave = Math.sin(elapsed * 1.6 + pm.phase) * 0.04;
+                    pm.mesh.rotation.x = pm.baseRotX + wave;
                 });
 
-                // Core pulsing
-                const corePulse = 0.8 + Math.sin(elapsed * 3) * 0.2;
-                core.scale.setScalar(corePulse);
-                coreMat.opacity = 0.7 + Math.sin(elapsed * 4) * 0.3;
-                magicLight.intensity = 1 + Math.sin(elapsed * 2.5) * 0.5;
+                // Astrolabe sacred rings counter-rotation
+                ring1.rotation.z = elapsed * 0.15;
+                ring2.rotation.z = -elapsed * 0.22;
+                astrolabeGroup.rotation.y = elapsed * 0.08;
 
-                // Particle orbiting
-                const pPos = particleGeom.attributes.position.array;
+                // Supernova core spin & scintillation
+                starMesh.rotation.y = elapsed * 0.9;
+                starMesh.rotation.x = Math.sin(elapsed * 0.7) * 0.3;
+                const pulse = 1.0 + Math.sin(elapsed * 3.0) * 0.08;
+                coreGroup.scale.set(pulse, pulse, pulse);
+                coreStarLight.intensity = 2.4 + Math.sin(elapsed * 3.0) * 0.6;
+
+                // Flower root floating levitation
+                flowerRoot.position.y = 0.1 + Math.sin(elapsed * 1.2) * 0.04;
+                flowerRoot.rotation.y = Math.sin(elapsed * 0.3) * 0.06;
+
+                // Cosmic stardust vortex
+                const posArr = pGeom.attributes.position.array;
                 for (let i = 0; i < particleCount; i++) {
-                    const d = particleData[i];
-                    d.angle += d.speed * 0.01;
-                    d.height += d.vertSpeed * 0.01;
-
-                    if (d.height > 1.5) d.vertSpeed = -Math.abs(d.vertSpeed);
-                    if (d.height < -1) d.vertSpeed = Math.abs(d.vertSpeed);
-
-                    pPos[i * 3] = Math.cos(d.angle) * d.radius;
-                    pPos[i * 3 + 1] = d.height;
-                    pPos[i * 3 + 2] = Math.sin(d.angle) * d.radius;
+                    const p = pData[i];
+                    p.theta += p.speed;
+                    posArr[i * 3] = Math.cos(p.theta) * p.radius;
+                    posArr[i * 3 + 1] = p.yBase + Math.sin(elapsed * 1.4 + i) * 0.12;
+                    posArr[i * 3 + 2] = Math.sin(p.theta) * p.radius;
                 }
-                particleGeom.attributes.position.needsUpdate = true;
+                pGeom.attributes.position.needsUpdate = true;
 
-                // Ground circle rotation
-                ground.rotation.z = elapsed * 0.1;
-                innerCircle.rotation.z = -elapsed * 0.15;
-
-                // Slow flower rotation
-                flowerGroup.rotation.y = elapsed * 0.15;
-
-                // Camera
-                camera.position.x = Math.sin(elapsed * 0.1) * 0.5;
-                camera.position.y = 2 + Math.sin(elapsed * 0.15) * 0.2;
-                camera.lookAt(0, 0.3 + floatOffset, 0);
-
+                if (controls) controls.update();
                 renderer.render(scene, camera);
             }
 

@@ -36,172 +36,219 @@
     <script>
         (function () {
             const container = document.getElementById('canvas-container');
-            const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
-                background: 0x0a0a0a
+            const { scene, camera, renderer, clock, controls } = FlowerUtils.initScene(container, {
+                background: 0x07070b,
+                environmentTheme: 'dark_luxury',
+                controls: {
+                    target: new THREE.Vector3(0, 0.45, 0),
+                    minDistance: 2.2,
+                    maxDistance: 7.0,
+                    autoRotate: true,
+                    autoRotateSpeed: 0.35
+                }
             });
 
-            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            camera.position.set(0, 1.8, 4.2);
+            camera.lookAt(0, 0.45, 0);
 
-            camera.position.set(0, 2, 4.5);
-            camera.lookAt(0, 0.5, 0);
-
-            // Lighting for reflective surface
-            const ambient = new THREE.AmbientLight(0xffffff, 0.3);
+            // Lighting for physical metal highlights
+            const ambient = new THREE.AmbientLight(0xffffff, 0.4);
             scene.add(ambient);
-            const mainLight = new THREE.DirectionalLight(0xffffff, 1.5);
-            mainLight.position.set(3, 5, 3);
-            scene.add(mainLight);
-            const rimLight = new THREE.PointLight(0x8888ff, 1, 10);
-            rimLight.position.set(-3, 2, -2);
+
+            const keyLight = new THREE.DirectionalLight(0xfffaea, 2.2);
+            keyLight.position.set(4, 7, 3);
+            keyLight.castShadow = true;
+            scene.add(keyLight);
+
+            const fillLight = new THREE.DirectionalLight(0xaac4ff, 1.2);
+            fillLight.position.set(-4, 3, -2);
+            scene.add(fillLight);
+
+            const rimLight = new THREE.PointLight(0xff99bb, 1.5, 12);
+            rimLight.position.set(0, 4, -4);
             scene.add(rimLight);
 
-            // Mercury material
-            const mercuryMat = new THREE.MeshStandardMaterial({
-                color: 0xcccccc,
-                metalness: 1,
-                roughness: 0.05,
-                envMapIntensity: 1
+            // Atmosphere and pedestal
+            const atmosphere = FlowerUtils.createAtmosphere(scene, {
+                count: 100,
+                color: 0xddeeff,
+                spread: 5,
+                size: 0.03
             });
 
-            // Flower group
+            const pedestal = FlowerUtils.createPedestal(scene, {
+                radius: 1.8,
+                color: 0x08080c,
+                metalness: 0.8,
+                roughness: 0.2,
+                y: -0.7
+            });
+
+            // High-grade liquid chrome material
+            const mercuryMat = new THREE.MeshPhysicalMaterial({
+                color: 0xe6e9f2,
+                metalness: 0.98,
+                roughness: 0.04,
+                clearcoat: 1.0,
+                clearcoatRoughness: 0.03,
+                reflectivity: 1.0,
+                side: THREE.DoubleSide
+            });
+
             const flowerGroup = new THREE.Group();
             scene.add(flowerGroup);
 
-            // Create morphable petal (uses sphere geometry for liquid look)
-            function createLiquidPetal() {
-                const geom = new THREE.SphereGeometry(0.15, 32, 32);
-                const petal = new THREE.Mesh(geom, mercuryMat.clone());
-                petal.scale.set(0.5, 1, 0.1);
-                return petal;
+            // Create organic fluid petal with smooth parametric curvature
+            function createFluidPetal(length, width) {
+                const geom = FlowerUtils.createCurvedPetalGeometry(width, length, {
+                    curl: 0.35,
+                    cup: 0.28,
+                    flare: 0.15,
+                    ruffle: 0.015,
+                    uSegments: 32,
+                    vSegments: 48
+                });
+                return new THREE.Mesh(geom, mercuryMat);
             }
 
-            // Petals
-            const petalCount = 6;
+            // Two concentric tiers of petals
             const petals = [];
-            for (let i = 0; i < petalCount; i++) {
-                const petal = createLiquidPetal();
-                const angle = (i / petalCount) * Math.PI * 2;
-                petal.userData.baseAngle = angle;
-                petal.userData.phase = i * 0.5;
+            const outerCount = 10;
+            for (let i = 0; i < outerCount; i++) {
+                const petal = createFluidPetal(0.95, 0.38);
+                const angle = (i / outerCount) * Math.PI * 2;
+                petal.userData = {
+                    tier: 'outer',
+                    baseAngle: angle,
+                    phase: i * 0.6,
+                    baseLength: 0.95,
+                    baseWidth: 0.38
+                };
+                petal.castShadow = true;
+                petal.receiveShadow = true;
                 flowerGroup.add(petal);
                 petals.push(petal);
             }
 
-            // Center blob
-            const centerGeom = new THREE.SphereGeometry(0.15, 32, 32);
-            const center = new THREE.Mesh(centerGeom, mercuryMat.clone());
-            center.position.y = 0.5;
-            flowerGroup.add(center);
+            const innerCount = 7;
+            for (let i = 0; i < innerCount; i++) {
+                const petal = createFluidPetal(0.7, 0.28);
+                const angle = (i / innerCount) * Math.PI * 2 + 0.3;
+                petal.userData = {
+                    tier: 'inner',
+                    baseAngle: angle,
+                    phase: i * 0.7 + 1.2,
+                    baseLength: 0.7,
+                    baseWidth: 0.28
+                };
+                petal.castShadow = true;
+                petal.receiveShadow = true;
+                flowerGroup.add(petal);
+                petals.push(petal);
+            }
 
-            // Droplets
+            // Core liquid crown (morphing droplet bulb)
+            const coreGeom = new THREE.SphereGeometry(0.2, 32, 32);
+            const core = new THREE.Mesh(coreGeom, mercuryMat);
+            core.position.y = 0.5;
+            flowerGroup.add(core);
+
+            // Glistening secondary droplets orbiting
             const droplets = [];
-            for (let i = 0; i < 10; i++) {
-                const dropGeom = new THREE.SphereGeometry(0.02 + Math.random() * 0.02, 16, 16);
-                const drop = new THREE.Mesh(dropGeom, mercuryMat.clone());
-                drop.visible = false;
+            for (let i = 0; i < 16; i++) {
+                const dropGeom = new THREE.SphereGeometry(0.025 + Math.random() * 0.025, 16, 16);
+                const drop = new THREE.Mesh(dropGeom, mercuryMat);
                 drop.userData = {
-                    velocity: new THREE.Vector3(),
-                    active: false,
-                    lifetime: 0
+                    angle: Math.random() * Math.PI * 2,
+                    orbitRadius: 0.6 + Math.random() * 0.7,
+                    orbitSpeed: 0.4 + Math.random() * 0.6,
+                    baseY: 0.3 + Math.random() * 0.5,
+                    verticalAmp: 0.15 + Math.random() * 0.15,
+                    phase: Math.random() * Math.PI * 2
                 };
                 scene.add(drop);
                 droplets.push(drop);
             }
 
-            // Stem
-            const stemGeom = new THREE.CylinderGeometry(0.04, 0.06, 1.2, 16);
-            const stem = new THREE.Mesh(stemGeom, mercuryMat.clone());
-            stem.position.y = -0.1;
+            // Fluid tapered stem
+            const stemCurve = new THREE.CatmullRomCurve3([
+                new THREE.Vector3(0, 0.48, 0),
+                new THREE.Vector3(0.02, 0.2, 0.01),
+                new THREE.Vector3(-0.015, -0.2, -0.01),
+                new THREE.Vector3(0, -0.68, 0)
+            ]);
+            const stemGeom = new THREE.TubeGeometry(stemCurve, 32, 0.045, 16, false);
+            const stem = new THREE.Mesh(stemGeom, mercuryMat);
+            stem.castShadow = true;
             flowerGroup.add(stem);
 
-            let morphState = 0; // 0 = closed, 1 = open
-            let morphDirection = 1;
-            let nextDropletTime = 0;
+            let morphState = 0; // 0 = closed, 1 = bloomed
+            let morphDir = 1;
 
             function animate() {
                 requestAnimationFrame(animate);
+                const delta = clock.getDelta();
                 const elapsed = clock.getElapsedTime();
 
-                // Morph between open and closed
-                morphState += morphDirection * 0.003;
-                if (morphState > 1) { morphState = 1; morphDirection = -1; }
-                if (morphState < 0) { morphState = 0; morphDirection = 1; }
+                // Fluid bloom morphing cycle
+                morphState += morphDir * delta * 0.25;
+                if (morphState > 1) { morphState = 1; morphDir = -1; }
+                if (morphState < 0) { morphState = 0; morphDir = 1; }
 
-                // Animate petals
-                petals.forEach((petal, i) => {
+                const smoothMorph = FlowerUtils.easing.easeInOutCubic(morphState);
+
+                // Animate petals with liquid ripples
+                petals.forEach(petal => {
+                    const isOuter = petal.userData.tier === 'outer';
                     const angle = petal.userData.baseAngle;
-                    const openDist = 0.3 + morphState * 0.4;
-                    const openRotation = morphState * 0.8;
+                    const ripple = Math.sin(elapsed * 2.2 + petal.userData.phase) * 0.04;
+
+                    const spread = isOuter ? (0.28 + smoothMorph * 0.42) : (0.18 + smoothMorph * 0.26);
+                    const tilt = isOuter ? (0.35 + smoothMorph * 0.75 + ripple) : (0.2 + smoothMorph * 0.55 + ripple);
 
                     petal.position.set(
-                        Math.cos(angle) * openDist,
-                        0.5 + Math.sin(elapsed * 2 + petal.userData.phase) * 0.02,
-                        Math.sin(angle) * openDist
+                        Math.cos(angle) * spread,
+                        0.5 + (isOuter ? 0 : 0.05) + Math.sin(elapsed * 1.8 + petal.userData.phase) * 0.025,
+                        Math.sin(angle) * spread
                     );
 
-                    petal.rotation.z = angle + Math.PI / 2;
-                    petal.rotation.x = -openRotation;
+                    petal.rotation.set(0, 0, 0);
+                    petal.rotation.y = -angle + Math.PI / 2;
+                    petal.rotation.z = -tilt;
 
-                    // Liquid wobble
-                    const wobble = Math.sin(elapsed * 3 + petal.userData.phase) * 0.1;
-                    petal.scale.x = 0.5 + wobble * 0.1;
-                    petal.scale.y = 1 + wobble * 0.05;
+                    // Subtle liquid bulging
+                    const scalePulse = 1 + Math.sin(elapsed * 2.5 + petal.userData.phase) * 0.05;
+                    petal.scale.set(scalePulse, 1 + ripple * 0.5, scalePulse);
                 });
 
-                // Center blob morphs
-                const centerWobble = Math.sin(elapsed * 2) * 0.1;
-                center.scale.set(1 + centerWobble, 1 - centerWobble * 0.5, 1 + centerWobble);
+                // Morphing liquid core blob
+                const coreWave = Math.sin(elapsed * 2.8) * 0.08;
+                core.scale.set(1 + coreWave, 1 - coreWave * 0.6, 1 + coreWave);
+                core.position.y = 0.5 + Math.sin(elapsed * 1.5) * 0.02;
 
-                // Spawn droplets occasionally
-                if (elapsed > nextDropletTime) {
-                    const inactiveDrop = droplets.find(d => !d.userData.active);
-                    if (inactiveDrop) {
-                        const randomPetal = petals[Math.floor(Math.random() * petals.length)];
-                        inactiveDrop.position.copy(randomPetal.position);
-                        inactiveDrop.userData.velocity.set(
-                            (Math.random() - 0.5) * 0.02,
-                            0.02,
-                            (Math.random() - 0.5) * 0.02
-                        );
-                        inactiveDrop.userData.active = true;
-                        inactiveDrop.userData.lifetime = 0;
-                        inactiveDrop.visible = true;
-                    }
-                    nextDropletTime = elapsed + 0.5 + Math.random() * 1;
-                }
+                // Orbiting mercury droplets
+                droplets.forEach(d => {
+                    const ud = d.userData;
+                    ud.angle += ud.orbitSpeed * delta;
+                    d.position.x = Math.cos(ud.angle) * ud.orbitRadius;
+                    d.position.z = Math.sin(ud.angle) * ud.orbitRadius;
+                    d.position.y = ud.baseY + Math.sin(elapsed * 2.0 + ud.phase) * ud.verticalAmp;
 
-                // Update droplets
-                droplets.forEach(drop => {
-                    if (drop.userData.active) {
-                        drop.userData.velocity.y -= 0.001; // gravity
-                        drop.position.add(drop.userData.velocity);
-                        drop.userData.lifetime += 0.016;
-
-                        // Reabsorb into stem
-                        if (drop.position.y < 0 || drop.userData.lifetime > 2) {
-                            drop.userData.active = false;
-                            drop.visible = false;
-                        }
-                    }
+                    // Stretch along trajectory
+                    const speedPulse = Math.sin(elapsed * 3.0 + ud.phase) * 0.15;
+                    d.scale.set(1 - speedPulse * 0.3, 1 + speedPulse, 1 - speedPulse * 0.3);
                 });
 
-                // Stem wobble
-                stem.scale.x = 1 + Math.sin(elapsed * 1.5) * 0.05;
-                stem.scale.z = 1 + Math.cos(elapsed * 1.5) * 0.05;
+                // Stem subtle breathing
+                stem.scale.x = 1 + Math.sin(elapsed * 1.2) * 0.03;
+                stem.scale.z = 1 + Math.cos(elapsed * 1.2) * 0.03;
 
-                flowerGroup.rotation.y = elapsed * 0.1;
-
-                camera.position.x = Math.sin(elapsed * 0.1) * 0.4;
-                camera.lookAt(0, 0.4, 0);
+                // Update atmosphere & controls
+                atmosphere.update(elapsed, delta);
+                if (controls) controls.update(delta);
 
                 renderer.render(scene, camera);
             }
-
-            window.addEventListener('resize', () => {
-                camera.aspect = window.innerWidth / window.innerHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(window.innerWidth, window.innerHeight);
-            });
 
             animate();
             FlowerUtils.hideLoading();

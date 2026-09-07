@@ -7,12 +7,44 @@
     <title>Infinite Flower Field | Flowers For You 🌸</title>
     <link rel="icon" href="../favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="../css/style.css">
+    <style>
+        .wind-indicator {
+            position: fixed;
+            top: 75px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(18, 14, 28, 0.75);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            padding: 8px 24px;
+            border-radius: 30px;
+            color: #ffd1a4;
+            font-size: 13px;
+            letter-spacing: 0.08em;
+            border: 1px solid rgba(255, 200, 150, 0.2);
+            box-shadow: 0 8px 32px rgba(255, 120, 50, 0.15);
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            pointer-events: none;
+        }
+
+        .wind-indicator span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ffa868;
+            box-shadow: 0 0 10px #ffa868;
+        }
+    </style>
 </head>
 
 <body>
     <div class="loading-overlay">
         <div class="loading-flower"></div>
-        <p class="loading-text">Planting flowers...</p>
+        <p class="loading-text">Cultivating infinite meadow...</p>
     </div>
 
     <div class="flower-page">
@@ -25,9 +57,13 @@
             </a>
         </nav>
         <div id="canvas-container" class="flower-canvas"></div>
+        <div class="wind-indicator">
+            <span></span>
+            Sunset Meadow • Gentle Evening Breeze
+        </div>
         <div class="flower-info">
             <h1>Infinite Flower Field</h1>
-            <p>Thousands of flowers swaying in the wind, fading into mist</p>
+            <p>An endless sea of thousands of twilight blooms swaying to harmonic wind waves toward a golden horizon</p>
         </div>
     </div>
 
@@ -38,100 +74,307 @@
             const container = document.getElementById('canvas-container');
             const isMobile = FlowerUtils.isMobile();
             const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
-                background: 0x87ceeb,
-                fog: { color: 0xddeeff, near: 10, far: 80 }
+                background: 0x140e1c,
+                antialias: true
             });
 
-            camera.position.set(0, 2, 8);
-            camera.lookAt(0, 0.5, 0);
+            scene.fog = new THREE.FogExp2(0x1c121e, 0.048);
 
-            scene.background = FlowerUtils.createGradientBackground('#87ceeb', '#e0f0ff');
+            FlowerUtils.createStudioEnvironment(renderer, 'warm_sunset');
+            const controls = FlowerUtils.setupOrbitControls(camera, renderer.domElement, {
+                autoRotateSpeed: 0.35,
+                minDistance: 3.0,
+                maxDistance: 25.0,
+                maxPolarAngle: Math.PI / 2 - 0.05
+            });
 
-            const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+            camera.position.set(0, 2.2, 7.5);
+            camera.lookAt(0, 0.8, 0);
+
+            // Lighting
+            const ambient = new THREE.AmbientLight(0x3a2233, 0.7);
             scene.add(ambient);
-            const sunLight = new THREE.DirectionalLight(0xfffae6, 1.2);
-            sunLight.position.set(10, 20, 10);
-            scene.add(sunLight);
 
-            // Ground
-            const groundGeometry = new THREE.PlaneGeometry(200, 200);
-            const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x4a7c4a, roughness: 0.9 });
-            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            const sunsetSun = new THREE.DirectionalLight(0xffb077, 2.2);
+            sunsetSun.position.set(12, 8, -10);
+            scene.add(sunsetSun);
+
+            const skyFill = new THREE.DirectionalLight(0xb088ff, 1.2);
+            skyFill.position.set(-6, 12, 8);
+            scene.add(skyFill);
+
+            // Rolling Meadow Ground
+            const groundGeom = new THREE.PlaneGeometry(90, 90, 48, 48);
+            const pos = groundGeom.attributes.position;
+            for (let i = 0; i < pos.count; i++) {
+                const gx = pos.getX(i);
+                const gy = pos.getY(i);
+                const elevation = Math.sin(gx * 0.08) * Math.cos(gy * 0.08) * 0.4 +
+                                  Math.sin(gx * 0.03 + gy * 0.04) * 0.6;
+                pos.setZ(i, elevation);
+            }
+            groundGeom.computeVertexNormals();
+
+            const groundMat = new THREE.MeshStandardMaterial({
+                color: 0x152416,
+                roughness: 0.85,
+                metalness: 0.05
+            });
+            const ground = new THREE.Mesh(groundGeom, groundMat);
             ground.rotation.x = -Math.PI / 2;
-            ground.position.y = -0.1;
+            ground.position.y = -0.5;
             scene.add(ground);
 
-            // Flower geometry
-            const petalShape = new THREE.Shape();
-            petalShape.moveTo(0, 0);
-            petalShape.bezierCurveTo(0.08, 0.1, 0.1, 0.25, 0.05, 0.35);
-            petalShape.bezierCurveTo(0.02, 0.4, -0.02, 0.4, -0.05, 0.35);
-            petalShape.bezierCurveTo(-0.1, 0.25, -0.08, 0.1, 0, 0);
-            const petalGeometry = new THREE.ShapeGeometry(petalShape, 8);
+            // Floating Sunset Fireflies & Spores
+            const atmosphere = FlowerUtils.createAtmosphere(scene, {
+                count: 150,
+                color: 0xffcb77,
+                size: 0.045,
+                spread: 16,
+                driftSpeed: 0.35
+            });
 
-            const flowerColors = [0xffb6c1, 0xffd700, 0xff6b6b, 0xffffff, 0xdda0dd, 0xff69b4];
-            const flowerCount = isMobile ? 1500 : 4000;
-            const flowers = [], flowerData = [];
+            // Foreground Hero Flower Group
+            const heroGroup = new THREE.Group();
+            heroGroup.position.set(0, -0.4, 0.8);
+            scene.add(heroGroup);
 
-            for (let i = 0; i < flowerCount; i++) {
-                const angle = Math.random() * Math.PI * 2;
-                const radius = Math.sqrt(Math.random()) * 50;
-                const x = Math.cos(angle) * radius;
-                const z = Math.sin(angle) * radius;
-                const color = flowerColors[Math.floor(Math.random() * flowerColors.length)];
-                const stemHeight = 0.3 + Math.random() * 0.4;
-                const flowerScale = 0.5 + Math.random() * 0.5;
+            // Hero Pedestal
+            const pedestal = FlowerUtils.createPedestal(heroGroup, {
+                radius: 1.4,
+                height: 0.16,
+                y: 0,
+                baseColor: 0x11161d,
+                rimColor: 0xffa055,
+                marble: true
+            });
 
-                const flower = new THREE.Group();
-                flower.position.set(x, 0, z);
+            // Hero Flower Stem
+            const heroStemCurve = new THREE.CatmullRomCurve3([
+                new THREE.Vector3(0, 0.16, 0),
+                new THREE.Vector3(0.04, 0.5, 0.02),
+                new THREE.Vector3(-0.02, 0.9, -0.01),
+                new THREE.Vector3(0, 1.35, 0)
+            ]);
+            const heroStemGeom = new THREE.TubeGeometry(heroStemCurve, 24, 0.032, 10, false);
+            const heroStemMat = new THREE.MeshPhysicalMaterial({
+                color: 0x24552b,
+                roughness: 0.3,
+                clearcoat: 0.6
+            });
+            const heroStem = new THREE.Mesh(heroStemGeom, heroStemMat);
+            heroGroup.add(heroStem);
 
-                const stemGeom = new THREE.CylinderGeometry(0.01, 0.015, stemHeight, 4);
-                const stem = new THREE.Mesh(stemGeom, new THREE.MeshBasicMaterial({ color: 0x228b22 }));
-                stem.position.y = stemHeight / 2;
-                flower.add(stem);
+            // Hero Flower Petals
+            const heroPetalMat = new THREE.MeshPhysicalMaterial({
+                color: 0xff708f,
+                emissive: 0x441122,
+                emissiveIntensity: 0.3,
+                roughness: 0.22,
+                metalness: 0.08,
+                clearcoat: 0.9,
+                clearcoatRoughness: 0.12,
+                transmission: 0.45,
+                thickness: 0.6,
+                side: THREE.DoubleSide
+            });
 
-                const petalMat = new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide });
-                for (let p = 0; p < 5; p++) {
-                    const petal = new THREE.Mesh(petalGeometry, petalMat);
-                    petal.rotation.z = (p / 5) * Math.PI * 2;
-                    petal.rotation.x = -Math.PI / 2 + 0.5;
-                    petal.position.y = stemHeight;
-                    petal.scale.setScalar(flowerScale);
-                    flower.add(petal);
+            const heroTiers = [
+                { count: 9, length: 1.05, width: 0.44, curl: 0.65, wave: 0.22, y: 1.35, rotX: 0.95 },
+                { count: 8, length: 0.88, width: 0.38, curl: 0.55, wave: 0.18, y: 1.38, rotX: 0.72 },
+                { count: 6, length: 0.70, width: 0.30, curl: 0.45, wave: 0.15, y: 1.41, rotX: 0.48 }
+            ];
+
+            const heroPetalMeshes = [];
+
+            heroTiers.forEach((tier, tIdx) => {
+                const geom = FlowerUtils.createCurvedPetalGeometry({
+                    length: tier.length,
+                    width: tier.width,
+                    curl: tier.curl,
+                    wave: tier.wave,
+                    segmentsW: 14,
+                    segmentsL: 22
+                });
+
+                for (let i = 0; i < tier.count; i++) {
+                    const angle = (i / tier.count) * Math.PI * 2 + (tIdx * 0.4);
+                    const pivot = new THREE.Group();
+                    pivot.position.set(0, tier.y, 0);
+                    pivot.rotation.y = angle;
+
+                    const mesh = new THREE.Mesh(geom, heroPetalMat);
+                    mesh.rotation.x = tier.rotX;
+
+                    if (tIdx === 0 && i % 2 === 0) {
+                        const drop = FlowerUtils.createDewdrop({ radius: 0.02 });
+                        drop.position.set(0, tier.length * 0.55, 0.02);
+                        mesh.add(drop);
+                    }
+
+                    pivot.add(mesh);
+                    heroGroup.add(pivot);
+
+                    heroPetalMeshes.push({
+                        mesh,
+                        pivot,
+                        baseRotX: tier.rotX,
+                        phase: i * 0.6 + tIdx * 1.4
+                    });
                 }
+            });
 
-                const center = new THREE.Mesh(
-                    new THREE.SphereGeometry(0.03 * flowerScale, 8, 8),
-                    new THREE.MeshBasicMaterial({ color: 0xffd700 })
+            // Hero Stamen Cluster & Glowing Core
+            const heroStamens = FlowerUtils.createStamenCluster({
+                count: 32,
+                height: 0.26,
+                spread: 0.12,
+                antherColor: 0xffd166,
+                filamentColor: 0xfffae8
+            });
+            heroStamens.position.y = 1.42;
+            heroGroup.add(heroStamens);
+
+            const heroCore = FlowerUtils.createGlowingCore({
+                radius: 0.12,
+                color: 0xffa055,
+                glowColor: 0xff7044,
+                emissiveIntensity: 1.8
+            });
+            heroCore.position.y = 1.44;
+            heroGroup.add(heroCore);
+
+            // High-Performance Instanced Meadow of Thousands of Blooming Flowers
+            const instanceCount = isMobile ? 1200 : 3200;
+
+            // Instanced Wild Meadow Flower Geometry (Natural 5-petal cupped bloom)
+            const petalShape = new THREE.Shape();
+            for (let i = 0; i < 5; i++) {
+                const a1 = (i / 5) * Math.PI * 2;
+                const a2 = ((i + 0.5) / 5) * Math.PI * 2;
+                const rOuter = 0.16;
+                const rInner = 0.04;
+                if (i === 0) petalShape.moveTo(Math.cos(a1) * rOuter, Math.sin(a1) * rOuter);
+                else petalShape.lineTo(Math.cos(a1) * rOuter, Math.sin(a1) * rOuter);
+                petalShape.quadraticCurveTo(
+                    Math.cos(a2) * (rOuter * 1.3), Math.sin(a2) * (rOuter * 1.3),
+                    Math.cos((i + 1) / 5 * Math.PI * 2) * rOuter, Math.sin((i + 1) / 5 * Math.PI * 2) * rOuter
                 );
-                center.position.y = stemHeight + 0.02;
-                flower.add(center);
+            }
+            const flowerGeom = new THREE.ShapeGeometry(petalShape, 12);
+            flowerGeom.rotateX(-Math.PI / 2);
 
-                scene.add(flower);
-                flowers.push(flower);
-                flowerData.push({ phase: Math.random() * Math.PI * 2, sway: 0.05 + Math.random() * 0.1 });
+            const instancedMat = new THREE.MeshStandardMaterial({
+                roughness: 0.4,
+                metalness: 0.05,
+                side: THREE.DoubleSide
+            });
+
+            const instancedFlowers = new THREE.InstancedMesh(flowerGeom, instancedMat, instanceCount);
+            instancedFlowers.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+
+            const stemInstGeom = new THREE.CylinderGeometry(0.008, 0.012, 0.22, 4);
+            stemInstGeom.translate(0, 0.11, 0);
+            const stemInstMat = new THREE.MeshStandardMaterial({ color: 0x184220, roughness: 0.8 });
+            const instancedStems = new THREE.InstancedMesh(stemInstGeom, stemInstMat, instanceCount);
+
+            // Palette for the meadow
+            const palette = [
+                new THREE.Color(0xff85a1),
+                new THREE.Color(0xffa868),
+                new THREE.Color(0xfbb13c),
+                new THREE.Color(0xc084fc),
+                new THREE.Color(0xf472b6),
+                new THREE.Color(0xfff1f2)
+            ];
+
+            const instanceData = [];
+            const dummy = new THREE.Object3D();
+            const dummyStem = new THREE.Object3D();
+
+            for (let i = 0; i < instanceCount; i++) {
+                // Distribute in concentric rings around hero flower
+                const angle = Math.random() * Math.PI * 2;
+                const dist = 2.2 + Math.pow(Math.random(), 0.65) * 28.0;
+                const x = Math.cos(angle) * dist;
+                const z = Math.sin(angle) * dist;
+
+                // Terrain elevation height
+                const y = -0.5 + Math.sin(x * 0.08) * Math.cos(z * 0.08) * 0.4 +
+                                 Math.sin(x * 0.03 + z * 0.04) * 0.6;
+
+                const scale = 0.6 + Math.random() * 0.65;
+                const color = palette[Math.floor(Math.random() * palette.length)];
+
+                instancedFlowers.setColorAt(i, color);
+
+                dummy.position.set(x, y + 0.22 * scale, z);
+                dummy.scale.set(scale, scale, scale);
+                dummy.rotation.set(0, Math.random() * Math.PI, 0);
+                dummy.updateMatrix();
+                instancedFlowers.setMatrixAt(i, dummy.matrix);
+
+                dummyStem.position.set(x, y, z);
+                dummyStem.scale.set(scale, scale, scale);
+                dummyStem.updateMatrix();
+                instancedStems.setMatrixAt(i, dummyStem.matrix);
+
+                instanceData.push({
+                    baseX: x,
+                    baseY: y,
+                    baseZ: z,
+                    scale,
+                    phase: x * 0.2 + z * 0.2 + Math.random() * 0.5,
+                    rotY: Math.random() * Math.PI
+                });
             }
 
-            let windTime = 0, cameraAngle = 0;
+            instancedFlowers.instanceColor.needsUpdate = true;
+            instancedFlowers.instanceMatrix.needsUpdate = true;
+            instancedStems.instanceMatrix.needsUpdate = true;
+
+            scene.add(instancedStems);
+            scene.add(instancedFlowers);
 
             function animate() {
                 requestAnimationFrame(animate);
-                const delta = clock.getDelta();
                 const elapsed = clock.getElapsedTime();
-                windTime += delta * 1.5;
+                const wind = elapsed * 1.6;
 
-                flowers.forEach((flower, i) => {
-                    const d = flowerData[i];
-                    const w = Math.sin(windTime + flower.position.x * 0.1 + flower.position.z * 0.1);
-                    flower.rotation.z = w * 0.15 * d.sway;
-                    flower.rotation.x = Math.sin(windTime * 0.7 + d.phase) * 0.08 * d.sway;
+                // Hero flower wind sway & breathing
+                const heroSway = Math.sin(wind * 0.7) * 0.04;
+                heroGroup.rotation.z = heroSway;
+                heroGroup.rotation.x = Math.cos(wind * 0.5) * 0.03;
+
+                heroPetalMeshes.forEach(p => {
+                    const breath = Math.sin(elapsed * 1.8 + p.phase) * 0.02;
+                    p.mesh.rotation.x = p.baseRotX + breath;
                 });
 
-                cameraAngle += delta * 0.1;
-                camera.position.x = Math.sin(cameraAngle) * 3;
-                camera.position.z = 8 + Math.cos(cameraAngle) * 2;
-                camera.position.y = 2 + Math.sin(elapsed * 0.3) * 0.5;
-                camera.lookAt(0, 0.5, -5);
+                // Meadow flowers dynamic wind wave
+                for (let i = 0; i < instanceCount; i++) {
+                    const d = instanceData[i];
+                    const wave = Math.sin(wind + d.phase) * 0.18;
+                    const waveZ = Math.cos(wind * 0.8 + d.phase) * 0.08;
+
+                    dummy.position.set(d.baseX + wave * 0.15, d.baseY + 0.22 * d.scale, d.baseZ + waveZ * 0.1);
+                    dummy.rotation.set(waveZ, d.rotY, wave);
+                    dummy.scale.setScalar(d.scale);
+                    dummy.updateMatrix();
+                    instancedFlowers.setMatrixAt(i, dummy.matrix);
+
+                    dummyStem.position.set(d.baseX, d.baseY, d.baseZ);
+                    dummyStem.rotation.set(waveZ * 0.6, d.rotY, wave * 0.6);
+                    dummyStem.scale.setScalar(d.scale);
+                    dummyStem.updateMatrix();
+                    instancedStems.setMatrixAt(i, dummyStem.matrix);
+                }
+                instancedFlowers.instanceMatrix.needsUpdate = true;
+                instancedStems.instanceMatrix.needsUpdate = true;
+
+                heroCore.update(elapsed);
+                atmosphere.update();
+                controls.update();
 
                 renderer.render(scene, camera);
             }

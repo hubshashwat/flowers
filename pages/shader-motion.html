@@ -3,16 +3,65 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>Shader Motion Flower | Flowers For You 🌸</title>
     <link rel="icon" href="../favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="../css/style.css">
+    <style>
+        .shader-badge {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            background: rgba(18, 12, 28, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 180, 210, 0.25);
+            border-radius: 999px;
+            padding: 8px 18px;
+            font-size: 0.8rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: #ffd0e2;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 30;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+            pointer-events: none;
+        }
+
+        .shader-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ff5599;
+            box-shadow: 0 0 10px #ff5599;
+            animation: shaderGlow 2.5s infinite ease-in-out;
+        }
+
+        @keyframes shaderGlow {
+            0%, 100% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.4); opacity: 1; box-shadow: 0 0 16px #ff88cc; }
+        }
+
+        @media (max-width: 600px) {
+            .shader-badge {
+                top: auto;
+                bottom: 84px;
+                right: 50%;
+                transform: translateX(50%);
+                font-size: 0.72rem;
+                padding: 6px 14px;
+            }
+        }
+    </style>
 </head>
 
 <body>
     <div class="loading-overlay">
         <div class="loading-flower"></div>
-        <p class="loading-text">Weaving shaders...</p>
+        <p class="loading-text">Compiling silk wave shaders...</p>
     </div>
 
     <div class="flower-page">
@@ -25,9 +74,13 @@
             </a>
         </nav>
         <div id="canvas-container" class="flower-canvas"></div>
+        <div class="shader-badge">
+            <span class="shader-indicator"></span>
+            <span>GLSL Silk Fabric Physics</span>
+        </div>
         <div class="flower-info">
             <h1>Shader Motion</h1>
-            <p>Petals ripple like silk using vertex shaders with gradient color effects</p>
+            <p>Petals ripple like haute-couture silk using vertex displacement and anisotropic sheen shaders</p>
         </div>
     </div>
 
@@ -36,210 +89,418 @@
     <script>
         (function () {
             const container = document.getElementById('canvas-container');
-            const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
-                background: 0x0a0a15
+            const { scene, camera, renderer, clock, controls } = FlowerUtils.initScene(container, {
+                background: 0x08060d,
+                cameraPos: [0, 2.0, 5.0],
+                enableOrbit: true,
+                autoRotate: false
             });
 
-            camera.position.set(0, 2, 5);
-            camera.lookAt(0, 0.5, 0);
+            camera.lookAt(0, 0.4, 0);
+            if (controls) {
+                controls.target.set(0, 0.4, 0);
+                controls.enableDamping = true;
+                controls.dampingFactor = 0.05;
+                controls.maxDistance = 10;
+                controls.minDistance = 2;
+                controls.maxPolarAngle = Math.PI / 2 + 0.15;
+            }
 
-            // Lighting
-            const ambient = new THREE.AmbientLight(0xffffff, 0.3);
+            // High-End Runway Studio Lighting
+            const ambient = new THREE.AmbientLight(0x221528, 0.85);
             scene.add(ambient);
-            const mainLight = new THREE.DirectionalLight(0xfff0e0, 1);
-            mainLight.position.set(5, 8, 5);
-            scene.add(mainLight);
 
-            // Custom shader material for rippling petals
-            const petalVertexShader = `
-                uniform float time;
-                uniform float windStrength;
+            const keyLight = new THREE.DirectionalLight(0xfff6ea, 1.4);
+            keyLight.position.set(5, 8, 5);
+            keyLight.castShadow = true;
+            scene.add(keyLight);
+
+            const rimLight = new THREE.DirectionalLight(0xff6ea7, 1.2);
+            rimLight.position.set(-5, 4, -4);
+            scene.add(rimLight);
+
+            const warmSpot = new THREE.PointLight(0xffc599, 1.5, 8);
+            warmSpot.position.set(0, 2.5, 1.5);
+            scene.add(warmSpot);
+
+            // Black Obsidian Pedestal with Rose-Gold Inlay
+            const plinthGroup = new THREE.Group();
+            const plinthGeom = new THREE.CylinderGeometry(2.3, 2.5, 0.25, 48);
+            const plinthMat = new THREE.MeshStandardMaterial({
+                color: 0x0c0812,
+                roughness: 0.15,
+                metalness: 0.9
+            });
+            const plinth = new THREE.Mesh(plinthGeom, plinthMat);
+            plinth.position.y = -1.2;
+            plinthGroup.add(plinth);
+
+            const rimGeom = new THREE.TorusGeometry(2.3, 0.025, 16, 64);
+            const roseGoldMat = new THREE.MeshStandardMaterial({
+                color: 0xffa0b8,
+                metalness: 0.9,
+                roughness: 0.25
+            });
+            const rimMesh = new THREE.Mesh(rimGeom, roseGoldMat);
+            rimMesh.rotation.x = Math.PI / 2;
+            rimMesh.position.y = -1.07;
+            plinthGroup.add(rimMesh);
+            scene.add(plinthGroup);
+
+            // Silk Shader Material Definitions
+            const silkVertexShader = `
+                uniform float uTime;
+                uniform float uWindStrength;
+                uniform float uPhaseOffset;
                 varying vec2 vUv;
-                varying float vHeight;
-                
+                varying vec3 vNormal;
+                varying vec3 vViewPosition;
+                varying float vRipple;
+
                 void main() {
                     vUv = uv;
-                    vHeight = position.y;
-                    
                     vec3 pos = position;
-                    
-                    // Ripple effect based on height
-                    float wave = sin(pos.y * 8.0 + time * 3.0) * windStrength * pos.y;
-                    pos.z += wave;
-                    
-                    // Slight side-to-side motion
-                    float sway = sin(time * 2.0 + pos.y * 4.0) * 0.05 * pos.y;
-                    pos.x += sway;
-                    
-                    gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+
+                    float tipFactor = smoothstep(0.0, 1.0, uv.y);
+                    float edgeFactor = sin(uv.x * 3.14159265);
+
+                    // Multi-harmonic silk wave ripples
+                    float t = uTime * 3.2 + uPhaseOffset;
+                    float wave1 = sin(pos.y * 7.0 - t + pos.x * 5.0) * 0.10;
+                    float wave2 = cos(pos.y * 14.0 - t * 1.5 + pos.z * 8.0) * 0.04;
+                    float ripple = (wave1 + wave2) * tipFactor * uWindStrength;
+
+                    pos.z += ripple;
+                    pos.x += sin(t * 0.6 + pos.y * 4.0) * 0.03 * tipFactor;
+
+                    vRipple = ripple;
+
+                    // Compute dynamic normal perturbation for realistic lighting under deformation
+                    vec3 perturbed = normal;
+                    perturbed.x += cos(pos.y * 7.0 - t) * 0.25 * tipFactor;
+                    perturbed.z += sin(pos.y * 14.0 - t * 1.5) * 0.25 * tipFactor;
+                    vNormal = normalize(normalMatrix * perturbed);
+
+                    vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+                    vViewPosition = -mvPosition.xyz;
+                    gl_Position = projectionMatrix * mvPosition;
                 }
             `;
 
-            const petalFragmentShader = `
-                uniform vec3 colorBase;
-                uniform vec3 colorTip;
-                uniform float time;
+            const silkFragmentShader = `
+                uniform vec3 uBaseColor;
+                uniform vec3 uMidColor;
+                uniform vec3 uTipColor;
+                uniform vec3 uFresnelColor;
+                uniform float uTime;
                 varying vec2 vUv;
-                varying float vHeight;
-                
+                varying vec3 vNormal;
+                varying vec3 vViewPosition;
+                varying float vRipple;
+
                 void main() {
-                    // Gradient from base to tip
-                    float gradient = smoothstep(0.0, 1.0, vHeight);
-                    vec3 color = mix(colorBase, colorTip, gradient);
-                    
-                    // Subtle shimmer effect
-                    float shimmer = sin(vUv.x * 20.0 + time * 2.0) * 0.05 + 0.95;
-                    color *= shimmer;
-                    
-                    // Edge glow
-                    float edge = smoothstep(0.4, 0.5, abs(vUv.x - 0.5));
-                    color += vec3(0.1, 0.05, 0.1) * edge * gradient;
-                    
-                    gl_FragColor = vec4(color, 1.0);
+                    vec3 N = normalize(vNormal);
+                    vec3 V = normalize(vViewPosition);
+
+                    // 3-stop luxury silk gradient
+                    float t = vUv.y;
+                    vec3 col = mix(uBaseColor, uMidColor, smoothstep(0.0, 0.45, t));
+                    col = mix(col, uTipColor, smoothstep(0.4, 1.0, t));
+
+                    // Anisotropic silk sheen BRDF approximation
+                    vec3 L = normalize(vec3(0.5, 0.85, 0.65));
+                    vec3 H = normalize(L + V);
+                    float NdotL = max(dot(N, L), 0.0);
+                    float NdotV = max(dot(N, V), 0.0);
+
+                    // Tangent along petal spine for anisotropic highlight
+                    vec3 T = normalize(cross(N, vec3(0.0, 1.0, 0.0)));
+                    float TdotH = dot(T, H);
+                    float sinTH = sqrt(max(0.0, 1.0 - TdotH * TdotH));
+                    float silkSpec = pow(sinTH, 28.0) * 0.85;
+
+                    // Fresnel iridescence rim
+                    float fresnel = pow(1.0 - NdotV, 3.0);
+                    col += uFresnelColor * fresnel * 1.3;
+
+                    // Silk micro-fiber weave shimmer
+                    float weave = sin(vUv.x * 140.0 + vUv.y * 50.0 + uTime * 2.0) * 0.035;
+                    col += vec3(weave);
+
+                    // Backlit translucency scattering
+                    float backlight = max(0.0, dot(-L, V)) * pow(vUv.y, 1.5) * 0.45;
+                    col += uTipColor * backlight;
+
+                    // Combine diffuse + anisotropic specular highlight
+                    vec3 finalColor = col * (0.32 + 0.68 * NdotL) + vec3(1.0, 0.96, 0.92) * silkSpec;
+                    gl_FragColor = vec4(finalColor, 0.98);
                 }
             `;
 
-            // Flower group
-            const flowerGroup = new THREE.Group();
-            scene.add(flowerGroup);
+            // Build Subdivided Parametric Petal Geometry
+            function createSilkPetalGeometry(length = 1.2, width = 0.55, curvature = 0.18) {
+                // Generate a finely subdivided curved grid geometry (28 x 36)
+                const widthSegs = 28;
+                const lengthSegs = 36;
+                const geom = new THREE.BufferGeometry();
 
-            // Create petal geometry with subdivisions for smooth deformation
-            function createDetailedPetal() {
-                const shape = new THREE.Shape();
-                shape.moveTo(0, 0);
-                shape.bezierCurveTo(0.2, 0.1, 0.25, 0.4, 0.15, 0.7);
-                shape.bezierCurveTo(0.08, 0.9, -0.08, 0.9, -0.15, 0.7);
-                shape.bezierCurveTo(-0.25, 0.4, -0.2, 0.1, 0, 0);
+                const pos = [];
+                const uvs = [];
+                const normals = [];
+                const indices = [];
 
-                const geom = new THREE.ShapeGeometry(shape, 32);
+                for (let j = 0; j <= lengthSegs; j++) {
+                    const v = j / lengthSegs; // 0 (base) to 1 (tip)
+                    const y = v * length;
+                    // Petal profile width: teardrop taper
+                    const currentW = Math.sin(Math.pow(v, 0.6) * Math.PI) * width;
+                    // Cup curvature
+                    const zCup = Math.sin(v * Math.PI * 0.8) * curvature;
 
-                // Subdivide for smoother deformation
-                const positions = geom.attributes.position;
-                for (let i = 0; i < positions.count; i++) {
-                    const y = positions.getY(i);
-                    positions.setZ(i, Math.sin(y * Math.PI * 0.5) * 0.1);
+                    for (let i = 0; i <= widthSegs; i++) {
+                        const u = i / widthSegs; // 0 to 1
+                        const x = (u - 0.5) * currentW;
+                        // Edge curl
+                        const edgeCurl = Math.pow((u - 0.5) * 2.0, 2.0) * (curvature * 0.4);
+                        const z = zCup - edgeCurl;
+
+                        pos.push(x, y, z);
+                        uvs.push(u, v);
+                        normals.push(0, 0, 1);
+                    }
                 }
-                positions.needsUpdate = true;
 
+                for (let j = 0; j < lengthSegs; j++) {
+                    for (let i = 0; i < widthSegs; i++) {
+                        const a = j * (widthSegs + 1) + i;
+                        const b = (j + 1) * (widthSegs + 1) + i;
+                        const c = (j + 1) * (widthSegs + 1) + (i + 1);
+                        const d = j * (widthSegs + 1) + (i + 1);
+
+                        indices.push(a, b, d);
+                        indices.push(b, c, d);
+                    }
+                }
+
+                geom.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+                geom.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+                geom.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+                geom.setIndex(indices);
+                geom.computeVertexNormals();
                 return geom;
             }
 
-            // Create petals with shader material
-            const petalCount = 10;
-            const petals = [];
-            const petalColors = [
-                { base: new THREE.Color(0xff6b8a), tip: new THREE.Color(0xffb6c1) },
-                { base: new THREE.Color(0xff5577), tip: new THREE.Color(0xffaacc) },
-                { base: new THREE.Color(0xdd4466), tip: new THREE.Color(0xff99bb) }
+            // Flower Group
+            const flowerRoot = new THREE.Group();
+            flowerRoot.position.set(0, 0.1, 0);
+            scene.add(flowerRoot);
+
+            // Silk Color Palette: Haute Couture Crimson / Rose / Pearlescent Blush
+            const silkPalette = {
+                base: new THREE.Color(0x600520),       // Deep Burgundy Silk
+                mid: new THREE.Color(0xd8205a),        // Vivid Crimson Silk
+                tip: new THREE.Color(0xffa8c8),        // Soft Silk Blush
+                fresnel: new THREE.Color(0xffe4f0)     // Pearlescent Rim
+            };
+
+            const petalTiers = [
+                { count: 12, length: 1.35, width: 0.62, curve: 0.22, rotX: 0.92, y: 0.05, speed: 0.08 },
+                { count: 10, length: 1.10, width: 0.52, curve: 0.20, rotX: 0.70, y: 0.16, speed: -0.10 },
+                { count: 8,  length: 0.85, width: 0.42, curve: 0.16, rotX: 0.50, y: 0.26, speed: 0.14 },
+                { count: 6,  length: 0.60, width: 0.32, curve: 0.12, rotX: 0.32, y: 0.36, speed: -0.18 }
             ];
 
-            for (let i = 0; i < petalCount; i++) {
-                const geom = createDetailedPetal();
-                const colorSet = petalColors[i % petalColors.length];
+            const shaderMaterials = [];
+            const petalPivots = [];
 
-                const material = new THREE.ShaderMaterial({
-                    uniforms: {
-                        time: { value: 0 },
-                        windStrength: { value: 0.1 },
-                        colorBase: { value: colorSet.base },
-                        colorTip: { value: colorSet.tip }
-                    },
-                    vertexShader: petalVertexShader,
-                    fragmentShader: petalFragmentShader,
-                    side: THREE.DoubleSide
-                });
+            petalTiers.forEach((tierData, tierIdx) => {
+                const tierGroup = new THREE.Group();
+                tierGroup.position.y = tierData.y;
+                tierGroup.userData = { speed: tierData.speed, rotX: tierData.rotX };
 
-                const petal = new THREE.Mesh(geom, material);
-                const angle = (i / petalCount) * Math.PI * 2;
-                const layer = Math.floor(i / 5);
+                const geom = createSilkPetalGeometry(tierData.length, tierData.width, tierData.curve);
 
-                petal.rotation.z = angle;
-                petal.rotation.x = -Math.PI / 2 + 0.4 + layer * 0.15;
-                petal.position.y = 0.5;
-                petal.scale.setScalar(1 - layer * 0.15);
+                for (let i = 0; i < tierData.count; i++) {
+                    const angle = (i / tierData.count) * Math.PI * 2;
+                    const pivot = new THREE.Group();
+                    pivot.rotation.y = angle;
 
-                flowerGroup.add(petal);
-                petals.push(petal);
-            }
+                    const mat = new THREE.ShaderMaterial({
+                        uniforms: {
+                            uTime: { value: 0 },
+                            uWindStrength: { value: 1.0 },
+                            uPhaseOffset: { value: i * 0.4 + tierIdx * 0.8 },
+                            uBaseColor: { value: silkPalette.base },
+                            uMidColor: { value: silkPalette.mid },
+                            uTipColor: { value: silkPalette.tip },
+                            uFresnelColor: { value: silkPalette.fresnel }
+                        },
+                        vertexShader: silkVertexShader,
+                        fragmentShader: silkFragmentShader,
+                        side: THREE.DoubleSide
+                    });
+                    shaderMaterials.push(mat);
 
-            // Inner petals
-            for (let i = 0; i < 5; i++) {
-                const geom = createDetailedPetal();
-                const material = new THREE.ShaderMaterial({
-                    uniforms: {
-                        time: { value: 0 },
-                        windStrength: { value: 0.08 },
-                        colorBase: { value: new THREE.Color(0xffddee) },
-                        colorTip: { value: new THREE.Color(0xffffff) }
-                    },
-                    vertexShader: petalVertexShader,
-                    fragmentShader: petalFragmentShader,
-                    side: THREE.DoubleSide
-                });
+                    const mesh = new THREE.Mesh(geom, mat);
+                    mesh.castShadow = true;
+                    mesh.rotation.x = tierData.rotX;
+                    mesh.userData = {
+                        initRotX: tierData.rotX,
+                        phase: i * 0.3 + tierIdx * 0.5
+                    };
 
-                const petal = new THREE.Mesh(geom, material);
-                const angle = (i / 5) * Math.PI * 2 + 0.3;
+                    pivot.add(mesh);
+                    tierGroup.add(pivot);
+                    petalPivots.push(mesh);
+                }
 
-                petal.rotation.z = angle;
-                petal.rotation.x = -Math.PI / 2 + 0.25;
-                petal.position.y = 0.52;
-                petal.scale.setScalar(0.5);
-
-                flowerGroup.add(petal);
-                petals.push(petal);
-            }
-
-            // Center
-            const centerGeom = new THREE.SphereGeometry(0.1, 32, 32);
-            const centerMat = new THREE.MeshStandardMaterial({
-                color: 0xffd700,
-                roughness: 0.7,
-                metalness: 0.2
+                flowerRoot.add(tierGroup);
             });
-            const center = new THREE.Mesh(centerGeom, centerMat);
-            center.position.y = 0.55;
-            flowerGroup.add(center);
 
-            // Stem
+            // Glowing Golden Stamen Crown Core
+            const coreGroup = new THREE.Group();
+            coreGroup.position.y = 0.42;
+
+            const centerGeom = new THREE.SphereGeometry(0.18, 24, 24);
+            const centerMat = new THREE.MeshStandardMaterial({
+                color: 0xffb703,
+                roughness: 0.3,
+                metalness: 0.4,
+                emissive: 0xff6600,
+                emissiveIntensity: 0.4
+            });
+            const centerSphere = new THREE.Mesh(centerGeom, centerMat);
+            coreGroup.add(centerSphere);
+
+            // Glowing Anther Fibers
+            const stamenCount = 36;
+            const stamens = [];
+            for (let i = 0; i < stamenCount; i++) {
+                const angle = (i / stamenCount) * Math.PI * 2 + (Math.random() * 0.2);
+                const dist = 0.06 + Math.random() * 0.12;
+                const h = 0.18 + Math.random() * 0.12;
+
+                const filament = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.006, 0.008, h, 6),
+                    new THREE.MeshStandardMaterial({ color: 0xffd166, roughness: 0.3 })
+                );
+                filament.position.set(Math.cos(angle) * dist, h * 0.5, Math.sin(angle) * dist);
+                filament.rotation.z = (Math.random() - 0.5) * 0.3;
+                filament.rotation.x = (Math.random() - 0.5) * 0.3;
+                coreGroup.add(filament);
+
+                const anther = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.02, 8, 8),
+                    new THREE.MeshBasicMaterial({ color: 0xfff080 })
+                );
+                anther.position.set(0, h * 0.5, 0);
+                filament.add(anther);
+                stamens.push({ filament, initRotZ: filament.rotation.z, phase: i * 0.3 });
+            }
+
+            flowerRoot.add(coreGroup);
+
+            // Natural Velvet Curved Stem & Leaves
             const stemCurve = new THREE.CatmullRomCurve3([
-                new THREE.Vector3(0, 0.4, 0),
-                new THREE.Vector3(0.02, 0, 0.01),
-                new THREE.Vector3(-0.01, -0.5, -0.01),
+                new THREE.Vector3(0, 0.1, 0),
+                new THREE.Vector3(0.03, -0.4, 0.02),
+                new THREE.Vector3(-0.02, -0.8, -0.01),
                 new THREE.Vector3(0, -1.2, 0)
             ]);
-            const stemGeom = new THREE.TubeGeometry(stemCurve, 20, 0.03, 8, false);
-            const stemMat = new THREE.MeshStandardMaterial({ color: 0x2d5a27 });
-            const stem = new THREE.Mesh(stemGeom, stemMat);
-            flowerGroup.add(stem);
+            const stemGeom = new THREE.TubeGeometry(stemCurve, 32, 0.045, 12, false);
+            const stemMat = new THREE.MeshStandardMaterial({
+                color: 0x1f3b25,
+                roughness: 0.6,
+                metalness: 0.1
+            });
+            const stemMesh = new THREE.Mesh(stemGeom, stemMat);
+            flowerRoot.add(stemMesh);
 
-            // Ground
-            const groundGeom = new THREE.CircleGeometry(5, 64);
-            const groundMat = new THREE.MeshStandardMaterial({ color: 0x111118, roughness: 0.9 });
-            const ground = new THREE.Mesh(groundGeom, groundMat);
-            ground.rotation.x = -Math.PI / 2;
-            ground.position.y = -1.2;
-            scene.add(ground);
+            // Silk Leaves
+            [-0.3, -0.7].forEach((yPos, idx) => {
+                const leafGeom = createSilkPetalGeometry(0.7, 0.3, 0.1);
+                const leafMat = new THREE.MeshStandardMaterial({
+                    color: 0x2d5535,
+                    roughness: 0.5,
+                    side: THREE.DoubleSide
+                });
+                const leaf = new THREE.Mesh(leafGeom, leafMat);
+                leaf.position.set(idx === 0 ? 0.04 : -0.04, yPos, 0);
+                leaf.rotation.z = idx === 0 ? -1.1 : 1.1;
+                leaf.rotation.x = 0.35;
+                flowerRoot.add(leaf);
+            });
+
+            // Ambient Silk Threads & Golden Spores
+            const particleCount = 100;
+            const pGeom = new THREE.BufferGeometry();
+            const pPos = new Float32Array(particleCount * 3);
+            const pVel = [];
+
+            for (let i = 0; i < particleCount; i++) {
+                pPos[i * 3] = (Math.random() - 0.5) * 4;
+                pPos[i * 3 + 1] = -0.5 + Math.random() * 3;
+                pPos[i * 3 + 2] = (Math.random() - 0.5) * 4;
+                pVel.push({
+                    x: (Math.random() - 0.5) * 0.005,
+                    y: 0.004 + Math.random() * 0.008,
+                    z: (Math.random() - 0.5) * 0.005
+                });
+            }
+
+            pGeom.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+            const pMat = new THREE.PointsMaterial({
+                color: 0xffd4e5,
+                size: 0.04,
+                transparent: true,
+                opacity: 0.7,
+                blending: THREE.AdditiveBlending
+            });
+            const particles = new THREE.Points(pGeom, pMat);
+            scene.add(particles);
 
             function animate() {
                 requestAnimationFrame(animate);
                 const elapsed = clock.getElapsedTime();
 
-                // Update shader uniforms
-                petals.forEach((petal, i) => {
-                    if (petal.material.uniforms) {
-                        petal.material.uniforms.time.value = elapsed + i * 0.2;
-                        petal.material.uniforms.windStrength.value = 0.08 + Math.sin(elapsed * 0.5) * 0.03;
-                    }
+                // Dynamic wind turbulence strength
+                const wind = 0.85 + Math.sin(elapsed * 1.5) * 0.25;
+
+                // Update all custom shader materials with real-time uniforms
+                shaderMaterials.forEach(mat => {
+                    mat.uniforms.uTime.value = elapsed;
+                    mat.uniforms.uWindStrength.value = wind;
                 });
 
-                // Slow rotation
-                flowerGroup.rotation.y = elapsed * 0.15;
+                // Harmonic petal pitch wave
+                petalPivots.forEach(pMesh => {
+                    const wave = Math.sin(elapsed * 2.0 + pMesh.userData.phase) * 0.04;
+                    pMesh.rotation.x = pMesh.userData.initRotX + wave;
+                });
 
-                // Camera
-                camera.position.x = Math.sin(elapsed * 0.2) * 0.5;
-                camera.position.y = 2 + Math.sin(elapsed * 0.15) * 0.2;
-                camera.lookAt(0, 0.3, 0);
+                // Gentle stamen flutter
+                stamens.forEach(st => {
+                    st.filament.rotation.z = st.initRotZ + Math.sin(elapsed * 3.0 + st.phase) * 0.05;
+                });
 
+                // Root floating sway
+                flowerRoot.position.y = 0.1 + Math.sin(elapsed * 1.2) * 0.03;
+                flowerRoot.rotation.y = Math.sin(elapsed * 0.3) * 0.08;
+
+                // Particles ascending drift
+                const posArr = pGeom.attributes.position.array;
+                for (let i = 0; i < particleCount; i++) {
+                    posArr[i * 3] += pVel[i].x;
+                    posArr[i * 3 + 1] += pVel[i].y;
+                    posArr[i * 3 + 2] += pVel[i].z;
+
+                    if (posArr[i * 3 + 1] > 2.5) {
+                        posArr[i * 3 + 1] = -0.5;
+                    }
+                }
+                pGeom.attributes.position.needsUpdate = true;
+
+                if (controls) controls.update();
                 renderer.render(scene, camera);
             }
 

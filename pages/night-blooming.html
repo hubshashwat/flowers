@@ -37,245 +37,273 @@
         (function () {
             const container = document.getElementById('canvas-container');
             const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
-                background: 0x050510
+                background: 0x03030c,
+                cameraPos: [0, 1.4, 3.8],
+                controls: {
+                    target: new THREE.Vector3(0, 0.45, 0),
+                    minDistance: 2.0,
+                    maxDistance: 7.0,
+                    autoRotate: true,
+                    autoRotateSpeed: 0.35
+                }
             });
 
-            camera.position.set(0, 2, 5);
-            camera.lookAt(0, 0.5, 0);
+            // Studio Environment & Lighting
+            FlowerUtils.createStudioEnvironment(renderer, 'dark_luxury');
 
-            // Moonlight
-            const moonLight = new THREE.DirectionalLight(0x6688cc, 0.3);
-            moonLight.position.set(-5, 10, 5);
+            const ambientLight = new THREE.AmbientLight(0x0a1024, 1.2);
+            scene.add(ambientLight);
+
+            // Cold Silvery Moonlight
+            const moonLight = new THREE.DirectionalLight(0xb0d4ff, 2.4);
+            moonLight.position.set(-4, 7, 3);
             scene.add(moonLight);
 
-            const ambient = new THREE.AmbientLight(0x101020, 0.5);
-            scene.add(ambient);
+            const tealFillLight = new THREE.DirectionalLight(0x00e5ff, 1.6);
+            tealFillLight.position.set(4, 2, -3);
+            scene.add(tealFillLight);
 
-            // Moon
-            const moonGeom = new THREE.SphereGeometry(1, 32, 32);
-            const moonMat = new THREE.MeshBasicMaterial({ color: 0xffffee });
-            const moon = new THREE.Mesh(moonGeom, moonMat);
-            moon.position.set(-8, 12, -15);
-            scene.add(moon);
+            // Distant Luminous Moon in sky
+            const moonGeom = new THREE.SphereGeometry(1.2, 32, 32);
+            const moonMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            const moonMesh = new THREE.Mesh(moonGeom, moonMat);
+            moonMesh.position.set(-9, 11, -16);
+            scene.add(moonMesh);
 
-            // Moon glow
-            const moonGlowGeom = new THREE.SphereGeometry(1.5, 32, 32);
-            const moonGlowMat = new THREE.MeshBasicMaterial({
-                color: 0xaabbff,
+            const moonCoronaGeom = new THREE.SphereGeometry(2.0, 32, 32);
+            const moonCoronaMat = new THREE.MeshBasicMaterial({
+                color: 0x70a0ff,
                 transparent: true,
-                opacity: 0.2
+                opacity: 0.25,
+                blending: THREE.AdditiveBlending
             });
-            const moonGlow = new THREE.Mesh(moonGlowGeom, moonGlowMat);
-            moonGlow.position.copy(moon.position);
-            scene.add(moonGlow);
+            const moonCorona = new THREE.Mesh(moonCoronaGeom, moonCoronaMat);
+            moonCorona.position.copy(moonMesh.position);
+            scene.add(moonCorona);
 
-            // Stars
+            // Starfield
             const starCount = 500;
             const starGeom = new THREE.BufferGeometry();
-            const starPos = new Float32Array(starCount * 3);
+            const starPositions = new Float32Array(starCount * 3);
             for (let i = 0; i < starCount; i++) {
-                starPos[i * 3] = (Math.random() - 0.5) * 100;
-                starPos[i * 3 + 1] = Math.random() * 50 + 5;
-                starPos[i * 3 + 2] = (Math.random() - 0.5) * 100 - 20;
+                starPositions[i * 3] = (Math.random() - 0.5) * 35;
+                starPositions[i * 3 + 1] = Math.random() * 20 + 1;
+                starPositions[i * 3 + 2] = (Math.random() - 0.5) * 35;
             }
-            starGeom.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
-            const starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.1 });
+            starGeom.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+            const starMat = new THREE.PointsMaterial({
+                color: 0xffffff,
+                size: 0.025,
+                transparent: true,
+                opacity: 0.85
+            });
             const stars = new THREE.Points(starGeom, starMat);
             scene.add(stars);
 
-            // Flower group
-            const flowerGroup = new THREE.Group();
-            scene.add(flowerGroup);
-
-            // Create glowing petal with veins
-            function createGlowingPetal() {
-                const group = new THREE.Group();
-
-                // Base petal
-                const shape = new THREE.Shape();
-                shape.moveTo(0, 0);
-                shape.bezierCurveTo(0.15, 0.1, 0.2, 0.35, 0.12, 0.6);
-                shape.bezierCurveTo(0.05, 0.75, -0.05, 0.75, -0.12, 0.6);
-                shape.bezierCurveTo(-0.2, 0.35, -0.15, 0.1, 0, 0);
-
-                const petalGeom = new THREE.ShapeGeometry(shape, 24);
-                const petalMat = new THREE.MeshStandardMaterial({
-                    color: 0x1a1a3a,
-                    side: THREE.DoubleSide,
-                    roughness: 0.7
-                });
-                const petal = new THREE.Mesh(petalGeom, petalMat);
-                group.add(petal);
-
-                // Glowing veins
-                const veinMat = new THREE.MeshBasicMaterial({
-                    color: 0x4488ff,
-                    transparent: true,
-                    opacity: 0
-                });
-
-                // Central vein
-                const veinCurve = new THREE.QuadraticBezierCurve3(
-                    new THREE.Vector3(0, 0.05, 0.01),
-                    new THREE.Vector3(0, 0.35, 0.02),
-                    new THREE.Vector3(0, 0.65, 0.01)
-                );
-                const veinGeom = new THREE.TubeGeometry(veinCurve, 16, 0.008, 6, false);
-                const vein = new THREE.Mesh(veinGeom, veinMat.clone());
-                group.add(vein);
-
-                // Side veins
-                [-1, 1].forEach(side => {
-                    const sideVeinCurve = new THREE.QuadraticBezierCurve3(
-                        new THREE.Vector3(0, 0.2, 0.01),
-                        new THREE.Vector3(side * 0.06, 0.35, 0.015),
-                        new THREE.Vector3(side * 0.08, 0.5, 0.01)
-                    );
-                    const sideVeinGeom = new THREE.TubeGeometry(sideVeinCurve, 12, 0.005, 6, false);
-                    const sideVein = new THREE.Mesh(sideVeinGeom, veinMat.clone());
-                    group.add(sideVein);
-                });
-
-                group.userData.veins = group.children.filter((c, i) => i > 0);
-                return group;
-            }
-
-            // Create petals
-            const petalCount = 8;
-            const petals = [];
-
-            for (let i = 0; i < petalCount; i++) {
-                const petalGroup = createGlowingPetal();
-                const angle = (i / petalCount) * Math.PI * 2;
-
-                petalGroup.rotation.z = angle;
-                petalGroup.rotation.x = 0.1; // Closed
-                petalGroup.position.y = 0.5;
-
-                flowerGroup.add(petalGroup);
-                petals.push({
-                    group: petalGroup,
-                    veins: petalGroup.userData.veins,
-                    angle,
-                    closedX: 0.1,
-                    openX: -Math.PI / 2 + 0.6
-                });
-            }
-
-            // Center with glow
-            const centerGeom = new THREE.SphereGeometry(0.1, 16, 16);
-            const centerMat = new THREE.MeshBasicMaterial({
-                color: 0x88aaff,
-                transparent: true,
-                opacity: 0
+            // Luxury Moonlit Pedestal
+            const pedestal = FlowerUtils.createPedestal({
+                radius: 1.85,
+                height: 0.16,
+                y: -0.78,
+                color: 0x060814,
+                metalness: 0.95,
+                roughness: 0.1,
+                rimColor: 0x00e5ff
             });
-            const center = new THREE.Mesh(centerGeom, centerMat);
-            center.position.y = 0.52;
-            flowerGroup.add(center);
+            scene.add(pedestal);
 
-            // Center glow
-            const centerGlowGeom = new THREE.SphereGeometry(0.2, 16, 16);
-            const centerGlowMat = new THREE.MeshBasicMaterial({
-                color: 0x4466ff,
-                transparent: true,
-                opacity: 0
-            });
-            const centerGlow = new THREE.Mesh(centerGlowGeom, centerGlowMat);
-            centerGlow.position.y = 0.52;
-            flowerGroup.add(centerGlow);
-
-            // Point light for center
-            const centerLight = new THREE.PointLight(0x4488ff, 0, 3);
-            centerLight.position.y = 0.55;
-            flowerGroup.add(centerLight);
-
-            // Stem
-            const stemCurve = new THREE.CatmullRomCurve3([
-                new THREE.Vector3(0, 0.4, 0),
-                new THREE.Vector3(0.02, 0.1, 0.01),
-                new THREE.Vector3(-0.01, -0.3, -0.01),
-                new THREE.Vector3(0, -0.8, 0)
-            ]);
-            const stemGeom = new THREE.TubeGeometry(stemCurve, 16, 0.025, 8, false);
-            const stemMat = new THREE.MeshStandardMaterial({ color: 0x1a3a1a });
-            const stem = new THREE.Mesh(stemGeom, stemMat);
-            flowerGroup.add(stem);
-
-            // Ground
-            const groundGeom = new THREE.PlaneGeometry(30, 30);
-            const groundMat = new THREE.MeshStandardMaterial({ color: 0x0a1510, roughness: 0.95 });
-            const ground = new THREE.Mesh(groundGeom, groundMat);
-            ground.rotation.x = -Math.PI / 2;
-            ground.position.y = -0.8;
-            scene.add(ground);
-
-            // Fireflies
-            const fireflyCount = 30;
+            // Floating Fireflies
+            const fireflyCount = 70;
             const fireflyGeom = new THREE.BufferGeometry();
             const fireflyPos = new Float32Array(fireflyCount * 3);
+            const fireflyData = [];
+
             for (let i = 0; i < fireflyCount; i++) {
-                fireflyPos[i * 3] = (Math.random() - 0.5) * 8;
-                fireflyPos[i * 3 + 1] = Math.random() * 3;
-                fireflyPos[i * 3 + 2] = (Math.random() - 0.5) * 8;
+                const x = (Math.random() - 0.5) * 4.5;
+                const y = Math.random() * 2.5 - 0.5;
+                const z = (Math.random() - 0.5) * 4.5;
+                fireflyPos[i * 3] = x;
+                fireflyPos[i * 3 + 1] = y;
+                fireflyPos[i * 3 + 2] = z;
+
+                fireflyData.push({
+                    x, y, z,
+                    speed: 0.6 + Math.random() * 1.0,
+                    phase: Math.random() * Math.PI * 2,
+                    rad: 0.2 + Math.random() * 0.4
+                });
             }
             fireflyGeom.setAttribute('position', new THREE.BufferAttribute(fireflyPos, 3));
             const fireflyMat = new THREE.PointsMaterial({
-                color: 0xffff88,
-                size: 0.08,
+                color: 0x7df9ff,
+                size: 0.038,
                 transparent: true,
-                opacity: 0.8,
+                opacity: 0.85,
                 blending: THREE.AdditiveBlending
             });
             const fireflies = new THREE.Points(fireflyGeom, fireflyMat);
             scene.add(fireflies);
 
-            // Animation timing
-            const bloomStartTime = 2;
-            const bloomDuration = 5;
+            // Flower Group
+            const flower = new THREE.Group();
+            flower.position.y = 0.35;
+            scene.add(flower);
+
+            // Queen of the Night Petals (Velvet Night with glowing cyan emissive veins)
+            const outerMat = new THREE.MeshPhysicalMaterial({
+                color: 0x0d162d,
+                emissive: 0x005577,
+                emissiveIntensity: 0.65,
+                roughness: 0.25,
+                metalness: 0.3,
+                clearcoat: 0.9,
+                clearcoatRoughness: 0.15,
+                side: THREE.DoubleSide
+            });
+
+            const midMat = new THREE.MeshPhysicalMaterial({
+                color: 0x16264d,
+                emissive: 0x0088aa,
+                emissiveIntensity: 0.8,
+                roughness: 0.2,
+                metalness: 0.25,
+                clearcoat: 1.0,
+                side: THREE.DoubleSide
+            });
+
+            const innerMat = new THREE.MeshPhysicalMaterial({
+                color: 0xe0f7ff,
+                emissive: 0x00b4d8,
+                emissiveIntensity: 0.95,
+                roughness: 0.15,
+                metalness: 0.15,
+                clearcoat: 1.0,
+                side: THREE.DoubleSide
+            });
+
+            // 3 Tiers of Double-Curved Petals with Vascular Glowing Veins
+            const tiers = [
+                { count: 12, length: 1.15, width: 0.38, curl: 0.82, wave: 0.26, angle: 0.82, y: 0.0, mat: outerMat },
+                { count: 9,  length: 0.92, width: 0.32, curl: 0.62, wave: 0.2,  angle: 0.58, y: 0.06, mat: midMat },
+                { count: 7,  length: 0.68, width: 0.26, curl: 0.42, wave: 0.15, angle: 0.36, y: 0.12, mat: innerMat }
+            ];
+
+            const allPetals = [];
+            const allVeins = [];
+
+            const veinMat = new THREE.MeshBasicMaterial({
+                color: 0x00f7ff,
+                transparent: true,
+                opacity: 0.85,
+                blending: THREE.AdditiveBlending
+            });
+
+            tiers.forEach((tier, tIdx) => {
+                const geom = FlowerUtils.createCurvedPetalGeometry({
+                    length: tier.length,
+                    width: tier.width,
+                    curl: tier.curl,
+                    wave: tier.wave,
+                    segmentsL: 24,
+                    segmentsW: 16
+                });
+
+                for (let i = 0; i < tier.count; i++) {
+                    const angle = (i / tier.count) * Math.PI * 2 + (tIdx * 0.38);
+                    const mesh = new THREE.Mesh(geom, tier.mat);
+                    mesh.position.y = tier.y;
+                    mesh.rotation.y = angle;
+                    mesh.rotation.x = tier.angle;
+                    mesh.userData = {
+                        origRotX: tier.angle,
+                        angle,
+                        freq: 1.8 + tIdx * 0.5,
+                        phase: angle + tIdx
+                    };
+                    flower.add(mesh);
+                    allPetals.push(mesh);
+
+                    // Central Bioluminescent Vein
+                    const veinCurve = new THREE.CatmullRomCurve3([
+                        new THREE.Vector3(0, 0.05, 0.015),
+                        new THREE.Vector3(0, tier.length * 0.5, 0.035),
+                        new THREE.Vector3(0, tier.length * 0.92, 0.01)
+                    ]);
+                    const veinGeom = new THREE.TubeGeometry(veinCurve, 16, 0.006, 6, false);
+                    const veinMesh = new THREE.Mesh(veinGeom, veinMat.clone());
+                    mesh.add(veinMesh);
+                    allVeins.push(veinMesh);
+                }
+            });
+
+            // Bioluminescent Core & Stamen Crown
+            const core = FlowerUtils.createGlowingCore(flower, {
+                radius: 0.22,
+                color: 0x00e5ff,
+                innerColor: 0xffffff,
+                y: 0.18
+            });
+
+            FlowerUtils.createStamenCluster(flower, {
+                count: 38,
+                radius: 0.14,
+                height: 0.36,
+                spread: 0.4,
+                stemColor: 0x007799,
+                antherColor: 0x80f5ff,
+                y: 0.15
+            });
+
+            // Night Stem
+            const stemCurve = new THREE.CatmullRomCurve3([
+                new THREE.Vector3(0, 0.05, 0),
+                new THREE.Vector3(0.03, -0.28, 0.02),
+                new THREE.Vector3(-0.02, -0.55, -0.01),
+                new THREE.Vector3(0, -0.78, 0)
+            ]);
+            const stemGeom = new THREE.TubeGeometry(stemCurve, 32, 0.032, 12, false);
+            const stemMat = new THREE.MeshPhysicalMaterial({
+                color: 0x0a1622,
+                emissive: 0x021a24,
+                emissiveIntensity: 0.5,
+                metalness: 0.5,
+                roughness: 0.35,
+                clearcoat: 0.8
+            });
+            const stemMesh = new THREE.Mesh(stemGeom, stemMat);
+            flower.add(stemMesh);
 
             function animate() {
                 requestAnimationFrame(animate);
                 const elapsed = clock.getElapsedTime();
 
-                // Calculate bloom progress
-                const bloomTime = Math.max(0, elapsed - bloomStartTime);
-                const bloomProgress = Math.min(bloomTime / bloomDuration, 1);
-                const eased = FlowerUtils.easing.easeInOutCubic(bloomProgress);
+                // Gentle floating breath
+                flower.position.y = 0.35 + Math.sin(elapsed * 1.4) * 0.035;
 
-                // Bloom petals
-                petals.forEach((p, i) => {
-                    const delay = i * 0.1;
-                    const petalProgress = Math.max(0, Math.min(1, (bloomProgress - delay / bloomDuration) * 1.5));
-                    const petalEased = FlowerUtils.easing.easeOutBack(petalProgress);
+                // Petal breathing & vascular vein pulsing
+                for (let i = 0; i < allPetals.length; i++) {
+                    const p = allPetals[i];
+                    const wave = Math.sin(elapsed * p.userData.freq + p.userData.phase);
+                    p.rotation.x = p.userData.origRotX + wave * 0.035;
+                }
 
-                    p.group.rotation.x = p.closedX + (p.openX - p.closedX) * petalEased;
+                const veinPulse = 0.5 + Math.sin(elapsed * 2.5) * 0.35;
+                for (let v = 0; v < allVeins.length; v++) {
+                    allVeins[v].material.opacity = veinPulse;
+                }
 
-                    // Glow veins
-                    const glowIntensity = petalProgress * (0.5 + Math.sin(elapsed * 2 + i) * 0.3);
-                    p.veins.forEach(vein => {
-                        vein.material.opacity = glowIntensity;
-                    });
-                });
-
-                // Center glow
-                centerMat.opacity = eased * 0.9;
-                centerGlowMat.opacity = eased * (0.3 + Math.sin(elapsed * 3) * 0.1);
-                centerLight.intensity = eased * 1.5;
-
-                // Update fireflies
+                // Fireflies fluttering in 3D space
                 const ffPos = fireflyGeom.attributes.position.array;
                 for (let i = 0; i < fireflyCount; i++) {
-                    ffPos[i * 3] += Math.sin(elapsed + i) * 0.002;
-                    ffPos[i * 3 + 1] += Math.cos(elapsed * 0.7 + i) * 0.002;
-                    ffPos[i * 3 + 2] += Math.sin(elapsed * 0.5 + i * 2) * 0.002;
+                    const d = fireflyData[i];
+                    ffPos[i * 3] = d.x + Math.sin(elapsed * d.speed + d.phase) * d.rad;
+                    ffPos[i * 3 + 1] = d.y + Math.cos(elapsed * (d.speed * 0.8) + d.phase) * (d.rad * 0.6);
+                    ffPos[i * 3 + 2] = d.z + Math.sin(elapsed * (d.speed * 1.2) + d.phase) * d.rad;
                 }
                 fireflyGeom.attributes.position.needsUpdate = true;
-                fireflyMat.opacity = 0.4 + Math.sin(elapsed * 5) * 0.4;
+                fireflyMat.opacity = 0.5 + Math.sin(elapsed * 3.5) * 0.35;
 
-                // Camera
-                camera.position.x = Math.sin(elapsed * 0.1) * 0.5;
-                camera.lookAt(0, 0.3, 0);
-
+                core.pulse(elapsed, 2.0);
                 renderer.render(scene, camera);
             }
 

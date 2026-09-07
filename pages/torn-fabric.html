@@ -7,12 +7,44 @@
     <title>Torn Fabric Flower | Flowers For You 🌸</title>
     <link rel="icon" href="../favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="../css/style.css">
+    <style>
+        .silk-badge {
+            position: fixed;
+            top: 75px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(24, 16, 18, 0.8);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            padding: 8px 24px;
+            border-radius: 30px;
+            color: #fbcfe8;
+            font-size: 13px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            border: 1px solid rgba(251, 207, 232, 0.25);
+            box-shadow: 0 8px 32px rgba(244, 114, 182, 0.15);
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            pointer-events: none;
+        }
+
+        .silk-badge span {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #f472b6;
+            box-shadow: 0 0 10px #f472b6;
+        }
+    </style>
 </head>
 
 <body>
     <div class="loading-overlay">
         <div class="loading-flower"></div>
-        <p class="loading-text">Tearing silk...</p>
+        <p class="loading-text">Weaving frayed silk filaments...</p>
     </div>
 
     <div class="flower-page">
@@ -25,9 +57,13 @@
             </a>
         </nav>
         <div id="canvas-container" class="flower-canvas"></div>
+        <div class="silk-badge">
+            <span></span>
+            Haute Couture • Frayed Silk Chiffon
+        </div>
         <div class="flower-info">
             <h1>Torn Fabric Flower</h1>
-            <p>Silk cloth petals with realistic flutter physics</p>
+            <p>Raw mulberry silk and chiffon petals with frayed organic thread fringes undulating with cloth flutter dynamics</p>
         </div>
     </div>
 
@@ -37,173 +73,187 @@
         (function () {
             const container = document.getElementById('canvas-container');
             const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
-                background: 0x1a1515
+                background: 0x0f0b0e,
+                antialias: true
             });
 
-            camera.position.set(0, 2, 4.5);
-            camera.lookAt(0, 0.5, 0);
+            FlowerUtils.createStudioEnvironment(renderer, 'dark_luxury');
+            const controls = FlowerUtils.setupOrbitControls(camera, renderer.domElement, {
+                autoRotateSpeed: 0.45,
+                minDistance: 2.2,
+                maxDistance: 8.5
+            });
 
-            // Soft lighting
-            const ambient = new THREE.AmbientLight(0x443333, 0.5);
+            camera.position.set(0, 1.4, 3.6);
+            camera.lookAt(0, 0.35, 0);
+
+            // Lighting
+            const ambient = new THREE.AmbientLight(0x281822, 0.7);
             scene.add(ambient);
-            const mainLight = new THREE.DirectionalLight(0xffeedd, 1);
-            mainLight.position.set(3, 5, 3);
-            scene.add(mainLight);
 
-            // Flower group
+            const keyLight = new THREE.DirectionalLight(0xfff0f5, 2.2);
+            keyLight.position.set(5, 8, 4);
+            scene.add(keyLight);
+
+            const silkRim = new THREE.DirectionalLight(0xf472b6, 1.8);
+            silkRim.position.set(-4, -2, -3);
+            scene.add(silkRim);
+
+            // Tailor's Pedestal with Spun Gold Rim
+            const pedestal = FlowerUtils.createPedestal(scene, {
+                radius: 1.8,
+                height: 0.16,
+                y: -1.3,
+                baseColor: 0x140c12,
+                rimColor: 0xf472b6,
+                marble: true
+            });
+
+            // Silk dust motes
+            const atmosphere = FlowerUtils.createAtmosphere(scene, {
+                count: 110,
+                color: 0xfbcfe8,
+                size: 0.035,
+                spread: 6.5,
+                driftSpeed: 0.2
+            });
+
+            // Flower Group
             const flowerGroup = new THREE.Group();
             scene.add(flowerGroup);
 
-            // Silk fabric material
-            const silkMat = new THREE.MeshStandardMaterial({
-                color: 0xffaaaa,
-                side: THREE.DoubleSide,
-                roughness: 0.7,
-                metalness: 0.1
+            // Mulberry Raw Silk Physical Material
+            const silkMat = new THREE.MeshPhysicalMaterial({
+                color: 0xf472b6,
+                roughness: 0.65,
+                metalness: 0.05,
+                transmission: 0.35,
+                thickness: 0.5,
+                clearcoat: 0.4,
+                side: THREE.DoubleSide
             });
 
-            // Create torn fabric petal with irregular edges
-            function createFabricPetal() {
-                const shape = new THREE.Shape();
-
-                // Irregular torn edges
-                shape.moveTo(0, 0);
-
-                const segments = 15;
-                for (let i = 0; i <= segments; i++) {
-                    const t = i / segments;
-                    const baseWidth = Math.sin(t * Math.PI) * 0.15;
-                    const tear = (Math.random() - 0.5) * 0.03;
-                    const x = baseWidth + tear;
-                    const y = t * 0.7;
-                    if (i === 0) continue;
-                    shape.lineTo(x, y);
-                }
-
-                for (let i = segments; i >= 0; i--) {
-                    const t = i / segments;
-                    const baseWidth = -Math.sin(t * Math.PI) * 0.15;
-                    const tear = (Math.random() - 0.5) * 0.03;
-                    const x = baseWidth + tear;
-                    const y = t * 0.7;
-                    shape.lineTo(x, y);
-                }
-
-                const geom = new THREE.ShapeGeometry(shape, 24);
-
-                // Add some Z variation for cloth-like appearance
-                const positions = geom.attributes.position;
-                for (let i = 0; i < positions.count; i++) {
-                    const y = positions.getY(i);
-                    const x = positions.getX(i);
-                    positions.setZ(i, Math.sin(y * Math.PI * 2) * 0.02 + Math.sin(x * 10) * 0.01);
-                }
-                positions.needsUpdate = true;
-                geom.computeVertexNormals();
-
-                const petal = new THREE.Mesh(geom, silkMat.clone());
-                petal.userData.originalPositions = positions.array.slice();
-                return petal;
-            }
-
-            // Create petals
-            const petalCount = 7;
-            const petals = [];
-            for (let i = 0; i < petalCount; i++) {
-                const petal = createFabricPetal();
-                petal.material.color.setHSL(0.95 + Math.random() * 0.05, 0.4, 0.7);
-                const angle = (i / petalCount) * Math.PI * 2;
-                petal.rotation.z = angle;
-                petal.rotation.x = -Math.PI / 2 + 0.5;
-                petal.position.y = 0.5;
-                petal.userData.phase = i * 0.4;
-                flowerGroup.add(petal);
-                petals.push(petal);
-            }
-
-            // Inner petals
-            for (let i = 0; i < 5; i++) {
-                const petal = createFabricPetal();
-                petal.material.color.setHSL(0.98, 0.3, 0.8);
-                petal.scale.setScalar(0.6);
-                const angle = (i / 5) * Math.PI * 2 + 0.3;
-                petal.rotation.z = angle;
-                petal.rotation.x = -Math.PI / 2 + 0.4;
-                petal.position.y = 0.52;
-                petal.userData.phase = i * 0.3 + 2;
-                flowerGroup.add(petal);
-                petals.push(petal);
-            }
-
-            // Center
-            const centerGeom = new THREE.SphereGeometry(0.08, 32, 32);
-            const centerMat = new THREE.MeshStandardMaterial({ color: 0xffddaa, roughness: 0.8 });
-            const center = new THREE.Mesh(centerGeom, centerMat);
-            center.position.y = 0.55;
-            flowerGroup.add(center);
-
             // Stem
-            const stemCurve = new THREE.CatmullRomCurve3([
-                new THREE.Vector3(0, 0.4, 0),
-                new THREE.Vector3(0.02, 0, 0.01),
-                new THREE.Vector3(0, -0.8, 0)
-            ]);
-            const stemGeom = new THREE.TubeGeometry(stemCurve, 16, 0.025, 8, false);
-            const stemMat = new THREE.MeshStandardMaterial({ color: 0x557755 });
+            const stemPoints = [
+                new THREE.Vector3(0, 0.3, 0),
+                new THREE.Vector3(0.04, -0.1, 0.02),
+                new THREE.Vector3(-0.03, -0.6, -0.02),
+                new THREE.Vector3(0.01, -1.25, 0)
+            ];
+            const stemCurve = new THREE.CatmullRomCurve3(stemPoints);
+            const stemGeom = new THREE.TubeGeometry(stemCurve, 32, 0.038, 12, false);
+            const stemMat = new THREE.MeshStandardMaterial({
+                color: 0x3d6645,
+                roughness: 0.75
+            });
             const stem = new THREE.Mesh(stemGeom, stemMat);
             flowerGroup.add(stem);
 
-            // Floating threads
-            const threads = [];
-            for (let i = 0; i < 8; i++) {
-                const threadPoints = [];
-                const startAngle = Math.random() * Math.PI * 2;
-                for (let j = 0; j < 10; j++) {
-                    threadPoints.push(new THREE.Vector3(
-                        Math.cos(startAngle) * 0.2 + (Math.random() - 0.5) * 0.1,
-                        0.5 + j * 0.05,
-                        Math.sin(startAngle) * 0.2 + (Math.random() - 0.5) * 0.1
-                    ));
+            // Petals
+            const tiers = [
+                { count: 9, length: 1.25, width: 0.52, curl: 0.65, wave: 0.32, y: 0.38, rotX: 0.95 },
+                { count: 8, length: 1.05, width: 0.45, curl: 0.55, wave: 0.26, y: 0.42, rotX: 0.72 },
+                { count: 6, length: 0.85, width: 0.38, curl: 0.45, wave: 0.22, y: 0.46, rotX: 0.48 }
+            ];
+
+            const petalMeshes = [];
+            const frayedThreads = [];
+
+            const threadMat = new THREE.LineBasicMaterial({
+                color: 0xfce7f3,
+                transparent: true,
+                opacity: 0.65
+            });
+
+            tiers.forEach((tier, tIdx) => {
+                const geom = FlowerUtils.createCurvedPetalGeometry({
+                    length: tier.length,
+                    width: tier.width,
+                    curl: tier.curl,
+                    wave: tier.wave,
+                    segmentsW: 14,
+                    segmentsL: 24
+                });
+
+                for (let i = 0; i < tier.count; i++) {
+                    const angle = (i / tier.count) * Math.PI * 2 + (tIdx * 0.4);
+                    const pivot = new THREE.Group();
+                    pivot.position.set(0, tier.y, 0);
+                    pivot.rotation.y = angle;
+
+                    const mesh = new THREE.Mesh(geom, silkMat);
+                    mesh.rotation.x = tier.rotX;
+
+                    // Frayed silk threads extending from petal edge
+                    for (let th = 0; th < 3; th++) {
+                        const thPoints = [];
+                        const startY = tier.length * (0.6 + th * 0.15);
+                        const startX = (th % 2 === 0 ? 1 : -1) * tier.width * 0.45;
+                        for (let p = 0; p <= 6; p++) {
+                            thPoints.push(new THREE.Vector3(
+                                startX + (p * 0.03 * (th % 2 === 0 ? 1 : -1)),
+                                startY + p * 0.02,
+                                0.01 + p * 0.015
+                            ));
+                        }
+                        const thGeom = new THREE.BufferGeometry().setFromPoints(thPoints);
+                        const thLine = new THREE.Line(thGeom, threadMat);
+                        mesh.add(thLine);
+                        frayedThreads.push({ line: thLine, phase: i + th * 2 });
+                    }
+
+                    pivot.add(mesh);
+                    flowerGroup.add(pivot);
+
+                    petalMeshes.push({
+                        mesh,
+                        pivot,
+                        tier: tIdx,
+                        baseRotX: tier.rotX,
+                        phase: i * 0.5 + tIdx * 1.2
+                    });
                 }
-                const threadCurve = new THREE.CatmullRomCurve3(threadPoints);
-                const threadGeom = new THREE.TubeGeometry(threadCurve, 10, 0.003, 4, false);
-                const threadMat = new THREE.MeshBasicMaterial({ color: 0xffcccc, transparent: true, opacity: 0.5 });
-                const thread = new THREE.Mesh(threadGeom, threadMat);
-                thread.userData.phase = i * 0.5;
-                scene.add(thread);
-                threads.push(thread);
-            }
+            });
+
+            // Center Stamen Cluster
+            const stamenCluster = FlowerUtils.createStamenCluster({
+                count: 32,
+                height: 0.32,
+                spread: 0.14,
+                antherColor: 0xfbbf24,
+                filamentColor: 0xfef08a
+            });
+            stamenCluster.position.y = 0.48;
+            flowerGroup.add(stamenCluster);
+
+            // Core
+            const core = FlowerUtils.createGlowingCore({
+                radius: 0.13,
+                color: 0xf472b6,
+                glowColor: 0xdb2777,
+                emissiveIntensity: 1.8
+            });
+            core.position.y = 0.52;
+            flowerGroup.add(core);
 
             function animate() {
                 requestAnimationFrame(animate);
                 const elapsed = clock.getElapsedTime();
 
-                // Cloth physics simulation (simplified flutter)
-                petals.forEach(petal => {
-                    const positions = petal.geometry.attributes.position;
-                    const original = petal.userData.originalPositions;
-
-                    for (let i = 0; i < positions.count; i++) {
-                        const y = original[i * 3 + 1];
-                        const flutter = Math.sin(elapsed * 4 + y * 10 + petal.userData.phase) * 0.015 * y;
-                        positions.setZ(i, original[i * 3 + 2] + flutter);
-                    }
-                    positions.needsUpdate = true;
-
-                    // Gentle sway
-                    petal.rotation.x = -Math.PI / 2 + 0.5 + Math.sin(elapsed * 0.8 + petal.userData.phase) * 0.05;
+                // Realistic silk cloth flutter
+                petalMeshes.forEach(p => {
+                    const clothFlutter = Math.sin(elapsed * 2.2 + p.phase) * 0.035 +
+                                         Math.sin(elapsed * 4.5 + p.phase) * 0.015;
+                    p.mesh.rotation.x = p.baseRotX + clothFlutter;
+                    p.mesh.rotation.z = Math.cos(elapsed * 1.8 + p.phase) * 0.02;
                 });
 
-                // Threads float
-                threads.forEach(thread => {
-                    thread.position.y = Math.sin(elapsed + thread.userData.phase) * 0.03;
-                    thread.rotation.y = elapsed * 0.2 + thread.userData.phase;
-                });
+                flowerGroup.position.y = Math.sin(elapsed * 0.8) * 0.02;
+                flowerGroup.rotation.y = elapsed * 0.1;
 
-                flowerGroup.rotation.y = elapsed * 0.08;
-
-                camera.position.x = Math.sin(elapsed * 0.1) * 0.4;
-                camera.lookAt(0, 0.5, 0);
+                core.update(elapsed);
+                atmosphere.update();
+                controls.update();
 
                 renderer.render(scene, camera);
             }

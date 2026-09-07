@@ -36,213 +36,233 @@
     <script>
         (function () {
             const container = document.getElementById('canvas-container');
-            const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
-                background: 0x0a0505
+            const { scene, camera, renderer, clock, controls } = FlowerUtils.initScene(container, {
+                background: 0x0a0302,
+                environmentTheme: 'warm_sunset',
+                controls: {
+                    target: new THREE.Vector3(0, 0.45, 0),
+                    minDistance: 2.2,
+                    maxDistance: 6.5,
+                    autoRotate: true,
+                    autoRotateSpeed: 0.35
+                }
             });
 
-            camera.position.set(0, 2, 4.5);
-            camera.lookAt(0, 0.5, 0);
+            camera.position.set(0, 1.4, 3.6);
+            camera.lookAt(0, 0.45, 0);
 
-            // Warm fire lighting
-            const ambient = new THREE.AmbientLight(0x331100, 0.3);
+            // Fiery studio lighting
+            const ambient = new THREE.AmbientLight(0x280d04, 0.5);
             scene.add(ambient);
-            const fireLight = new THREE.PointLight(0xff6600, 2, 5);
-            fireLight.position.set(0, 0.5, 0);
-            scene.add(fireLight);
+
+            const fireKey = new THREE.DirectionalLight(0xffeedd, 2.2);
+            fireKey.position.set(3, 5, 3);
+            scene.add(fireKey);
+
+            const warmFill = new THREE.DirectionalLight(0xff6600, 1.6);
+            warmFill.position.set(-3, 3, 2);
+            scene.add(warmFill);
+
+            const rimGold = new THREE.PointLight(0xffa500, 2.2, 8);
+            rimGold.position.set(0, 3, -2.5);
+            scene.add(rimGold);
+
+            // Volcanic obsidian pedestal
+            const pedestal = FlowerUtils.createPedestal(scene, {
+                radius: 1.7,
+                color: 0x0f0503,
+                roughness: 0.15,
+                metalness: 0.8,
+                y: -0.8
+            });
+
+            // Glowing ember ring on pedestal
+            const ringGeom = new THREE.RingGeometry(1.25, 1.28, 64);
+            const ringMat = new THREE.MeshBasicMaterial({
+                color: 0xff4500,
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.65
+            });
+            const ring = new THREE.Mesh(ringGeom, ringMat);
+            ring.rotation.x = -Math.PI / 2;
+            ring.position.y = -0.79;
+            scene.add(ring);
+
+            // Fiery sparks atmosphere
+            const atmosphere = FlowerUtils.createAtmosphere(scene, {
+                count: 120,
+                color: 0xffaa00,
+                spread: 4.5,
+                size: 0.032,
+                speed: 0.35
+            });
 
             // Flower group
             const flowerGroup = new THREE.Group();
             scene.add(flowerGroup);
 
-            // Fire gradient colors
-            function getFireColor(t) {
-                if (t < 0.3) return new THREE.Color(0xff0000);
-                if (t < 0.6) return new THREE.Color(0xff6600);
-                if (t < 0.8) return new THREE.Color(0xffaa00);
-                return new THREE.Color(0xffff88);
-            }
-
-            // Create petal
-            function createFirePetal() {
-                const shape = new THREE.Shape();
-                shape.moveTo(0, 0);
-                shape.bezierCurveTo(0.15, 0.1, 0.18, 0.4, 0.1, 0.6);
-                shape.bezierCurveTo(0.03, 0.72, -0.03, 0.72, -0.1, 0.6);
-                shape.bezierCurveTo(-0.18, 0.4, -0.15, 0.1, 0, 0);
-
-                const geom = new THREE.ShapeGeometry(shape, 16);
-                const mat = new THREE.MeshBasicMaterial({
-                    color: 0xff6600,
-                    side: THREE.DoubleSide,
-                    transparent: true,
-                    opacity: 1
+            // Flame Petal Materials
+            function createFlameMat(baseColor = 0x991100, emissiveColor = 0xff4500, emissiveIntensity = 1.4) {
+                return new THREE.MeshPhysicalMaterial({
+                    color: new THREE.Color(baseColor),
+                    emissive: new THREE.Color(emissiveColor),
+                    emissiveIntensity: emissiveIntensity,
+                    roughness: 0.25,
+                    metalness: 0.1,
+                    clearcoat: 0.8,
+                    clearcoatRoughness: 0.15,
+                    side: THREE.DoubleSide
                 });
-                return new THREE.Mesh(geom, mat);
             }
 
-            // Create petals
-            const petalCount = 8;
+            const outerFlameMat = createFlameMat(0x880000, 0xff2200, 1.2);
+            const midFlameMat = createFlameMat(0xaa2200, 0xff6600, 1.6);
+            const innerFlameMat = createFlameMat(0xcc4400, 0xffaa00, 2.0);
+
             const petals = [];
-            for (let i = 0; i < petalCount; i++) {
-                const petal = createFirePetal();
-                const angle = (i / petalCount) * Math.PI * 2;
+
+            // Outer layer: Grand phoenix flame wings
+            const outerCount = 8;
+            for (let i = 0; i < outerCount; i++) {
+                const geom = FlowerUtils.createCurvedPetalGeometry(0.55, 1.25, {
+                    curl: 0.32,
+                    cup: 0.22,
+                    flare: 0.35,
+                    ruffle: 0.04,
+                    uSegments: 24,
+                    vSegments: 32
+                });
+                const petal = new THREE.Mesh(geom, outerFlameMat);
+
+                const angle = (i / outerCount) * Math.PI * 2;
                 petal.rotation.z = angle;
-                petal.rotation.x = -Math.PI / 2 + 0.4;
-                petal.position.y = 0.5;
-                petal.userData.phase = i * 0.3;
+                petal.rotation.x = -Math.PI / 2 + 0.52;
+                petal.position.y = 0.44;
+                petal.userData = { phase: i * 0.4, baseRotX: petal.rotation.x };
                 flowerGroup.add(petal);
                 petals.push(petal);
             }
 
-            // Center (ember core)
-            const centerGeom = new THREE.SphereGeometry(0.1, 32, 32);
-            const centerMat = new THREE.MeshBasicMaterial({ color: 0xffff88 });
-            const center = new THREE.Mesh(centerGeom, centerMat);
-            center.position.y = 0.55;
-            flowerGroup.add(center);
+            // Middle layer: Rising fire plumes
+            const midCount = 8;
+            for (let i = 0; i < midCount; i++) {
+                const geom = FlowerUtils.createCurvedPetalGeometry(0.42, 0.95, {
+                    curl: 0.38,
+                    cup: 0.26,
+                    flare: 0.2,
+                    ruffle: 0.03,
+                    uSegments: 20,
+                    vSegments: 28
+                });
+                const petal = new THREE.Mesh(geom, midFlameMat);
 
-            // Stem
-            const stemCurve = new THREE.CatmullRomCurve3([
-                new THREE.Vector3(0, 0.4, 0),
-                new THREE.Vector3(0.02, 0, 0.01),
-                new THREE.Vector3(0, -0.6, 0)
-            ]);
-            const stemGeom = new THREE.TubeGeometry(stemCurve, 16, 0.025, 8, false);
-            const stemMat = new THREE.MeshBasicMaterial({ color: 0x442200 });
+                const angle = (i / midCount) * Math.PI * 2 + Math.PI / outerCount;
+                petal.rotation.z = angle;
+                petal.rotation.x = -Math.PI / 2 + 0.32;
+                petal.position.y = 0.47;
+                petal.userData = { phase: i * 0.5 + 2, baseRotX: petal.rotation.x };
+                flowerGroup.add(petal);
+                petals.push(petal);
+            }
+
+            // Inner layer: Core golden flame tongues
+            const innerCount = 6;
+            for (let i = 0; i < innerCount; i++) {
+                const geom = FlowerUtils.createCurvedPetalGeometry(0.3, 0.7, {
+                    curl: 0.42,
+                    cup: 0.3,
+                    flare: 0.12,
+                    ruffle: 0.02,
+                    uSegments: 18,
+                    vSegments: 24
+                });
+                const petal = new THREE.Mesh(geom, innerFlameMat);
+
+                const angle = (i / innerCount) * Math.PI * 2 + 0.3;
+                petal.rotation.z = angle;
+                petal.rotation.x = -Math.PI / 2 + 0.16;
+                petal.position.y = 0.5;
+                petal.userData = { phase: i * 0.6 + 4, baseRotX: petal.rotation.x };
+                flowerGroup.add(petal);
+                petals.push(petal);
+            }
+
+            // Fiery golden stamen embers
+            const stamens = FlowerUtils.createStamenCluster({
+                count: 24,
+                radius: 0.12,
+                height: 0.32,
+                filamentColor: 0xffaa00,
+                pollenColor: 0xffe600,
+                pollenEmissive: 0xff8800
+            });
+            stamens.position.y = 0.5;
+            flowerGroup.add(stamens);
+
+            // Radiant molten core
+            const fireCore = FlowerUtils.createGlowingCore({
+                radius: 0.15,
+                innerColor: 0xffffff,
+                glowColor: 0xff5500,
+                emissiveIntensity: 2.6
+            });
+            fireCore.group.position.y = 0.52;
+            flowerGroup.add(fireCore.group);
+
+            // Charred obsidian stem with molten gold veins
+            const stemPoints = [
+                new THREE.Vector3(0, 0.44, 0),
+                new THREE.Vector3(0.02, 0.2, 0.01),
+                new THREE.Vector3(-0.015, -0.1, -0.01),
+                new THREE.Vector3(0.01, -0.45, 0.005),
+                new THREE.Vector3(0, -0.78, 0)
+            ];
+            const stemCurve = new THREE.CatmullRomCurve3(stemPoints);
+            const stemGeom = new THREE.TubeGeometry(stemCurve, 32, 0.036, 16, false);
+            const stemMat = new THREE.MeshPhysicalMaterial({
+                color: 0x140602,
+                emissive: 0x551100,
+                emissiveIntensity: 0.5,
+                roughness: 0.35,
+                metalness: 0.6,
+                clearcoat: 0.4
+            });
             const stem = new THREE.Mesh(stemGeom, stemMat);
             flowerGroup.add(stem);
 
-            // Fire particles
-            const fireParticleCount = 100;
-            const fireGeom = new THREE.BufferGeometry();
-            const firePos = new Float32Array(fireParticleCount * 3);
-            const fireColors = new Float32Array(fireParticleCount * 3);
-            const fireVels = [];
-            for (let i = 0; i < fireParticleCount; i++) {
-                firePos[i * 3] = (Math.random() - 0.5) * 0.5;
-                firePos[i * 3 + 1] = 0.3 + Math.random() * 0.5;
-                firePos[i * 3 + 2] = (Math.random() - 0.5) * 0.5;
-                const color = getFireColor(Math.random());
-                fireColors[i * 3] = color.r;
-                fireColors[i * 3 + 1] = color.g;
-                fireColors[i * 3 + 2] = color.b;
-                fireVels.push({
-                    x: (Math.random() - 0.5) * 0.01,
-                    y: 0.02 + Math.random() * 0.03,
-                    z: (Math.random() - 0.5) * 0.01
+            // Flame leaves
+            [-0.08, -0.4].forEach((y, i) => {
+                const leafGeom = FlowerUtils.createCurvedPetalGeometry(0.24, 0.65, {
+                    curl: 0.35,
+                    cup: 0.15,
+                    flare: 0.25
                 });
-            }
-            fireGeom.setAttribute('position', new THREE.BufferAttribute(firePos, 3));
-            fireGeom.setAttribute('color', new THREE.BufferAttribute(fireColors, 3));
-            const fireMat = new THREE.PointsMaterial({
-                size: 0.04,
-                vertexColors: true,
-                transparent: true,
-                opacity: 0.8
+                const leaf = new THREE.Mesh(leafGeom, midFlameMat);
+                leaf.position.set(i % 2 === 0 ? 0.02 : -0.02, y, 0);
+                leaf.rotation.set(0.28, i % 2 === 0 ? 1.15 : -1.15, i % 2 === 0 ? 0.45 : -0.45);
+                flowerGroup.add(leaf);
             });
-            const fireParticles = new THREE.Points(fireGeom, fireMat);
-            scene.add(fireParticles);
-
-            // Ember particles (for rebirth phase)
-            const emberCount = 50;
-            const emberGeom = new THREE.BufferGeometry();
-            const emberPos = new Float32Array(emberCount * 3);
-            for (let i = 0; i < emberCount; i++) {
-                emberPos[i * 3] = (Math.random() - 0.5) * 0.8;
-                emberPos[i * 3 + 1] = -0.5 + Math.random() * 0.3;
-                emberPos[i * 3 + 2] = (Math.random() - 0.5) * 0.8;
-            }
-            emberGeom.setAttribute('position', new THREE.BufferAttribute(emberPos, 3));
-            const emberMat = new THREE.PointsMaterial({
-                color: 0xff4400,
-                size: 0.03,
-                transparent: true,
-                opacity: 0
-            });
-            const embers = new THREE.Points(emberGeom, emberMat);
-            scene.add(embers);
-
-            const cycleDuration = 10;
 
             function animate() {
                 requestAnimationFrame(animate);
+                const delta = clock.getDelta();
                 const elapsed = clock.getElapsedTime();
-                const cycleTime = elapsed % cycleDuration;
 
-                // Phase: 0-4 bloom with fire, 4-6 burn down, 6-8 embers, 8-10 rebirth
-                let phase;
-                if (cycleTime < 4) phase = 'bloom';
-                else if (cycleTime < 6) phase = 'burn';
-                else if (cycleTime < 8) phase = 'embers';
-                else phase = 'rebirth';
-
-                // Animate petals
-                petals.forEach((petal, i) => {
-                    const flicker = Math.sin(elapsed * 10 + petal.userData.phase) * 0.1;
-
-                    if (phase === 'bloom') {
-                        const progress = cycleTime / 4;
-                        petal.scale.setScalar(progress);
-                        petal.material.opacity = progress;
-                        petal.material.color.copy(getFireColor(0.5 + flicker));
-                    } else if (phase === 'burn') {
-                        const burnProgress = (cycleTime - 4) / 2;
-                        petal.material.opacity = 1 - burnProgress;
-                        petal.scale.y = 1 - burnProgress * 0.5;
-                        petal.material.color.copy(getFireColor(0.8));
-                    } else if (phase === 'embers') {
-                        petal.material.opacity = 0;
-                    } else {
-                        const rebirthProgress = (cycleTime - 8) / 2;
-                        petal.scale.setScalar(rebirthProgress);
-                        petal.material.opacity = rebirthProgress;
-                        petal.material.color.copy(getFireColor(0.3 + rebirthProgress * 0.4));
-                    }
+                // Dynamic flame flickering and breathing
+                const flicker = Math.sin(elapsed * 8) * 0.15;
+                petals.forEach(p => {
+                    const wave = Math.sin(elapsed * 2.5 + p.userData.phase) * 0.022;
+                    p.rotation.x = p.userData.baseRotX + wave;
                 });
 
-                // Center
-                if (phase === 'embers') {
-                    center.material.opacity = 0.3;
-                    center.scale.setScalar(0.5);
-                } else {
-                    center.material.opacity = 1;
-                    center.scale.setScalar(1 + Math.sin(elapsed * 5) * 0.1);
-                }
-
-                // Fire particles
-                const fPos = fireGeom.attributes.position.array;
-                for (let i = 0; i < fireParticleCount; i++) {
-                    fPos[i * 3] += fireVels[i].x;
-                    fPos[i * 3 + 1] += fireVels[i].y;
-                    fPos[i * 3 + 2] += fireVels[i].z;
-                    if (fPos[i * 3 + 1] > 1.5) {
-                        fPos[i * 3] = (Math.random() - 0.5) * 0.5;
-                        fPos[i * 3 + 1] = 0.3 + Math.random() * 0.2;
-                        fPos[i * 3 + 2] = (Math.random() - 0.5) * 0.5;
-                    }
-                }
-                fireGeom.attributes.position.needsUpdate = true;
-                fireParticles.material.opacity = phase === 'embers' ? 0.2 : 0.8;
-
-                // Embers glow during ember phase
-                emberMat.opacity = phase === 'embers' ? 0.8 : phase === 'rebirth' ? 0.8 - (cycleTime - 8) / 2 * 0.8 : 0;
-
-                // Fire light intensity
-                fireLight.intensity = phase === 'embers' ? 0.5 : 2 + Math.sin(elapsed * 8) * 0.5;
-
-                flowerGroup.rotation.y = elapsed * 0.05;
-
-                camera.position.x = Math.sin(elapsed * 0.1) * 0.4;
-                camera.lookAt(0, 0.5, 0);
+                innerFlameMat.emissiveIntensity = 1.8 + flicker + Math.sin(elapsed * 4) * 0.4;
+                fireCore.update(elapsed);
+                atmosphere.update(elapsed, delta);
+                if (controls) controls.update(delta);
 
                 renderer.render(scene, camera);
             }
-
-            window.addEventListener('resize', () => {
-                camera.aspect = window.innerWidth / window.innerHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(window.innerWidth, window.innerHeight);
-            });
 
             animate();
             FlowerUtils.hideLoading();

@@ -37,180 +37,216 @@
         (function () {
             const container = document.getElementById('canvas-container');
             const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
-                background: 0x0f1419
+                background: 0x07050a,
+                cameraPos: [0, 1.4, 3.8],
+                controls: {
+                    target: new THREE.Vector3(0, 0.45, 0),
+                    minDistance: 2.0,
+                    maxDistance: 7.0,
+                    autoRotate: true,
+                    autoRotateSpeed: 0.35
+                }
             });
 
-            camera.position.set(0, 3, 5);
-            camera.lookAt(0, 0, 0);
+            // Studio Environment & Lighting
+            FlowerUtils.createStudioEnvironment(renderer, 'dark_luxury');
 
-            // Lighting
-            const ambient = new THREE.AmbientLight(0xffffff, 0.4);
-            scene.add(ambient);
+            const ambientLight = new THREE.AmbientLight(0x20150a, 1.2);
+            scene.add(ambientLight);
 
-            const mainLight = new THREE.DirectionalLight(0xfff5e6, 1);
-            mainLight.position.set(3, 8, 5);
-            scene.add(mainLight);
+            const goldKeyLight = new THREE.DirectionalLight(0xffecd2, 2.5);
+            goldKeyLight.position.set(4, 6, 3);
+            scene.add(goldKeyLight);
 
-            // Golden angle in radians
-            const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
+            const warmRimLight = new THREE.DirectionalLight(0xffa500, 2.2);
+            warmRimLight.position.set(-4, 2, -3);
+            scene.add(warmRimLight);
 
-            // Flower group
-            const flowerGroup = new THREE.Group();
-            scene.add(flowerGroup);
+            const coreGoldLight = new THREE.PointLight(0xffd700, 3.2, 6);
+            coreGoldLight.position.set(0, 0.6, 0);
+            scene.add(coreGoldLight);
 
-            // Create small floret/seed
-            function createFloret(size) {
-                const geom = new THREE.CircleGeometry(size, 12);
-                return geom;
-            }
+            // Luxury Polished Black Gold Pedestal
+            const pedestal = FlowerUtils.createPedestal({
+                radius: 1.85,
+                height: 0.16,
+                y: -0.78,
+                color: 0x0c0906,
+                metalness: 0.95,
+                roughness: 0.1,
+                rimColor: 0xffd700
+            });
+            scene.add(pedestal);
 
-            // Create petal
-            function createPetal() {
-                const shape = new THREE.Shape();
-                shape.moveTo(0, 0);
-                shape.bezierCurveTo(0.08, 0.1, 0.1, 0.25, 0.06, 0.4);
-                shape.bezierCurveTo(0.02, 0.48, -0.02, 0.48, -0.06, 0.4);
-                shape.bezierCurveTo(-0.1, 0.25, -0.08, 0.1, 0, 0);
-                return new THREE.ShapeGeometry(shape, 16);
-            }
+            // Golden Stardust Atmosphere
+            const atmosphere = FlowerUtils.createAtmosphere(scene, {
+                count: 140,
+                color: 0xffd700,
+                size: 0.026,
+                spread: 5.0,
+                ySpread: 3.5
+            });
 
-            // Generate center florets using Fibonacci spiral
-            const floretCount = 200;
-            const florets = [];
+            // Flower Group
+            const flower = new THREE.Group();
+            flower.position.y = 0.35;
+            scene.add(flower);
 
-            for (let i = 0; i < floretCount; i++) {
-                const angle = i * GOLDEN_ANGLE;
-                const radius = 0.05 * Math.sqrt(i);
-                const x = radius * Math.cos(angle);
-                const z = radius * Math.sin(angle);
+            // Golden Angle: 137.507764 degrees in radians
+            const GOLDEN_ANGLE = 2.39996323;
 
-                const size = 0.015 + (i / floretCount) * 0.01;
-                const geom = createFloret(size);
+            // 21 Fibonacci Outer Petals (in 2 tiers: 13 outer, 8 inner)
+            const outerMat = new THREE.MeshPhysicalMaterial({
+                color: 0x1f1206,
+                emissive: 0x804a00,
+                emissiveIntensity: 0.7,
+                metalness: 0.85,
+                roughness: 0.22,
+                clearcoat: 0.95,
+                clearcoatRoughness: 0.15,
+                side: THREE.DoubleSide
+            });
 
-                // Color gradient from center
-                const hue = 0.1 + (i / floretCount) * 0.05;
-                const sat = 0.8;
-                const light = 0.4 + (i / floretCount) * 0.2;
-                const color = new THREE.Color().setHSL(hue, sat, light);
+            const midMat = new THREE.MeshPhysicalMaterial({
+                color: 0xd4af37, // Metallic Gold
+                emissive: 0xaa7000,
+                emissiveIntensity: 0.8,
+                metalness: 0.92,
+                roughness: 0.15,
+                clearcoat: 1.0,
+                side: THREE.DoubleSide
+            });
 
-                const mat = new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide });
-                const floret = new THREE.Mesh(geom, mat);
+            const petalTiers = [
+                { count: 13, length: 1.15, width: 0.38, curl: 0.8, wave: 0.25, angle: 0.8, y: 0.0, mat: outerMat },
+                { count: 8,  length: 0.9,  width: 0.32, curl: 0.6, wave: 0.2,  angle: 0.55, y: 0.06, mat: midMat }
+            ];
 
-                floret.position.set(x, 0.01, z);
-                floret.rotation.x = -Math.PI / 2;
-                floret.scale.setScalar(0); // Start invisible for animation
+            const allPetals = [];
 
-                flowerGroup.add(floret);
-                florets.push({ mesh: floret, index: i, delay: i * 0.01 });
-            }
-
-            // Generate petals using golden angle
-            const petalCount = 21; // Fibonacci number
-            const petals = [];
-
-            for (let i = 0; i < petalCount; i++) {
-                const angle = i * GOLDEN_ANGLE;
-                const geom = createPetal();
-
-                // Gradient color
-                const hue = 0.9 + (i / petalCount) * 0.1;
-                const color = new THREE.Color().setHSL(hue % 1, 0.7, 0.65);
-
-                const mat = new THREE.MeshStandardMaterial({
-                    color,
-                    side: THREE.DoubleSide,
-                    roughness: 0.6
+            petalTiers.forEach((tier, tIdx) => {
+                const geom = FlowerUtils.createCurvedPetalGeometry({
+                    length: tier.length,
+                    width: tier.width,
+                    curl: tier.curl,
+                    wave: tier.wave,
+                    segmentsL: 24,
+                    segmentsW: 16
                 });
 
-                const petal = new THREE.Mesh(geom, mat);
-                const layer = Math.floor(i / 8);
-                const radius = 0.7 + layer * 0.1;
+                for (let i = 0; i < tier.count; i++) {
+                    const angle = i * GOLDEN_ANGLE + (tIdx * 0.4);
+                    const mesh = new THREE.Mesh(geom, tier.mat);
+                    mesh.position.y = tier.y;
+                    mesh.rotation.y = angle;
+                    mesh.rotation.x = tier.angle;
+                    mesh.userData = {
+                        origRotX: tier.angle,
+                        angle,
+                        freq: 1.8 + tIdx * 0.5
+                    };
+                    flower.add(mesh);
+                    allPetals.push(mesh);
+                }
+            });
 
-                petal.position.set(
-                    Math.cos(angle) * radius,
-                    0,
-                    Math.sin(angle) * radius
-                );
-                petal.rotation.z = angle;
-                petal.rotation.x = -Math.PI / 2 + 0.3 + layer * 0.1;
-                petal.scale.setScalar(0.8 + layer * 0.15);
-
-                flowerGroup.add(petal);
-                petals.push({ mesh: petal, index: i });
-            }
-
-            // Golden spiral visualization (optional guide)
-            const spiralPoints = [];
-            for (let t = 0; t < 10; t += 0.05) {
-                const angle = t * 2;
-                const r = 0.1 * Math.exp(0.2 * t);
-                spiralPoints.push(new THREE.Vector3(
-                    r * Math.cos(angle),
-                    0.02,
-                    r * Math.sin(angle)
-                ));
-            }
-
-            const spiralCurve = new THREE.CatmullRomCurve3(spiralPoints);
-            const spiralGeom = new THREE.TubeGeometry(spiralCurve, 100, 0.005, 8, false);
-            const spiralMat = new THREE.MeshBasicMaterial({
+            // Center Florets: 220 Spherical Golden Nodes arranged by Vogel's Phyllotaxis Model
+            const floretCount = 220;
+            const floretSphereGeom = new THREE.SphereGeometry(0.024, 16, 16);
+            const floretMat = new THREE.MeshPhysicalMaterial({
                 color: 0xffd700,
+                emissive: 0xcc8800,
+                emissiveIntensity: 0.9,
+                metalness: 0.95,
+                roughness: 0.12,
+                clearcoat: 1.0
+            });
+
+            const floretsInstanced = new THREE.InstancedMesh(floretSphereGeom, floretMat, floretCount);
+            const dummy = new THREE.Object3D();
+
+            for (let i = 0; i < floretCount; i++) {
+                const theta = i * GOLDEN_ANGLE;
+                const r = 0.042 * Math.sqrt(i);
+                const y = 0.18 + Math.cos(r * 3.5) * 0.035;
+
+                dummy.position.set(Math.cos(theta) * r, y, Math.sin(theta) * r);
+                const s = 0.7 + (i / floretCount) * 0.55;
+                dummy.scale.set(s, s, s);
+                dummy.updateMatrix();
+                floretsInstanced.setMatrixAt(i, dummy.matrix);
+            }
+            floretsInstanced.instanceMatrix.needsUpdate = true;
+            flower.add(floretsInstanced);
+
+            // Sacred 3D Golden Logarithmic Spiral Tube
+            const spiralPoints = [];
+            for (let t = 0; t < 12; t += 0.08) {
+                const angle = t * 2.2;
+                const r = 0.06 * Math.exp(0.18 * t);
+                const y = 0.18 + t * 0.012;
+                spiralPoints.push(new THREE.Vector3(Math.cos(angle) * r, y, Math.sin(angle) * r));
+            }
+            const spiralCurve = new THREE.CatmullRomCurve3(spiralPoints);
+            const spiralGeom = new THREE.TubeGeometry(spiralCurve, 120, 0.007, 8, false);
+            const spiralMat = new THREE.MeshBasicMaterial({
+                color: 0xffe066,
                 transparent: true,
-                opacity: 0.3
+                opacity: 0.85,
+                blending: THREE.AdditiveBlending
             });
-            const spiral = new THREE.Mesh(spiralGeom, spiralMat);
-            flowerGroup.add(spiral);
+            const spiralMesh = new THREE.Mesh(spiralGeom, spiralMat);
+            flower.add(spiralMesh);
 
-            // Ground
-            const groundGeom = new THREE.CircleGeometry(3, 64);
-            const groundMat = new THREE.MeshStandardMaterial({
-                color: 0x1a1a24,
-                roughness: 0.9
+            // Radiant Core
+            const core = FlowerUtils.createGlowingCore(flower, {
+                radius: 0.22,
+                color: 0xffaa00,
+                innerColor: 0xffffff,
+                y: 0.18
             });
-            const ground = new THREE.Mesh(groundGeom, groundMat);
-            ground.rotation.x = -Math.PI / 2;
-            ground.position.y = -0.01;
-            scene.add(ground);
 
-            // Animation
-            let animationStarted = false;
-            let startTime = 0;
+            // Golden Stem
+            const stemCurve = new THREE.CatmullRomCurve3([
+                new THREE.Vector3(0, 0.05, 0),
+                new THREE.Vector3(0.03, -0.28, 0.02),
+                new THREE.Vector3(-0.02, -0.55, -0.01),
+                new THREE.Vector3(0, -0.78, 0)
+            ]);
+            const stemGeom = new THREE.TubeGeometry(stemCurve, 32, 0.032, 12, false);
+            const stemMat = new THREE.MeshPhysicalMaterial({
+                color: 0x1f180a,
+                emissive: 0x3d2806,
+                emissiveIntensity: 0.5,
+                metalness: 0.85,
+                roughness: 0.25,
+                clearcoat: 0.8
+            });
+            const stemMesh = new THREE.Mesh(stemGeom, stemMat);
+            flower.add(stemMesh);
 
             function animate() {
                 requestAnimationFrame(animate);
                 const elapsed = clock.getElapsedTime();
 
-                if (!animationStarted) {
-                    animationStarted = true;
-                    startTime = elapsed;
+                // Gentle floating breath
+                flower.position.y = 0.35 + Math.sin(elapsed * 1.5) * 0.035;
+
+                // Petal breathing
+                for (let i = 0; i < allPetals.length; i++) {
+                    const p = allPetals[i];
+                    const wave = Math.sin(elapsed * p.userData.freq + p.userData.angle) * 0.03;
+                    p.rotation.x = p.userData.origRotX + wave;
                 }
 
-                const animTime = elapsed - startTime;
+                // Logarithmic spiral pulse and rotation
+                spiralMesh.rotation.y = elapsed * 0.4;
+                spiralMat.opacity = 0.6 + Math.sin(elapsed * 2.5) * 0.25;
 
-                // Animate florets appearing
-                florets.forEach(f => {
-                    const t = Math.max(0, Math.min(1, (animTime - f.delay) / 0.5));
-                    f.mesh.scale.setScalar(FlowerUtils.easing.easeOutBack(t));
-                });
+                core.pulse(elapsed, 1.8);
+                coreGoldLight.intensity = 3.0 + Math.sin(elapsed * 4.0) * 1.0;
 
-                // Gentle petal movement
-                petals.forEach((p, i) => {
-                    const wave = Math.sin(elapsed * 0.5 + i * 0.3) * 0.02;
-                    p.mesh.rotation.x = -Math.PI / 2 + 0.3 + wave;
-                });
-
-                // Rotate flower slowly
-                flowerGroup.rotation.y = elapsed * 0.1;
-
-                // Pulse spiral
-                spiral.material.opacity = 0.2 + Math.sin(elapsed * 2) * 0.1;
-
-                // Camera orbit
-                camera.position.x = Math.sin(elapsed * 0.15) * 3;
-                camera.position.z = Math.cos(elapsed * 0.15) * 5;
-                camera.position.y = 3 + Math.sin(elapsed * 0.2) * 0.5;
-                camera.lookAt(0, 0, 0);
-
+                atmosphere.update();
                 renderer.render(scene, camera);
             }
 

@@ -7,12 +7,44 @@
     <title>Clockwork Flower | Flowers For You 🌸</title>
     <link rel="icon" href="../favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="../css/style.css">
+    <style>
+        .chrono-badge {
+            position: fixed;
+            top: 75px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(22, 16, 10, 0.8);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            padding: 8px 24px;
+            border-radius: 30px;
+            color: #fbbf24;
+            font-size: 13px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            border: 1px solid rgba(251, 191, 36, 0.25);
+            box-shadow: 0 8px 32px rgba(217, 119, 6, 0.2);
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            pointer-events: none;
+        }
+
+        .chrono-badge span {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #fbbf24;
+            box-shadow: 0 0 10px #fbbf24;
+        }
+    </style>
 </head>
 
 <body>
     <div class="loading-overlay">
         <div class="loading-flower"></div>
-        <p class="loading-text">Winding time...</p>
+        <p class="loading-text">Winding horological escapement...</p>
     </div>
 
     <div class="flower-page">
@@ -25,9 +57,13 @@
             </a>
         </nav>
         <div id="canvas-container" class="flower-canvas"></div>
+        <div class="chrono-badge">
+            <span></span>
+            Tourbillon Complication • 28,800 VPH
+        </div>
         <div class="flower-info">
             <h1>Clockwork Flower</h1>
-            <p>Petals mark time like clock hands</p>
+            <p>An intricate skeletonized tourbillon blossom of 18k rose gold and interlocking brass chronometer gears marking celestial time</p>
         </div>
     </div>
 
@@ -37,168 +73,266 @@
         (function () {
             const container = document.getElementById('canvas-container');
             const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
-                background: 0x1a1510
+                background: 0x0f0b07,
+                antialias: true
             });
 
-            camera.position.set(0, 3, 4);
-            camera.lookAt(0, 0.5, 0);
+            FlowerUtils.createStudioEnvironment(renderer, 'warm_sunset');
+            const controls = FlowerUtils.setupOrbitControls(camera, renderer.domElement, {
+                autoRotateSpeed: 0.4,
+                minDistance: 2.2,
+                maxDistance: 8.5
+            });
 
-            // Warm lighting
-            const ambient = new THREE.AmbientLight(0x443322, 0.5);
+            camera.position.set(0, 1.5, 3.8);
+            camera.lookAt(0, 0.4, 0);
+
+            // Lighting
+            const ambient = new THREE.AmbientLight(0x2d1f12, 0.7);
             scene.add(ambient);
-            const mainLight = new THREE.DirectionalLight(0xffddaa, 1);
-            mainLight.position.set(3, 5, 3);
-            scene.add(mainLight);
+
+            const sunLight = new THREE.DirectionalLight(0xffeedd, 2.2);
+            sunLight.position.set(5, 8, 4);
+            scene.add(sunLight);
+
+            const goldRim = new THREE.DirectionalLight(0xd97706, 1.8);
+            goldRim.position.set(-4, -2, -3);
+            scene.add(goldRim);
+
+            // Horological Watchmaker Pedestal
+            const pedestal = FlowerUtils.createPedestal(scene, {
+                radius: 1.8,
+                height: 0.16,
+                y: -1.3,
+                baseColor: 0x140e09,
+                rimColor: 0xd4af37,
+                marble: true
+            });
+
+            // Golden dust atmosphere
+            const atmosphere = FlowerUtils.createAtmosphere(scene, {
+                count: 110,
+                color: 0xfde047,
+                size: 0.035,
+                spread: 6.5,
+                driftSpeed: 0.2
+            });
+
+            // Clockwork Group
+            const clockGroup = new THREE.Group();
+            scene.add(clockGroup);
 
             // Materials
-            const goldMat = new THREE.MeshStandardMaterial({
-                color: 0xccaa55,
-                metalness: 0.8,
-                roughness: 0.3
+            const roseGoldMat = new THREE.MeshPhysicalMaterial({
+                color: 0xe09b82,
+                metalness: 0.95,
+                roughness: 0.18,
+                clearcoat: 0.8,
+                side: THREE.DoubleSide
             });
 
-            const bronzeMat = new THREE.MeshStandardMaterial({
-                color: 0x885533,
-                metalness: 0.7,
-                roughness: 0.4
+            const yellowGoldMat = new THREE.MeshStandardMaterial({
+                color: 0xd4af37,
+                metalness: 0.92,
+                roughness: 0.22
             });
 
-            // Clock face
-            const clockFaceGeom = new THREE.CylinderGeometry(0.8, 0.8, 0.05, 64);
-            const clockFace = new THREE.Mesh(clockFaceGeom, bronzeMat);
-            clockFace.position.y = 0.2;
-            scene.add(clockFace);
+            const steelMat = new THREE.MeshStandardMaterial({
+                color: 0xa8b2bd,
+                metalness: 0.95,
+                roughness: 0.15
+            });
 
-            // Clock rim
-            const rimGeom = new THREE.TorusGeometry(0.8, 0.03, 8, 64);
-            const rim = new THREE.Mesh(rimGeom, goldMat);
-            rim.rotation.x = Math.PI / 2;
-            rim.position.y = 0.225;
-            scene.add(rim);
+            const rubyMat = new THREE.MeshPhysicalMaterial({
+                color: 0xd90429,
+                transmission: 0.75,
+                roughness: 0.1,
+                clearcoat: 1.0,
+                ior: 1.76
+            });
 
-            // Hour markers (positions for petals)
-            const markers = [];
-            for (let i = 0; i < 12; i++) {
-                const markerGeom = new THREE.BoxGeometry(0.03, 0.08, 0.02);
-                const marker = new THREE.Mesh(markerGeom, goldMat);
-                const angle = (i / 12) * Math.PI * 2 - Math.PI / 2;
-                marker.position.set(
-                    Math.cos(angle) * 0.65,
-                    0.23,
-                    Math.sin(angle) * 0.65
-                );
-                marker.rotation.y = -angle;
-                scene.add(marker);
-                markers.push(marker);
+            // Solid Brass Stem with Watch Balance Spring Coil
+            const stemPoints = [
+                new THREE.Vector3(0, 0.3, 0),
+                new THREE.Vector3(0.04, -0.1, 0.02),
+                new THREE.Vector3(-0.03, -0.6, -0.02),
+                new THREE.Vector3(0.01, -1.25, 0)
+            ];
+            const stemCurve = new THREE.CatmullRomCurve3(stemPoints);
+            const stemGeom = new THREE.TubeGeometry(stemCurve, 32, 0.038, 12, false);
+            const stem = new THREE.Mesh(stemGeom, yellowGoldMat);
+            clockGroup.add(stem);
+
+            // Hairspring balance coil around stem
+            const coilPoints = [];
+            for (let i = 0; i < 160; i++) {
+                const t = i / 160;
+                const r = 0.05 + Math.sin(t * Math.PI) * 0.04;
+                const a = t * Math.PI * 14;
+                coilPoints.push(new THREE.Vector3(Math.cos(a) * r, -0.2 - t * 0.7, Math.sin(a) * r));
             }
+            const coilCurve = new THREE.CatmullRomCurve3(coilPoints);
+            const coilGeom = new THREE.TubeGeometry(coilCurve, 100, 0.006, 6, false);
+            const coil = new THREE.Mesh(coilCurve ? coilGeom : null, steelMat);
+            clockGroup.add(coil);
 
-            // Flower (petals as clock hands)
-            const flowerGroup = new THREE.Group();
-            flowerGroup.position.y = 0.25;
-            scene.add(flowerGroup);
-
-            // Create petal (clock hand style)
-            function createClockPetal(length, width, color) {
-                const group = new THREE.Group();
-
-                // Hand/petal shape
+            // Gear Generator Function
+            function createGearMesh(radius, teeth, thickness, material) {
                 const shape = new THREE.Shape();
-                shape.moveTo(0, 0);
-                shape.lineTo(-width / 2, length * 0.1);
-                shape.lineTo(-width / 3, length);
-                shape.lineTo(0, length * 1.1);
-                shape.lineTo(width / 3, length);
-                shape.lineTo(width / 2, length * 0.1);
-                shape.closePath();
+                for (let i = 0; i < teeth; i++) {
+                    const a0 = (i / teeth) * Math.PI * 2;
+                    const a1 = ((i + 0.3) / teeth) * Math.PI * 2;
+                    const a2 = ((i + 0.7) / teeth) * Math.PI * 2;
+                    const a3 = ((i + 1.0) / teeth) * Math.PI * 2;
+                    const rIn = radius * 0.86;
+                    const rOut = radius;
 
-                const extrudeSettings = { depth: 0.02, bevelEnabled: false };
-                const geom = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-                const mat = new THREE.MeshStandardMaterial({
-                    color: color,
-                    metalness: 0.7,
-                    roughness: 0.4,
-                    side: THREE.DoubleSide
+                    if (i === 0) shape.moveTo(Math.cos(a0) * rIn, Math.sin(a0) * rIn);
+                    shape.lineTo(Math.cos(a1) * rOut, Math.sin(a1) * rOut);
+                    shape.lineTo(Math.cos(a2) * rOut, Math.sin(a2) * rOut);
+                    shape.lineTo(Math.cos(a3) * rIn, Math.sin(a3) * rIn);
+                }
+                const extrude = new THREE.ExtrudeGeometry(shape, {
+                    depth: thickness,
+                    bevelEnabled: true,
+                    bevelThickness: 0.004,
+                    bevelSize: 0.004,
+                    bevelSegments: 2
                 });
-                const petal = new THREE.Mesh(geom, mat);
-                petal.rotation.x = -Math.PI / 2;
-                group.add(petal);
-
-                return group;
+                extrude.center();
+                return new THREE.Mesh(extrude, material);
             }
 
-            // 12 petals for each hour
-            const petals = [];
-            for (let i = 0; i < 12; i++) {
-                const petal = createClockPetal(0.5, 0.1, 0xffaa66);
-                petal.userData.hour = i;
-                petal.userData.isOpen = false;
-                petal.rotation.y = -(i / 12) * Math.PI * 2 + Math.PI / 2;
-                petal.userData.baseRotation = petal.rotation.clone();
-                flowerGroup.add(petal);
-                petals.push(petal);
-            }
+            // Horological Escapement Gears Cluster
+            const gears = [];
 
-            // Center (clock hub)
-            const centerGeom = new THREE.CylinderGeometry(0.08, 0.1, 0.05, 16);
-            const center = new THREE.Mesh(centerGeom, goldMat);
-            flowerGroup.add(center);
+            // Main central wheel
+            const centerGear = createGearMesh(0.42, 24, 0.03, yellowGoldMat);
+            centerGear.position.y = 0.44;
+            centerGear.rotation.x = Math.PI / 2;
+            clockGroup.add(centerGear);
+            gears.push({ mesh: centerGear, speed: 0.3 });
 
-            // Hour hand
-            const hourHandGeom = new THREE.BoxGeometry(0.02, 0.3, 0.01);
-            const hourHand = new THREE.Mesh(hourHandGeom, goldMat.clone());
-            hourHand.position.y = 0.15;
-            hourHand.geometry.translate(0, 0.15, 0);
-            flowerGroup.add(hourHand);
+            // Planetary pinion gear 1
+            const gear1 = createGearMesh(0.24, 14, 0.024, roseGoldMat);
+            gear1.position.set(0.45, 0.44, 0);
+            gear1.rotation.x = Math.PI / 2;
+            clockGroup.add(gear1);
+            gears.push({ mesh: gear1, speed: -0.514 });
 
-            // Minute hand
-            const minuteHandGeom = new THREE.BoxGeometry(0.015, 0.45, 0.008);
-            const minuteHand = new THREE.Mesh(minuteHandGeom, goldMat.clone());
-            minuteHand.material.color.set(0xddcc88);
-            minuteHand.position.y = 0.15;
-            minuteHand.geometry.translate(0, 0.225, 0);
-            flowerGroup.add(minuteHand);
+            // Planetary pinion gear 2
+            const gear2 = createGearMesh(0.18, 10, 0.024, steelMat);
+            gear2.position.set(-0.35, 0.44, 0.28);
+            gear2.rotation.x = Math.PI / 2;
+            clockGroup.add(gear2);
+            gears.push({ mesh: gear2, speed: -0.72 });
 
-            // Second hand
-            const secondHandGeom = new THREE.BoxGeometry(0.008, 0.5, 0.005);
-            const secondHandMat = new THREE.MeshStandardMaterial({ color: 0xff6644, metalness: 0.6 });
-            const secondHand = new THREE.Mesh(secondHandGeom, secondHandMat);
-            secondHand.position.y = 0.16;
-            secondHand.geometry.translate(0, 0.25, 0);
-            flowerGroup.add(secondHand);
+            // Synthetic Ruby Jewel Bearings
+            [-0.35, 0, 0.45].forEach((gx, idx) => {
+                const gz = idx === 0 ? 0.28 : 0;
+                const rubyGeom = new THREE.CylinderGeometry(0.03, 0.03, 0.05, 12);
+                const ruby = new THREE.Mesh(rubyGeom, rubyMat);
+                ruby.position.set(gx, 0.46, gz);
+                clockGroup.add(ruby);
+            });
 
-            // Stem
-            const stemGeom = new THREE.CylinderGeometry(0.04, 0.05, 1, 8);
-            const stem = new THREE.Mesh(stemGeom, bronzeMat);
-            stem.position.y = -0.3;
-            scene.add(stem);
+            // 12 Guilloché Hour Petals
+            const tiers = [
+                { count: 12, length: 1.25, width: 0.44, curl: 0.65, wave: 0.22, y: 0.40, rotX: 0.95 },
+                { count: 8,  length: 0.98, width: 0.38, curl: 0.55, wave: 0.18, y: 0.44, rotX: 0.70 }
+            ];
+
+            const petalMeshes = [];
+
+            tiers.forEach((tier, tIdx) => {
+                const geom = FlowerUtils.createCurvedPetalGeometry({
+                    length: tier.length,
+                    width: tier.width,
+                    curl: tier.curl,
+                    wave: tier.wave,
+                    segmentsW: 14,
+                    segmentsL: 24
+                });
+
+                for (let i = 0; i < tier.count; i++) {
+                    const angle = (i / tier.count) * Math.PI * 2 + (tIdx * 0.26);
+                    const pivot = new THREE.Group();
+                    pivot.position.set(0, tier.y, 0);
+                    pivot.rotation.y = angle;
+
+                    const mesh = new THREE.Mesh(geom, roseGoldMat);
+                    mesh.rotation.x = tier.rotX;
+
+                    // Engraved hour index bar on each outer petal
+                    if (tIdx === 0) {
+                        const barGeom = new THREE.BoxGeometry(0.024, 0.14, 0.008);
+                        const bar = new THREE.Mesh(barGeom, steelMat);
+                        bar.position.set(0, tier.length * 0.75, 0.01);
+                        mesh.add(bar);
+                    }
+
+                    pivot.add(mesh);
+                    clockGroup.add(pivot);
+
+                    petalMeshes.push({
+                        mesh,
+                        pivot,
+                        baseRotX: tier.rotX,
+                        phase: i * 0.4 + tIdx * 1.5
+                    });
+                }
+            });
+
+            // Breguet Style Clock Hands
+            const hourHandGeom = new THREE.CylinderGeometry(0.012, 0.018, 0.42, 8);
+            hourHandGeom.translate(0, 0.21, 0);
+            hourHandGeom.rotateZ(Math.PI / 2);
+            const hourHand = new THREE.Mesh(hourHandGeom, steelMat);
+            hourHand.position.y = 0.48;
+            clockGroup.add(hourHand);
+
+            const minuteHandGeom = new THREE.CylinderGeometry(0.008, 0.014, 0.62, 8);
+            minuteHandGeom.translate(0, 0.31, 0);
+            minuteHandGeom.rotateZ(Math.PI / 2);
+            const minuteHand = new THREE.Mesh(minuteHandGeom, yellowGoldMat);
+            minuteHand.position.y = 0.50;
+            clockGroup.add(minuteHand);
+
+            // Center Tourbillon Core
+            const core = FlowerUtils.createGlowingCore({
+                radius: 0.12,
+                color: 0xf59e0b,
+                glowColor: 0xd97706,
+                emissiveIntensity: 1.8
+            });
+            core.position.y = 0.52;
+            clockGroup.add(core);
 
             function animate() {
                 requestAnimationFrame(animate);
                 const elapsed = clock.getElapsedTime();
 
-                // Use elapsed time as simulated clock (sped up)
-                const seconds = (elapsed * 10) % 60;
-                const minutes = (elapsed * 10 / 60) % 60;
-                const hours = (elapsed * 10 / 3600) % 12;
+                // Rotate clock hands (simulated real-time watch sweep)
+                minuteHand.rotation.y = -elapsed * 0.5;
+                hourHand.rotation.y = -elapsed * (0.5 / 12);
 
-                // Rotate hands
-                secondHand.rotation.z = -(seconds / 60) * Math.PI * 2;
-                minuteHand.rotation.z = -(minutes / 60) * Math.PI * 2;
-                hourHand.rotation.z = -(hours / 12) * Math.PI * 2;
-
-                // Petals bloom based on current "hour"
-                const currentHour = Math.floor(hours);
-                petals.forEach((petal, i) => {
-                    const shouldOpen = i <= currentHour;
-                    const targetTilt = shouldOpen ? 0.6 : 0;
-
-                    // Smooth transition
-                    const currentTilt = petal.rotation.x || 0;
-                    petal.rotation.x += (targetTilt - currentTilt) * 0.05;
+                // Rotate chronometer gears
+                gears.forEach(g => {
+                    g.mesh.rotation.z = elapsed * g.speed;
                 });
 
-                camera.position.x = Math.sin(elapsed * 0.1) * 0.3;
-                camera.lookAt(0, 0.3, 0);
+                // Subtle mechanical breathing oscillation of petals
+                petalMeshes.forEach(p => {
+                    const tick = Math.sin(elapsed * 2.5 + p.phase) * 0.025;
+                    p.mesh.rotation.x = p.baseRotX + tick;
+                });
+
+                clockGroup.position.y = Math.sin(elapsed * 0.8) * 0.02;
+                clockGroup.rotation.y = elapsed * 0.08;
+
+                core.update(elapsed);
+                atmosphere.update();
+                controls.update();
 
                 renderer.render(scene, camera);
             }

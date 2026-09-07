@@ -3,16 +3,61 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>Chameleon Flower | Flowers For You 🌸</title>
     <link rel="icon" href="../favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="../css/style.css">
+    <style>
+        .chameleon-badge {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            background: rgba(14, 16, 26, 0.78);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 999px;
+            padding: 8px 18px;
+            font-size: 0.8rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: #ffffff;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 30;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+            pointer-events: none;
+            transition: all 0.6s ease;
+        }
+
+        .chameleon-swatch {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #00ffaa;
+            box-shadow: 0 0 10px #00ffaa;
+            transition: all 0.6s ease;
+        }
+
+        @media (max-width: 600px) {
+            .chameleon-badge {
+                top: auto;
+                bottom: 84px;
+                right: 50%;
+                transform: translateX(50%);
+                font-size: 0.72rem;
+                padding: 6px 14px;
+            }
+        }
+    </style>
 </head>
 
 <body>
     <div class="loading-overlay">
         <div class="loading-flower"></div>
-        <p class="loading-text">Adapting colors...</p>
+        <p class="loading-text">Adapting biomimetic chromatophores...</p>
     </div>
 
     <div class="flower-page">
@@ -25,9 +70,13 @@
             </a>
         </nav>
         <div id="canvas-container" class="flower-canvas"></div>
+        <div id="chameleon-badge" class="chameleon-badge">
+            <span id="chameleon-swatch" class="chameleon-swatch"></span>
+            <span id="chameleon-label">Amazonian Emerald</span>
+        </div>
         <div class="flower-info">
             <h1>Chameleon Flower</h1>
-            <p>Colors shift to match the environment</p>
+            <p>A living biomimetic orchid adapting its cellular pigments dynamically across shifting ambient spectrums</p>
         </div>
     </div>
 
@@ -36,173 +85,385 @@
     <script>
         (function () {
             const container = document.getElementById('canvas-container');
-            const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
-                background: 0x000000
+            const badgeEl = document.getElementById('chameleon-badge');
+            const swatchEl = document.getElementById('chameleon-swatch');
+            const labelEl = document.getElementById('chameleon-label');
+
+            const { scene, camera, renderer, clock, controls } = FlowerUtils.initScene(container, {
+                background: 0x07090e,
+                cameraPos: [0, 2.0, 4.8],
+                enableOrbit: true,
+                autoRotate: false
             });
 
-            camera.position.set(0, 2, 4.5);
-            camera.lookAt(0, 0.5, 0);
+            camera.lookAt(0, 0.35, 0);
+            if (controls) {
+                controls.target.set(0, 0.35, 0);
+                controls.enableDamping = true;
+                controls.dampingFactor = 0.05;
+                controls.maxDistance = 10;
+                controls.minDistance = 2;
+                controls.maxPolarAngle = Math.PI / 2 + 0.15;
+            }
 
-            // Dynamic background colors
-            const bgColors = [
-                new THREE.Color(0xff6644),
-                new THREE.Color(0x44aaff),
-                new THREE.Color(0x66ff88),
-                new THREE.Color(0xaa44ff),
-                new THREE.Color(0xffaa44)
-            ];
-            let currentBg = 0;
-            let bgTransition = 0;
-
-            // Lighting
-            const ambient = new THREE.AmbientLight(0xffffff, 0.4);
+            // Atmospheric & Color-reactive Studio Lighting
+            const ambient = new THREE.AmbientLight(0x181e28, 0.8);
             scene.add(ambient);
-            const mainLight = new THREE.DirectionalLight(0xffffff, 1);
-            mainLight.position.set(3, 5, 3);
-            scene.add(mainLight);
 
-            // Flower group
-            const flowerGroup = new THREE.Group();
-            scene.add(flowerGroup);
+            const keyLight = new THREE.DirectionalLight(0xfffaea, 1.3);
+            keyLight.position.set(5, 7, 5);
+            keyLight.castShadow = true;
+            scene.add(keyLight);
 
-            // Create chameleon petal
-            function createPetal() {
-                const shape = new THREE.Shape();
-                shape.moveTo(0, 0);
-                shape.bezierCurveTo(0.15, 0.1, 0.18, 0.4, 0.1, 0.6);
-                shape.bezierCurveTo(0.03, 0.72, -0.03, 0.72, -0.1, 0.6);
-                shape.bezierCurveTo(-0.18, 0.4, -0.15, 0.1, 0, 0);
+            // Reactive Color Spotlights
+            const reactiveLight1 = new THREE.PointLight(0x10b981, 2.2, 8);
+            reactiveLight1.position.set(3, 3, 2);
+            scene.add(reactiveLight1);
 
-                const geom = new THREE.ShapeGeometry(shape, 16);
-                const mat = new THREE.MeshStandardMaterial({
-                    color: 0xffffff,
-                    side: THREE.DoubleSide,
-                    roughness: 0.4,
-                    metalness: 0.1
-                });
-                return new THREE.Mesh(geom, mat);
+            const reactiveLight2 = new THREE.PointLight(0x06b6d4, 1.8, 8);
+            reactiveLight2.position.set(-3, 2, -2);
+            scene.add(reactiveLight2);
+
+            // Obsidian Pedestal
+            const plinthGroup = new THREE.Group();
+            const plinthGeom = new THREE.CylinderGeometry(2.3, 2.5, 0.25, 48);
+            const plinthMat = new THREE.MeshStandardMaterial({
+                color: 0x090c12,
+                roughness: 0.15,
+                metalness: 0.9
+            });
+            const plinth = new THREE.Mesh(plinthGeom, plinthMat);
+            plinth.position.y = -1.2;
+            plinthGroup.add(plinth);
+
+            const rimGeom = new THREE.TorusGeometry(2.3, 0.025, 16, 64);
+            const rimMat = new THREE.MeshStandardMaterial({
+                color: 0x38bdf8,
+                metalness: 0.9,
+                roughness: 0.2
+            });
+            const rimMesh = new THREE.Mesh(rimGeom, rimMat);
+            rimMesh.rotation.x = Math.PI / 2;
+            rimMesh.position.y = -1.07;
+            plinthGroup.add(rimMesh);
+            scene.add(plinthGroup);
+
+            // Flower Main Group
+            const flowerRoot = new THREE.Group();
+            flowerRoot.position.set(0, 0.1, 0);
+            scene.add(flowerRoot);
+
+            // 5 High-Fashion Biomimetic Palettes
+            const palettes = [
+                {
+                    name: "Amazonian Emerald",
+                    petalColor: new THREE.Color(0x10b981),
+                    emissive: new THREE.Color(0x044426),
+                    sheen: new THREE.Color(0x6ee7b7),
+                    light1: new THREE.Color(0x34d399),
+                    light2: new THREE.Color(0x059669),
+                    swatchHex: "#10b981"
+                },
+                {
+                    name: "Orchid Amethyst",
+                    petalColor: new THREE.Color(0xa855f7),
+                    emissive: new THREE.Color(0x3b0764),
+                    sheen: new THREE.Color(0xf472b6),
+                    light1: new THREE.Color(0xc084fc),
+                    light2: new THREE.Color(0xec4899),
+                    swatchHex: "#a855f7"
+                },
+                {
+                    name: "Solar Flare Amber",
+                    petalColor: new THREE.Color(0xf59e0b),
+                    emissive: new THREE.Color(0x451a03),
+                    sheen: new THREE.Color(0xfcd34d),
+                    light1: new THREE.Color(0xfbbf24),
+                    light2: new THREE.Color(0xf97316),
+                    swatchHex: "#f59e0b"
+                },
+                {
+                    name: "Abyssal Azure",
+                    petalColor: new THREE.Color(0x0284c7),
+                    emissive: new THREE.Color(0x082f49),
+                    sheen: new THREE.Color(0x38bdf8),
+                    light1: new THREE.Color(0x38bdf8),
+                    light2: new THREE.Color(0x0369a1),
+                    swatchHex: "#0284c7"
+                },
+                {
+                    name: "Neo-Ruby Crimson",
+                    petalColor: new THREE.Color(0xe11d48),
+                    emissive: new THREE.Color(0x4c0519),
+                    sheen: new THREE.Color(0xfb7185),
+                    light1: new THREE.Color(0xf43f5e),
+                    light2: new THREE.Color(0xbe123c),
+                    swatchHex: "#e11d48"
+                }
+            ];
+
+            // Create Dynamic Physical Translucent Chameleon Material
+            const chameleonPetalMat = new THREE.MeshPhysicalMaterial({
+                color: palettes[0].petalColor.clone(),
+                emissive: palettes[0].emissive.clone(),
+                emissiveIntensity: 0.35,
+                roughness: 0.25,
+                metalness: 0.15,
+                transmission: 0.38,
+                transparent: true,
+                opacity: 0.94,
+                ior: 1.52,
+                clearcoat: 0.9,
+                clearcoatRoughness: 0.15,
+                sheen: palettes[0].sheen.clone(),
+                side: THREE.DoubleSide
+            });
+
+            const chameleonLipMat = new THREE.MeshPhysicalMaterial({
+                color: palettes[0].sheen.clone(),
+                emissive: palettes[0].emissive.clone(),
+                emissiveIntensity: 0.5,
+                roughness: 0.2,
+                metalness: 0.2,
+                clearcoat: 1.0,
+                side: THREE.DoubleSide
+            });
+
+            // Build Sculpted Orchid Petal Geometry
+            function createOrchidPetal(length = 1.2, width = 0.55, curvature = 0.2) {
+                return FlowerUtils.createCurvedPetalGeometry(length, width, curvature);
             }
 
-            // Create petals
-            const petalCount = 8;
-            const petals = [];
-            for (let i = 0; i < petalCount; i++) {
-                const petal = createPetal();
-                const angle = (i / petalCount) * Math.PI * 2;
-                petal.rotation.z = angle;
-                petal.rotation.x = -Math.PI / 2 + 0.4;
-                petal.position.y = 0.5;
-                petal.userData.phase = i * 0.3;
-                flowerGroup.add(petal);
-                petals.push(petal);
-            }
+            // Orchid Anatomy Structure:
+            // 3 Dorsal/Lateral Sepals (Star formation)
+            const sepalData = [
+                { angle: 0, length: 1.35, width: 0.48, rotX: 0.35, rotZ: 0 },                  // Dorsal (top)
+                { angle: (Math.PI * 2) / 3, length: 1.25, width: 0.45, rotX: 0.45, rotZ: 0.2 }, // Lower Right
+                { angle: -(Math.PI * 2) / 3, length: 1.25, width: 0.45, rotX: 0.45, rotZ: -0.2 } // Lower Left
+            ];
 
-            // Inner petals
-            for (let i = 0; i < 5; i++) {
-                const petal = createPetal();
-                petal.scale.setScalar(0.6);
-                const angle = (i / 5) * Math.PI * 2 + 0.3;
-                petal.rotation.z = angle;
-                petal.rotation.x = -Math.PI / 2 + 0.3;
-                petal.position.y = 0.52;
-                petal.userData.phase = i * 0.4 + 1;
-                flowerGroup.add(petal);
-                petals.push(petal);
-            }
+            const sepalMeshes = [];
+            sepalData.forEach(s => {
+                const pivot = new THREE.Group();
+                pivot.rotation.z = s.angle;
 
-            // Center
-            const centerGeom = new THREE.SphereGeometry(0.1, 32, 32);
-            const centerMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 });
-            const center = new THREE.Mesh(centerGeom, centerMat);
-            center.position.y = 0.55;
-            flowerGroup.add(center);
+                const mesh = new THREE.Mesh(createOrchidPetal(s.length, s.width, 0.16), chameleonPetalMat);
+                mesh.castShadow = true;
+                mesh.position.y = 0.3;
+                mesh.rotation.x = s.rotX;
+                mesh.rotation.z = s.rotZ;
 
-            // Stem
+                pivot.add(mesh);
+                flowerRoot.add(pivot);
+                sepalMeshes.push(mesh);
+            });
+
+            // 2 Large Lateral Petals (Broad wings)
+            const wingData = [
+                { angle: Math.PI / 2 + 0.1, length: 1.3, width: 0.72, rotX: 0.55 },
+                { angle: -Math.PI / 2 - 0.1, length: 1.3, width: 0.72, rotX: 0.55 }
+            ];
+
+            const wingMeshes = [];
+            wingData.forEach(w => {
+                const pivot = new THREE.Group();
+                pivot.rotation.z = w.angle;
+
+                const mesh = new THREE.Mesh(createOrchidPetal(w.length, w.width, 0.24), chameleonPetalMat);
+                mesh.castShadow = true;
+                mesh.position.y = 0.32;
+                mesh.rotation.x = w.rotX;
+
+                pivot.add(mesh);
+                flowerRoot.add(pivot);
+                wingMeshes.push(mesh);
+            });
+
+            // Articulated Orchid Labellum (Lip / Throat)
+            const labellumGroup = new THREE.Group();
+            labellumGroup.position.set(0, 0.18, 0.15);
+
+            const lipGeom = createOrchidPetal(0.85, 0.58, 0.35);
+            const lipMesh = new THREE.Mesh(lipGeom, chameleonLipMat);
+            lipMesh.rotation.x = 1.1;
+            lipMesh.rotation.z = Math.PI; // Drooping downward
+            labellumGroup.add(lipMesh);
+
+            // Orchid Column & Pollinia (Core)
+            const columnGeom = new THREE.CylinderGeometry(0.04, 0.07, 0.28, 12);
+            const columnMesh = new THREE.Mesh(columnGeom, chameleonLipMat);
+            columnMesh.rotation.x = 0.4;
+            columnMesh.position.set(0, 0.08, 0.05);
+            labellumGroup.add(columnMesh);
+
+            const goldenThroat = new THREE.Mesh(
+                new THREE.SphereGeometry(0.06, 16, 16),
+                new THREE.MeshStandardMaterial({
+                    color: 0xffd700,
+                    emissive: 0xffaa00,
+                    emissiveIntensity: 0.6,
+                    metalness: 0.8,
+                    roughness: 0.2
+                })
+            );
+            goldenThroat.position.set(0, 0.04, 0.12);
+            labellumGroup.add(goldenThroat);
+
+            flowerRoot.add(labellumGroup);
+
+            // Natural Slender Orchid Stem & Bud
             const stemCurve = new THREE.CatmullRomCurve3([
-                new THREE.Vector3(0, 0.4, 0),
-                new THREE.Vector3(0.02, 0, 0.01),
-                new THREE.Vector3(0, -0.8, 0)
+                new THREE.Vector3(0, 0.2, 0),
+                new THREE.Vector3(0.04, -0.35, -0.02),
+                new THREE.Vector3(-0.03, -0.8, 0.02),
+                new THREE.Vector3(0, -1.2, 0)
             ]);
-            const stemGeom = new THREE.TubeGeometry(stemCurve, 16, 0.025, 8, false);
-            const stemMat = new THREE.MeshStandardMaterial({ color: 0x557755 });
-            const stem = new THREE.Mesh(stemGeom, stemMat);
-            flowerGroup.add(stem);
+            const stemGeom = new THREE.TubeGeometry(stemCurve, 32, 0.042, 12, false);
+            const stemMat = new THREE.MeshStandardMaterial({
+                color: 0x142b1a,
+                roughness: 0.5,
+                metalness: 0.2
+            });
+            const stemMesh = new THREE.Mesh(stemGeom, stemMat);
+            flowerRoot.add(stemMesh);
 
-            // Color transition particles
-            const particleCount = 80;
-            const particleGeom = new THREE.BufferGeometry();
-            const particlePos = new Float32Array(particleCount * 3);
-            const particleColors = new Float32Array(particleCount * 3);
-            for (let i = 0; i < particleCount; i++) {
-                const angle = Math.random() * Math.PI * 2;
-                const radius = 1 + Math.random() * 1.5;
-                particlePos[i * 3] = Math.cos(angle) * radius;
-                particlePos[i * 3 + 1] = Math.random() * 2;
-                particlePos[i * 3 + 2] = Math.sin(angle) * radius;
-                particleColors[i * 3] = 1;
-                particleColors[i * 3 + 1] = 1;
-                particleColors[i * 3 + 2] = 1;
+            // Stem bud
+            const budMesh = new THREE.Mesh(
+                new THREE.SphereGeometry(0.08, 12, 12),
+                chameleonPetalMat
+            );
+            budMesh.position.set(-0.08, -0.2, 0.05);
+            budMesh.scale.set(0.6, 1.2, 0.6);
+            budMesh.rotation.z = 0.6;
+            flowerRoot.add(budMesh);
+
+            // Drifting Chromatophore Spore Particles
+            const pCount = 140;
+            const pGeom = new THREE.BufferGeometry();
+            const pPos = new Float32Array(pCount * 3);
+            const pColors = new Float32Array(pCount * 3);
+            const pData = [];
+
+            for (let i = 0; i < pCount; i++) {
+                pPos[i * 3] = (Math.random() - 0.5) * 3.5;
+                pPos[i * 3 + 1] = -0.5 + Math.random() * 2.8;
+                pPos[i * 3 + 2] = (Math.random() - 0.5) * 3.5;
+
+                pData.push({
+                    speed: 0.003 + Math.random() * 0.006,
+                    radius: 0.8 + Math.random() * 1.5,
+                    theta: Math.random() * Math.PI * 2,
+                    yBase: pPos[i * 3 + 1]
+                });
+
+                pColors[i * 3] = palettes[0].petalColor.r;
+                pColors[i * 3 + 1] = palettes[0].petalColor.g;
+                pColors[i * 3 + 2] = palettes[0].petalColor.b;
             }
-            particleGeom.setAttribute('position', new THREE.BufferAttribute(particlePos, 3));
-            particleGeom.setAttribute('color', new THREE.BufferAttribute(particleColors, 3));
-            const particleMat = new THREE.PointsMaterial({
-                size: 0.04,
+
+            pGeom.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+            pGeom.setAttribute('color', new THREE.BufferAttribute(pColors, 3));
+
+            const pMat = new THREE.PointsMaterial({
+                size: 0.045,
                 vertexColors: true,
                 transparent: true,
-                opacity: 0.6
+                opacity: 0.8,
+                blending: THREE.AdditiveBlending
             });
-            const particles = new THREE.Points(particleGeom, particleMat);
+            const particles = new THREE.Points(pGeom, pMat);
             scene.add(particles);
+
+            // Interpolation Working Colors
+            const curPetalColor = palettes[0].petalColor.clone();
+            const curEmissive = palettes[0].emissive.clone();
+            const curSheen = palettes[0].sheen.clone();
+            const curLight1 = palettes[0].light1.clone();
+            const curLight2 = palettes[0].light2.clone();
+
+            const PALETTE_STEP_DURATION = 3.5; // seconds per palette
+            let lastPaletteIdx = -1;
 
             function animate() {
                 requestAnimationFrame(animate);
                 const elapsed = clock.getElapsedTime();
 
-                // Background color transition
-                bgTransition += 0.005;
-                if (bgTransition >= 1) {
-                    bgTransition = 0;
-                    currentBg = (currentBg + 1) % bgColors.length;
+                // Compute dynamic palette blending
+                const totalPalettes = palettes.length;
+                const totalCycle = totalPalettes * PALETTE_STEP_DURATION;
+                const progressInCycle = (elapsed % totalCycle) / PALETTE_STEP_DURATION;
+                const fromIdx = Math.floor(progressInCycle);
+                const toIdx = (fromIdx + 1) % totalPalettes;
+                const blend = progressInCycle - fromIdx;
+
+                // Smooth cosine ease for color transition
+                const smoothBlend = 0.5 - 0.5 * Math.cos(blend * Math.PI);
+
+                const palA = palettes[fromIdx];
+                const palB = palettes[toIdx];
+
+                curPetalColor.copy(palA.petalColor).lerp(palB.petalColor, smoothBlend);
+                curEmissive.copy(palA.emissive).lerp(palB.emissive, smoothBlend);
+                curSheen.copy(palA.sheen).lerp(palB.sheen, smoothBlend);
+                curLight1.copy(palA.light1).lerp(palB.light1, smoothBlend);
+                curLight2.copy(palA.light2).lerp(palB.light2, smoothBlend);
+
+                // Apply to materials and lights
+                chameleonPetalMat.color.copy(curPetalColor);
+                chameleonPetalMat.emissive.copy(curEmissive);
+                chameleonPetalMat.sheen.copy(curSheen);
+
+                chameleonLipMat.color.copy(curSheen);
+                chameleonLipMat.emissive.copy(curEmissive);
+
+                rimMat.color.copy(curSheen);
+
+                reactiveLight1.color.copy(curLight1);
+                reactiveLight2.color.copy(curLight2);
+
+                // Update UI badge when active palette transitions
+                const dominantIdx = blend < 0.5 ? fromIdx : toIdx;
+                if (dominantIdx !== lastPaletteIdx) {
+                    lastPaletteIdx = dominantIdx;
+                    const domPal = palettes[dominantIdx];
+                    labelEl.textContent = domPal.name;
+                    swatchEl.style.background = domPal.swatchHex;
+                    swatchEl.style.boxShadow = `0 0 10px ${domPal.swatchHex}`;
+                    badgeEl.style.borderColor = domPal.swatchHex;
                 }
-                const nextBg = (currentBg + 1) % bgColors.length;
-                const currentColor = bgColors[currentBg].clone();
-                const targetColor = bgColors[nextBg];
-                currentColor.lerp(targetColor, bgTransition);
 
-                renderer.setClearColor(currentColor.clone().multiplyScalar(0.3));
-
-                // Petals adapt to background
-                petals.forEach((petal, i) => {
-                    const delay = petal.userData.phase * 0.1;
-                    const adaptedColor = currentColor.clone();
-                    adaptedColor.lerp(new THREE.Color(0xffffff), 0.3);
-                    petal.material.color.lerp(adaptedColor, 0.05);
-
-                    // Subtle breathing
-                    petal.rotation.x = -Math.PI / 2 + 0.4 + Math.sin(elapsed + petal.userData.phase) * 0.03;
+                // Orchid organic breathing & labellum flutter
+                sepalMeshes.forEach((mesh, i) => {
+                    mesh.rotation.x += Math.sin(elapsed * 1.5 + i) * 0.001;
                 });
+                wingMeshes.forEach((mesh, i) => {
+                    mesh.rotation.x += Math.cos(elapsed * 1.8 + i) * 0.0015;
+                });
+                labellumGroup.rotation.x = Math.sin(elapsed * 2.2) * 0.03;
 
-                // Center adapts
-                center.material.color.lerp(currentColor.clone().lerp(new THREE.Color(0xffffff), 0.5), 0.05);
+                // Flower root floating sway
+                flowerRoot.position.y = 0.1 + Math.sin(elapsed * 1.4) * 0.03;
+                flowerRoot.rotation.y = Math.sin(elapsed * 0.4) * 0.06;
 
-                // Stem darkens relative to background
-                const stemColor = currentColor.clone().multiplyScalar(0.4);
-                stemMat.color.lerp(stemColor.lerp(new THREE.Color(0x557755), 0.5), 0.05);
+                // Orbiting chromatophore particles
+                const posArr = pGeom.attributes.position.array;
+                const colArr = pGeom.attributes.color.array;
 
-                // Particles match background
-                const pColors = particleGeom.attributes.color.array;
-                for (let i = 0; i < particleCount; i++) {
-                    pColors[i * 3] = currentColor.r;
-                    pColors[i * 3 + 1] = currentColor.g;
-                    pColors[i * 3 + 2] = currentColor.b;
+                for (let i = 0; i < pCount; i++) {
+                    const p = pData[i];
+                    p.theta += p.speed;
+                    posArr[i * 3] = Math.cos(p.theta) * p.radius;
+                    posArr[i * 3 + 1] = p.yBase + Math.sin(elapsed * 1.2 + i) * 0.15;
+                    posArr[i * 3 + 2] = Math.sin(p.theta) * p.radius;
+
+                    colArr[i * 3] = curPetalColor.r;
+                    colArr[i * 3 + 1] = curPetalColor.g;
+                    colArr[i * 3 + 2] = curPetalColor.b;
                 }
-                particleGeom.attributes.color.needsUpdate = true;
+                pGeom.attributes.position.needsUpdate = true;
+                pGeom.attributes.color.needsUpdate = true;
 
-                flowerGroup.rotation.y = elapsed * 0.1;
-
-                camera.position.x = Math.sin(elapsed * 0.1) * 0.4;
-                camera.lookAt(0, 0.4, 0);
-
+                if (controls) controls.update();
                 renderer.render(scene, camera);
             }
 

@@ -37,190 +37,243 @@
         (function () {
             const container = document.getElementById('canvas-container');
             const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
-                background: 0x0a0a15
+                background: 0x03030d,
+                cameraPos: [0, 1.4, 3.8],
+                controls: {
+                    target: new THREE.Vector3(0, 0.45, 0),
+                    minDistance: 2.0,
+                    maxDistance: 7.0,
+                    autoRotate: true,
+                    autoRotateSpeed: 0.4
+                }
             });
 
-            camera.position.set(0, 2, 5);
-            camera.lookAt(0, 0.5, 0);
+            // Studio Environment & Lighting
+            FlowerUtils.createStudioEnvironment(renderer, 'cyberpunk');
 
-            // Lighting
-            const ambient = new THREE.AmbientLight(0x4444aa, 0.4);
-            scene.add(ambient);
-            const mainLight = new THREE.DirectionalLight(0x8888ff, 1);
-            mainLight.position.set(3, 5, 3);
-            scene.add(mainLight);
+            const ambientLight = new THREE.AmbientLight(0x0e1124, 1.2);
+            scene.add(ambientLight);
 
-            // Flower states (3 different configurations)
-            const states = [
-                { color: 0xff6688, petalAngle: 0.5, scale: 1 },
-                { color: 0x66ff88, petalAngle: 0.3, scale: 0.8 },
-                { color: 0x8866ff, petalAngle: 0.7, scale: 1.2 }
+            const cyanLight = new THREE.DirectionalLight(0x00f2fe, 2.2);
+            cyanLight.position.set(4, 5, 3);
+            scene.add(cyanLight);
+
+            const magentaLight = new THREE.DirectionalLight(0xff007f, 2.4);
+            magentaLight.position.set(-4, 3, -3);
+            scene.add(magentaLight);
+
+            const quantumCenterLight = new THREE.PointLight(0x7000ff, 3.0, 7);
+            quantumCenterLight.position.set(0, 0.6, 0);
+            scene.add(quantumCenterLight);
+
+            // Luxury Hologram Pedestal
+            const pedestal = FlowerUtils.createPedestal({
+                radius: 1.85,
+                height: 0.16,
+                y: -0.78,
+                color: 0x060814,
+                metalness: 0.95,
+                roughness: 0.1,
+                rimColor: 0x00ffff
+            });
+            scene.add(pedestal);
+
+            // Quantum Subatomic Atmosphere
+            const atmosphere = FlowerUtils.createAtmosphere(scene, {
+                count: 120,
+                color: 0x88eeff,
+                size: 0.024,
+                spread: 5.0,
+                ySpread: 3.5
+            });
+
+            // Quantum Root Group
+            const rootGroup = new THREE.Group();
+            rootGroup.position.y = 0.35;
+            scene.add(rootGroup);
+
+            // Stem (Quantum fiber waveguide)
+            const stemCurve = new THREE.CatmullRomCurve3([
+                new THREE.Vector3(0, 0.05, 0),
+                new THREE.Vector3(-0.02, -0.28, 0.02),
+                new THREE.Vector3(0.02, -0.55, -0.01),
+                new THREE.Vector3(0, -0.78, 0)
+            ]);
+            const stemGeom = new THREE.TubeGeometry(stemCurve, 32, 0.03, 16, false);
+            const stemMat = new THREE.MeshPhysicalMaterial({
+                color: 0x081024,
+                emissive: 0x004466,
+                emissiveIntensity: 0.6,
+                metalness: 0.9,
+                roughness: 0.15,
+                clearcoat: 1.0
+            });
+            const stemMesh = new THREE.Mesh(stemGeom, stemMat);
+            rootGroup.add(stemMesh);
+
+            // Probability States (3 Eigenstates)
+            const eigenConfigs = [
+                { color: 0x00f0ff, emissive: 0x0066aa, rotOffset: 0, curl: 0.7, wave: 0.3 },
+                { color: 0xbf00ff, emissive: 0x7700aa, rotOffset: Math.PI / 3, curl: 0.55, wave: 0.2 },
+                { color: 0xff007f, emissive: 0xaa0044, rotOffset: -Math.PI / 3, curl: 0.85, wave: 0.4 }
             ];
 
-            // Create ghost flowers for each state
-            const flowerStates = [];
+            const eigenStates = [];
 
-            function createFlowerState(stateIndex) {
-                const state = states[stateIndex];
-                const group = new THREE.Group();
+            eigenConfigs.forEach((cfg, sIdx) => {
+                const stateGroup = new THREE.Group();
+                stateGroup.rotation.y = cfg.rotOffset;
+                rootGroup.add(stateGroup);
 
-                const petalMat = new THREE.MeshStandardMaterial({
-                    color: state.color,
+                const petalMat = new THREE.MeshPhysicalMaterial({
+                    color: cfg.color,
+                    emissive: cfg.emissive,
+                    emissiveIntensity: 1.0,
+                    metalness: 0.2,
+                    roughness: 0.1,
+                    transmission: 0.65,
+                    ior: 1.55,
                     transparent: true,
-                    opacity: 0.3,
+                    opacity: 0.65,
                     side: THREE.DoubleSide
                 });
 
-                for (let i = 0; i < 8; i++) {
-                    const shape = new THREE.Shape();
-                    shape.moveTo(0, 0);
-                    shape.bezierCurveTo(0.15, 0.1, 0.18, 0.4, 0.1, 0.6);
-                    shape.bezierCurveTo(0.03, 0.72, -0.03, 0.72, -0.1, 0.6);
-                    shape.bezierCurveTo(-0.18, 0.4, -0.15, 0.1, 0, 0);
+                const tiers = [
+                    { count: 8, length: 1.1, width: 0.38, curl: cfg.curl, wave: cfg.wave, angle: 0.8, y: 0.0 },
+                    { count: 6, length: 0.85, width: 0.32, curl: cfg.curl * 0.9, wave: cfg.wave, angle: 0.55, y: 0.06 },
+                    { count: 5, length: 0.6, width: 0.25, curl: cfg.curl * 0.8, wave: cfg.wave, angle: 0.35, y: 0.12 }
+                ];
 
-                    const geom = new THREE.ShapeGeometry(shape, 16);
-                    const petal = new THREE.Mesh(geom, petalMat.clone());
+                const petals = [];
+                tiers.forEach((tier, tIdx) => {
+                    const geom = FlowerUtils.createCurvedPetalGeometry({
+                        length: tier.length,
+                        width: tier.width,
+                        curl: tier.curl,
+                        wave: tier.wave,
+                        segmentsL: 20,
+                        segmentsW: 14
+                    });
 
-                    const angle = (i / 8) * Math.PI * 2;
-                    petal.rotation.z = angle;
-                    petal.rotation.x = -Math.PI / 2 + state.petalAngle;
-                    petal.position.y = 0.5;
-                    group.add(petal);
-                }
+                    for (let i = 0; i < tier.count; i++) {
+                        const angle = (i / tier.count) * Math.PI * 2 + tIdx * 0.35;
+                        const mesh = new THREE.Mesh(geom, petalMat.clone());
+                        mesh.position.y = tier.y;
+                        mesh.rotation.y = angle;
+                        mesh.rotation.x = tier.angle;
+                        mesh.userData = { origRotX: tier.angle, angle, freq: 2.0 + tIdx * 0.5 };
+                        stateGroup.add(mesh);
+                        petals.push(mesh);
+                    }
+                });
 
-                // Center
-                const centerGeom = new THREE.SphereGeometry(0.08, 16, 16);
-                const center = new THREE.Mesh(centerGeom, petalMat.clone());
-                center.position.y = 0.55;
-                group.add(center);
-
-                group.scale.setScalar(state.scale);
-                group.userData.stateIndex = stateIndex;
-
-                return group;
-            }
-
-            for (let s = 0; s < states.length; s++) {
-                const flower = createFlowerState(s);
-                scene.add(flower);
-                flowerStates.push(flower);
-            }
-
-            // Collapsed state flower
-            const collapsedGroup = new THREE.Group();
-            const collapsedMat = new THREE.MeshStandardMaterial({
-                color: 0xffffff,
-                transparent: true,
-                opacity: 0,
-                side: THREE.DoubleSide
+                eigenStates.push({
+                    group: stateGroup,
+                    petals,
+                    config: cfg,
+                    phase: sIdx * ((Math.PI * 2) / 3)
+                });
             });
 
-            for (let i = 0; i < 8; i++) {
-                const shape = new THREE.Shape();
-                shape.moveTo(0, 0);
-                shape.bezierCurveTo(0.15, 0.1, 0.18, 0.4, 0.1, 0.6);
-                shape.bezierCurveTo(0.03, 0.72, -0.03, 0.72, -0.1, 0.6);
-                shape.bezierCurveTo(-0.18, 0.4, -0.15, 0.1, 0, 0);
+            // Quantum Core & Stamens
+            const core = FlowerUtils.createGlowingCore(rootGroup, {
+                radius: 0.2,
+                color: 0x00f0ff,
+                innerColor: 0xffffff,
+                y: 0.18
+            });
 
-                const geom = new THREE.ShapeGeometry(shape, 16);
-                const petal = new THREE.Mesh(geom, collapsedMat.clone());
+            FlowerUtils.createStamenCluster(rootGroup, {
+                count: 36,
+                radius: 0.12,
+                height: 0.35,
+                spread: 0.4,
+                stemColor: 0x0088cc,
+                antherColor: 0xffffff,
+                y: 0.15
+            });
 
-                const angle = (i / 8) * Math.PI * 2;
-                petal.rotation.z = angle;
-                petal.rotation.x = -Math.PI / 2 + 0.4;
-                petal.position.y = 0.5;
-                collapsedGroup.add(petal);
+            // Quantum Entangled Orbital Rings
+            const ringCount = 3;
+            const rings = [];
+            for (let r = 0; r < ringCount; r++) {
+                const ringGeom = new THREE.TorusGeometry(0.55 + r * 0.25, 0.008, 16, 64);
+                const ringMat = new THREE.MeshBasicMaterial({
+                    color: r === 0 ? 0x00ffff : (r === 1 ? 0xff00ff : 0x7744ff),
+                    transparent: true,
+                    opacity: 0.7
+                });
+                const ring = new THREE.Mesh(ringGeom, ringMat);
+                ring.rotation.x = Math.PI / 2 + (r - 1) * 0.35;
+                ring.position.y = 0.2;
+                rootGroup.add(ring);
+                rings.push(ring);
             }
 
-            const collapsedCenter = new THREE.Mesh(
-                new THREE.SphereGeometry(0.08, 16, 16),
-                collapsedMat.clone()
-            );
-            collapsedCenter.position.y = 0.55;
-            collapsedGroup.add(collapsedCenter);
-            scene.add(collapsedGroup);
-
-            // Stem
-            const stemCurve = new THREE.CatmullRomCurve3([
-                new THREE.Vector3(0, 0.4, 0),
-                new THREE.Vector3(0.02, 0, 0.01),
-                new THREE.Vector3(0, -0.8, 0)
-            ]);
-            const stemGeom = new THREE.TubeGeometry(stemCurve, 16, 0.025, 8, false);
-            const stemMat = new THREE.MeshStandardMaterial({ color: 0x556655, transparent: true, opacity: 0.5 });
-            const stem = new THREE.Mesh(stemGeom, stemMat);
-            scene.add(stem);
-
-            // Observation detection (mouse proximity)
+            // Observer Effect Detection
             let isObserved = false;
-            let collapseProgress = 0;
-            let collapsedState = 0;
+            let collapseFactor = 0.0;
+            let observedEigenIndex = 0;
 
-            const raycaster = new THREE.Raycaster();
-            const mouse = new THREE.Vector2();
-
-            container.addEventListener('mousemove', (e) => {
-                const rect = container.getBoundingClientRect();
-                mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-                mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-            });
-
-            container.addEventListener('click', () => {
+            container.addEventListener('pointerenter', () => {
                 isObserved = true;
-                collapsedState = Math.floor(Math.random() * states.length);
+                observedEigenIndex = Math.floor(Math.random() * eigenStates.length);
             });
-
-            container.addEventListener('mouseleave', () => {
+            container.addEventListener('pointerleave', () => {
                 isObserved = false;
+            });
+            container.addEventListener('pointerdown', () => {
+                isObserved = true;
+                observedEigenIndex = (observedEigenIndex + 1) % eigenStates.length;
             });
 
             function animate() {
                 requestAnimationFrame(animate);
                 const elapsed = clock.getElapsedTime();
+                const delta = clock.getDelta();
 
-                // Quantum superposition flickering
-                flowerStates.forEach((flower, i) => {
-                    const flicker = Math.sin(elapsed * 10 + i * 2) * 0.5 + 0.5;
-                    const offset = Math.sin(elapsed * 3 + i * 1.5) * 0.1;
-
-                    flower.position.x = offset;
-                    flower.position.z = Math.cos(elapsed * 2.5 + i * 1.2) * 0.08;
-                    flower.rotation.y = elapsed * 0.2 + i * 0.3;
-
-                    // Fade based on observation
-                    if (isObserved) {
-                        collapseProgress = Math.min(1, collapseProgress + 0.05);
-                        if (i === collapsedState) {
-                            flower.children.forEach(child => {
-                                child.material.opacity = collapseProgress;
-                            });
-                        } else {
-                            flower.children.forEach(child => {
-                                child.material.opacity = 0.3 * (1 - collapseProgress);
-                            });
-                        }
-                    } else {
-                        collapseProgress = Math.max(0, collapseProgress - 0.02);
-                        flower.children.forEach(child => {
-                            child.material.opacity = 0.2 + flicker * 0.15;
-                        });
-                    }
-                });
-
-                // Collapsed flower
-                collapsedGroup.visible = isObserved && collapseProgress > 0.5;
-                if (collapsedGroup.visible) {
-                    const state = states[collapsedState];
-                    collapsedGroup.children.forEach(child => {
-                        child.material.color.set(state.color);
-                        child.material.opacity = collapseProgress;
-                    });
-                    collapsedGroup.rotation.y = elapsed * 0.15;
+                // Smooth collapse transition
+                if (isObserved) {
+                    collapseFactor = THREE.MathUtils.lerp(collapseFactor, 1.0, 0.08);
+                } else {
+                    collapseFactor = THREE.MathUtils.lerp(collapseFactor, 0.0, 0.04);
                 }
 
-                camera.position.x = Math.sin(elapsed * 0.1) * 0.3;
-                camera.lookAt(0, 0.5, 0);
+                // Animate eigenstates
+                eigenStates.forEach((state, idx) => {
+                    const wave = Math.sin(elapsed * 2.2 + state.phase) * 0.5 + 0.5;
+                    const isSelected = idx === observedEigenIndex;
 
+                    // Opacity interpolation based on collapse
+                    const targetOpacity = THREE.MathUtils.lerp(
+                        0.35 + wave * 0.45,
+                        isSelected ? 0.95 : 0.05,
+                        collapseFactor
+                    );
+
+                    state.petals.forEach(p => {
+                        p.material.opacity = targetOpacity;
+                        p.rotation.x = p.userData.origRotX + Math.sin(elapsed * p.userData.freq + p.userData.angle) * 0.04;
+                    });
+
+                    // Sub-orbital jitter
+                    const jitter = (1.0 - collapseFactor) * 0.04;
+                    state.group.position.x = Math.sin(elapsed * 4.0 + state.phase) * jitter;
+                    state.group.position.z = Math.cos(elapsed * 3.5 + state.phase) * jitter;
+                    state.group.rotation.y = state.config.rotOffset + Math.sin(elapsed * 0.8 + idx) * (0.1 * (1.0 - collapseFactor));
+                });
+
+                // Rings precession
+                rings.forEach((ring, r) => {
+                    ring.rotation.z = elapsed * (0.6 + r * 0.3) * (r % 2 === 0 ? 1 : -1);
+                    ring.rotation.y = elapsed * 0.4 * (r % 2 === 0 ? -1 : 1);
+                });
+
+                // Quantum core pulse
+                core.pulse(elapsed, 2.0);
+                quantumCenterLight.intensity = 2.5 + Math.sin(elapsed * 5.0) * 1.0 + collapseFactor * 2.0;
+
+                atmosphere.update();
                 renderer.render(scene, camera);
             }
 

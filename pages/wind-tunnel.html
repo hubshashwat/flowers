@@ -7,12 +7,50 @@
     <title>Wind-Tunnel Flower | Flowers For You 🌸</title>
     <link rel="icon" href="../favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="../css/style.css">
+    <style>
+        .aero-badge {
+            position: fixed;
+            top: 75px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(8, 16, 24, 0.8);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            padding: 8px 24px;
+            border-radius: 30px;
+            color: #38bdf8;
+            font-size: 13px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            border: 1px solid rgba(56, 189, 248, 0.25);
+            box-shadow: 0 8px 32px rgba(14, 165, 233, 0.2);
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            pointer-events: none;
+        }
+
+        .aero-badge span {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #38bdf8;
+            box-shadow: 0 0 10px #38bdf8;
+            animation: aeroPulse 1.5s infinite ease-in-out;
+        }
+
+        @keyframes aeroPulse {
+            0%, 100% { opacity: 0.5; transform: scale(0.9); }
+            50% { opacity: 1; transform: scale(1.2); }
+        }
+    </style>
 </head>
 
 <body>
     <div class="loading-overlay">
         <div class="loading-flower"></div>
-        <p class="loading-text">Generating airflow...</p>
+        <p class="loading-text">Calibrating supersonic streamlines...</p>
     </div>
 
     <div class="flower-page">
@@ -25,9 +63,13 @@
             </a>
         </nav>
         <div id="canvas-container" class="flower-canvas"></div>
+        <div class="aero-badge">
+            <span></span>
+            Mach 1.2 Laminar Airflow • Aero Strain
+        </div>
         <div class="flower-info">
             <h1>Wind-Tunnel Flower</h1>
-            <p>Petals deform with visible airflow streamlines</p>
+            <p>Aerodynamic carbon-composite petals flexing dynamically within a supersonic wind tunnel accompanied by continuous laminar streamlines</p>
         </div>
     </div>
 
@@ -37,172 +79,240 @@
         (function () {
             const container = document.getElementById('canvas-container');
             const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
-                background: 0x101820
+                background: 0x070c14,
+                antialias: true
             });
 
-            camera.position.set(0, 2, 5);
-            camera.lookAt(0, 0.5, 0);
+            FlowerUtils.createStudioEnvironment(renderer, 'dark_luxury');
+            const controls = FlowerUtils.setupOrbitControls(camera, renderer.domElement, {
+                autoRotateSpeed: 0.45,
+                minDistance: 2.2,
+                maxDistance: 8.5
+            });
+
+            camera.position.set(0, 1.4, 3.6);
+            camera.lookAt(0, 0.35, 0);
 
             // Lighting
-            const ambient = new THREE.AmbientLight(0x334455, 0.5);
+            const ambient = new THREE.AmbientLight(0x0e1f30, 0.7);
             scene.add(ambient);
-            const mainLight = new THREE.DirectionalLight(0xffffff, 1);
-            mainLight.position.set(3, 5, 3);
-            scene.add(mainLight);
 
-            // Flower group
+            const sunLight = new THREE.DirectionalLight(0xe0f2fe, 2.2);
+            sunLight.position.set(5, 8, 4);
+            scene.add(sunLight);
+
+            const cyanRim = new THREE.DirectionalLight(0x38bdf8, 1.8);
+            cyanRim.position.set(-4, -2, -3);
+            scene.add(cyanRim);
+
+            // Wind Tunnel Pedestal with Aero Grid
+            const pedestal = FlowerUtils.createPedestal(scene, {
+                radius: 1.8,
+                height: 0.16,
+                y: -1.3,
+                baseColor: 0x091420,
+                rimColor: 0x38bdf8,
+                marble: false
+            });
+
+            // Streamline wind motes
+            const atmosphere = FlowerUtils.createAtmosphere(scene, {
+                count: 120,
+                color: 0x7dd3fc,
+                size: 0.035,
+                spread: 6.5,
+                driftSpeed: 0.35
+            });
+
+            // Flower Group
             const flowerGroup = new THREE.Group();
             scene.add(flowerGroup);
 
-            // Wind parameters
-            let windAngle = 0;
-            let windSpeed = 1;
+            // Carbon-Composite Aerodynamic Petal Material
+            const aeroMat = new THREE.MeshPhysicalMaterial({
+                color: 0x1e293b,
+                emissive: 0x082f49,
+                emissiveIntensity: 0.3,
+                metalness: 0.9,
+                roughness: 0.2,
+                clearcoat: 0.9,
+                clearcoatRoughness: 0.1,
+                side: THREE.DoubleSide
+            });
 
-            // Create flexible petal
-            function createFlexiblePetal() {
-                const shape = new THREE.Shape();
-                shape.moveTo(0, 0);
-                shape.bezierCurveTo(0.18, 0.1, 0.22, 0.45, 0.12, 0.7);
-                shape.bezierCurveTo(0.04, 0.85, -0.04, 0.85, -0.12, 0.7);
-                shape.bezierCurveTo(-0.22, 0.45, -0.18, 0.1, 0, 0);
-
-                const geom = new THREE.ShapeGeometry(shape, 32);
-                const mat = new THREE.MeshStandardMaterial({
-                    color: 0x88aa88,
-                    side: THREE.DoubleSide,
-                    roughness: 0.6
-                });
-
-                const petal = new THREE.Mesh(geom, mat);
-                petal.userData.originalPositions = geom.attributes.position.array.slice();
-                return petal;
-            }
-
-            // Create petals
-            const petalCount = 8;
-            const petals = [];
-            for (let i = 0; i < petalCount; i++) {
-                const petal = createFlexiblePetal();
-                const angle = (i / petalCount) * Math.PI * 2;
-                petal.rotation.z = angle;
-                petal.rotation.x = -Math.PI / 2 + 0.4;
-                petal.position.y = 0.5;
-                petal.userData.baseAngle = angle;
-                flowerGroup.add(petal);
-                petals.push(petal);
-            }
-
-            // Center
-            const centerGeom = new THREE.SphereGeometry(0.1, 32, 32);
-            const centerMat = new THREE.MeshStandardMaterial({ color: 0xaacc88, roughness: 0.5 });
-            const center = new THREE.Mesh(centerGeom, centerMat);
-            center.position.y = 0.55;
-            flowerGroup.add(center);
-
-            // Stem
-            const stemCurve = new THREE.CatmullRomCurve3([
-                new THREE.Vector3(0, 0.4, 0),
-                new THREE.Vector3(0.02, 0, 0.01),
-                new THREE.Vector3(0, -0.8, 0)
-            ]);
-            const stemGeom = new THREE.TubeGeometry(stemCurve, 16, 0.025, 8, false);
-            const stemMat = new THREE.MeshStandardMaterial({ color: 0x556644 });
+            // High-tensile Titanium Stem
+            const stemPoints = [
+                new THREE.Vector3(0, 0.3, 0),
+                new THREE.Vector3(0.04, -0.1, 0.02),
+                new THREE.Vector3(-0.03, -0.6, -0.02),
+                new THREE.Vector3(0.01, -1.25, 0)
+            ];
+            const stemCurve = new THREE.CatmullRomCurve3(stemPoints);
+            const stemGeom = new THREE.TubeGeometry(stemCurve, 32, 0.038, 12, false);
+            const stemMat = new THREE.MeshStandardMaterial({
+                color: 0x334155,
+                metalness: 0.95,
+                roughness: 0.2
+            });
             const stem = new THREE.Mesh(stemGeom, stemMat);
             flowerGroup.add(stem);
 
-            // Streamlines
-            const streamlines = [];
-            const streamlineCount = 30;
-            for (let i = 0; i < streamlineCount; i++) {
-                const points = [];
-                const startY = (i / streamlineCount) * 2 - 0.5;
-                const startZ = (Math.random() - 0.5) * 2;
-                for (let j = 0; j < 20; j++) {
-                    points.push(new THREE.Vector3(-3 + j * 0.3, startY, startZ));
-                }
+            // Petals with Aerodynamic Camber
+            const tiers = [
+                { count: 9, length: 1.25, width: 0.46, curl: 0.75, wave: 0.28, y: 0.38, rotX: 0.95 },
+                { count: 8, length: 1.05, width: 0.40, curl: 0.65, wave: 0.22, y: 0.42, rotX: 0.72 },
+                { count: 6, length: 0.85, width: 0.34, curl: 0.50, wave: 0.18, y: 0.46, rotX: 0.48 }
+            ];
 
-                const curve = new THREE.CatmullRomCurve3(points);
-                const geom = new THREE.TubeGeometry(curve, 20, 0.005, 4, false);
-                const mat = new THREE.MeshBasicMaterial({
-                    color: 0x66aaff,
-                    transparent: true,
-                    opacity: 0.15
+            const petalMeshes = [];
+
+            tiers.forEach((tier, tIdx) => {
+                const geom = FlowerUtils.createCurvedPetalGeometry({
+                    length: tier.length,
+                    width: tier.width,
+                    curl: tier.curl,
+                    wave: tier.wave,
+                    segmentsW: 14,
+                    segmentsL: 26
                 });
-                const streamline = new THREE.Mesh(geom, mat);
-                streamline.userData.points = points;
-                streamline.userData.phase = i * 0.2;
-                scene.add(streamline);
-                streamlines.push(streamline);
+
+                for (let i = 0; i < tier.count; i++) {
+                    const angle = (i / tier.count) * Math.PI * 2 + (tIdx * 0.4);
+                    const pivot = new THREE.Group();
+                    pivot.position.set(0, tier.y, 0);
+                    pivot.rotation.y = angle;
+
+                    const mesh = new THREE.Mesh(geom, aeroMat);
+                    mesh.rotation.x = tier.rotX;
+
+                    // Neon edge boundary layer conduit
+                    const edgeGeom = new THREE.CylinderGeometry(0.006, 0.006, tier.length * 0.85, 6);
+                    edgeGeom.translate(0, tier.length * 0.48, 0.015);
+                    const edgeMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+                    const edgeMesh = new THREE.Mesh(edgeGeom, edgeMat);
+                    mesh.add(edgeMesh);
+
+                    pivot.add(mesh);
+                    flowerGroup.add(pivot);
+
+                    petalMeshes.push({
+                        mesh,
+                        pivot,
+                        tier: tIdx,
+                        baseRotX: tier.rotX,
+                        phase: i * 0.6 + tIdx * 1.5
+                    });
+                }
+            });
+
+            // Laminar Streamline Tubes rushing through the wind tunnel
+            const streamlineCount = 28;
+            const streamlines = [];
+            const streamMat = new THREE.MeshBasicMaterial({
+                color: 0x38bdf8,
+                transparent: true,
+                opacity: 0.35
+            });
+
+            for (let i = 0; i < streamlineCount; i++) {
+                const startY = -0.6 + (i / streamlineCount) * 2.0;
+                const startZ = (Math.random() - 0.5) * 2.2;
+                const points = [];
+                for (let s = 0; s <= 20; s++) {
+                    const x = -3.5 + s * 0.35;
+                    const distToCenter = Math.sqrt(x * x + startZ * startZ);
+                    const deflection = Math.exp(-distToCenter * 1.5) * 0.25;
+                    points.push(new THREE.Vector3(x, startY + deflection, startZ + deflection * 0.5));
+                }
+                const curve = new THREE.CatmullRomCurve3(points);
+                const geom = new THREE.TubeGeometry(curve, 24, 0.008, 6, false);
+                const mesh = new THREE.Mesh(geom, streamMat);
+                scene.add(mesh);
+                streamlines.push({ mesh, phase: i * 0.35 });
             }
 
-            // Wind particles
-            const particleCount = 100;
-            const particleGeom = new THREE.BufferGeometry();
-            const particlePos = new Float32Array(particleCount * 3);
-            for (let i = 0; i < particleCount; i++) {
-                particlePos[i * 3] = (Math.random() - 0.5) * 6 - 2;
-                particlePos[i * 3 + 1] = Math.random() * 2;
-                particlePos[i * 3 + 2] = (Math.random() - 0.5) * 3;
+            // High-Speed Wind Particle Streaks
+            const streakCount = 90;
+            const streakGeom = new THREE.BufferGeometry();
+            const streakPos = new Float32Array(streakCount * 3);
+            const streakData = [];
+
+            for (let i = 0; i < streakCount; i++) {
+                streakPos[i * 3] = (Math.random() - 0.5) * 6;
+                streakPos[i * 3 + 1] = -0.5 + Math.random() * 2.2;
+                streakPos[i * 3 + 2] = (Math.random() - 0.5) * 3;
+                streakData.push({
+                    speed: 0.06 + Math.random() * 0.08,
+                    baseY: streakPos[i * 3 + 1],
+                    baseZ: streakPos[i * 3 + 2]
+                });
             }
-            particleGeom.setAttribute('position', new THREE.BufferAttribute(particlePos, 3));
-            const particleMat = new THREE.PointsMaterial({
-                color: 0xaaddff,
-                size: 0.02,
+            streakGeom.setAttribute('position', new THREE.BufferAttribute(streakPos, 3));
+            const streakMat = new THREE.PointsMaterial({
+                color: 0xbae6fd,
+                size: 0.055,
                 transparent: true,
-                opacity: 0.4
+                opacity: 0.85,
+                blending: THREE.AdditiveBlending
             });
-            const particles = new THREE.Points(particleGeom, particleMat);
-            scene.add(particles);
+            const streaks = new THREE.Points(streakGeom, streakMat);
+            scene.add(streaks);
+
+            // Stamen Cluster & Core
+            const stamenCluster = FlowerUtils.createStamenCluster({
+                count: 32,
+                height: 0.30,
+                spread: 0.14,
+                antherColor: 0x38bdf8,
+                filamentColor: 0x64748b
+            });
+            stamenCluster.position.y = 0.48;
+            flowerGroup.add(stamenCluster);
+
+            const core = FlowerUtils.createGlowingCore({
+                radius: 0.14,
+                color: 0x0284c7,
+                glowColor: 0x0369a1,
+                emissiveIntensity: 2.2
+            });
+            core.position.y = 0.52;
+            flowerGroup.add(core);
 
             function animate() {
                 requestAnimationFrame(animate);
                 const elapsed = clock.getElapsedTime();
 
-                windAngle = Math.sin(elapsed * 0.5) * Math.PI * 0.3;
-                windSpeed = 0.8 + Math.sin(elapsed * 0.3) * 0.4;
-
-                // Deform petals based on wind
-                petals.forEach((petal, i) => {
-                    const angleToWind = petal.userData.baseAngle - windAngle;
-                    const windEffect = Math.cos(angleToWind) * windSpeed;
-
-                    // Bend petal
-                    petal.rotation.x = -Math.PI / 2 + 0.4 - windEffect * 0.3;
-
-                    // Deform geometry
-                    const positions = petal.geometry.attributes.position;
-                    const original = petal.userData.originalPositions;
-                    for (let j = 0; j < positions.count; j++) {
-                        const y = original[j * 3 + 1];
-                        const deform = y * windEffect * 0.1;
-                        positions.setZ(j, original[j * 3 + 2] + deform);
-                    }
-                    positions.needsUpdate = true;
+                // Wind aerodynamic buffeting on petals
+                petalMeshes.forEach(p => {
+                    const aeroFlutter = Math.sin(elapsed * 4.5 + p.phase) * 0.045 + Math.sin(elapsed * 9.0 + p.phase) * 0.02;
+                    p.mesh.rotation.x = p.baseRotX + aeroFlutter;
                 });
 
-                // Animate streamlines
-                streamlines.forEach((stream, i) => {
-                    stream.position.x = Math.sin(elapsed * 2 + stream.userData.phase) * 0.1;
-                    stream.material.opacity = 0.1 + Math.abs(Math.sin(elapsed + stream.userData.phase)) * 0.1;
-                });
-
-                // Move wind particles
-                const pPos = particleGeom.attributes.position.array;
-                for (let i = 0; i < particleCount; i++) {
-                    pPos[i * 3] += 0.05 * windSpeed;
-                    pPos[i * 3 + 1] += Math.sin(elapsed + i) * 0.002;
-                    if (pPos[i * 3] > 4) {
-                        pPos[i * 3] = -4;
-                        pPos[i * 3 + 1] = Math.random() * 2;
-                        pPos[i * 3 + 2] = (Math.random() - 0.5) * 3;
+                // Wind particles rushing from left to right (-X to +X)
+                const sPos = streakGeom.attributes.position.array;
+                for (let i = 0; i < streakCount; i++) {
+                    const d = streakData[i];
+                    sPos[i * 3] += d.speed;
+                    if (sPos[i * 3] > 3.5) {
+                        sPos[i * 3] = -3.5;
+                        sPos[i * 3 + 1] = -0.5 + Math.random() * 2.2;
+                        sPos[i * 3 + 2] = (Math.random() - 0.5) * 3;
                     }
                 }
-                particleGeom.attributes.position.needsUpdate = true;
+                streakGeom.attributes.position.needsUpdate = true;
 
-                flowerGroup.rotation.y = windAngle * 0.2;
+                // Streamlines opacity shimmer
+                streamlines.forEach(s => {
+                    s.mesh.material.opacity = 0.25 + Math.sin(elapsed * 2.5 + s.phase) * 0.15;
+                });
 
-                camera.position.x = Math.sin(elapsed * 0.1) * 0.5;
-                camera.lookAt(0, 0.5, 0);
+                // Overall flower aerodynamic tilt
+                flowerGroup.rotation.z = Math.sin(elapsed * 2.0) * 0.04 - 0.06;
+                flowerGroup.rotation.y = elapsed * 0.08;
+
+                core.update(elapsed);
+                atmosphere.update();
+                controls.update();
 
                 renderer.render(scene, camera);
             }

@@ -3,16 +3,65 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>Fractal Kaleidoscope Flower | Flowers For You 🌸</title>
     <link rel="icon" href="../favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="../css/style.css">
+    <style>
+        .kaleido-badge {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            background: rgba(18, 14, 32, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 215, 150, 0.25);
+            border-radius: 999px;
+            padding: 8px 18px;
+            font-size: 0.8rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: #ffd8a8;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 30;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+            pointer-events: none;
+        }
+
+        .kaleido-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ff77aa;
+            box-shadow: 0 0 10px #ff77aa;
+            animation: kaleidoPulse 2s infinite ease-in-out;
+        }
+
+        @keyframes kaleidoPulse {
+            0%, 100% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.4); opacity: 1; box-shadow: 0 0 16px #ffd700; }
+        }
+
+        @media (max-width: 600px) {
+            .kaleido-badge {
+                top: auto;
+                bottom: 84px;
+                right: 50%;
+                transform: translateX(50%);
+                font-size: 0.72rem;
+                padding: 6px 14px;
+            }
+        }
+    </style>
 </head>
 
 <body>
     <div class="loading-overlay">
         <div class="loading-flower"></div>
-        <p class="loading-text">Mirroring patterns...</p>
+        <p class="loading-text">Mirroring optical prism facets...</p>
     </div>
 
     <div class="flower-page">
@@ -25,9 +74,13 @@
             </a>
         </nav>
         <div id="canvas-container" class="flower-canvas"></div>
+        <div class="kaleido-badge">
+            <span class="kaleido-dot"></span>
+            <span>12-Fold Optical Prism Matrix</span>
+        </div>
         <div class="flower-info">
             <h1>Fractal Kaleidoscope Flower</h1>
-            <p>Mirrored petals forming evolving kaleidoscopic patterns</p>
+            <p>Concentric faceted crystal prism tiers revolving in mathematical kaleidoscopic harmony</p>
         </div>
     </div>
 
@@ -36,146 +89,308 @@
     <script>
         (function () {
             const container = document.getElementById('canvas-container');
-            const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
-                background: 0x0a0a15
+            const { scene, camera, renderer, clock, controls } = FlowerUtils.initScene(container, {
+                background: 0x07060f,
+                cameraPos: [0, 2.2, 5.2],
+                enableOrbit: true,
+                autoRotate: false
             });
 
-            camera.position.set(0, 0, 4);
-            camera.lookAt(0, 0, 0);
+            camera.lookAt(0, 0.4, 0);
+            if (controls) {
+                controls.target.set(0, 0.4, 0);
+                controls.enableDamping = true;
+                controls.dampingFactor = 0.05;
+                controls.maxDistance = 10;
+                controls.minDistance = 2;
+                controls.maxPolarAngle = Math.PI / 2 + 0.15;
+            }
 
-            // Lighting
-            const ambient = new THREE.AmbientLight(0x444444, 0.5);
+            // High-end jewel studio lighting
+            const ambient = new THREE.AmbientLight(0x201530, 0.8);
             scene.add(ambient);
-            const mainLight = new THREE.PointLight(0xffffff, 1, 10);
-            mainLight.position.set(0, 0, 3);
-            scene.add(mainLight);
 
-            // Kaleidoscope segments
-            const segments = 12;
-            const kaleidoscopeGroup = new THREE.Group();
-            scene.add(kaleidoscopeGroup);
+            const keyLight = new THREE.DirectionalLight(0xfff5ea, 1.4);
+            keyLight.position.set(4, 7, 5);
+            keyLight.castShadow = true;
+            scene.add(keyLight);
 
-            // Create one segment of the kaleidoscope
-            function createSegment() {
-                const group = new THREE.Group();
+            const fillLight = new THREE.DirectionalLight(0x60a5fa, 0.9);
+            fillLight.position.set(-5, 3, -3);
+            scene.add(fillLight);
 
-                // Base petal shape
-                const shape = new THREE.Shape();
-                shape.moveTo(0, 0);
-                shape.lineTo(0.3, 0);
-                shape.bezierCurveTo(0.4, 0.3, 0.2, 0.6, 0.1, 0.8);
-                shape.lineTo(0, 0);
+            const prismPoint1 = new THREE.PointLight(0xff007f, 2.0, 8);
+            prismPoint1.position.set(2, 1.5, 2);
+            scene.add(prismPoint1);
 
-                const geom = new THREE.ShapeGeometry(shape, 16);
-                const mat = new THREE.MeshStandardMaterial({
-                    color: 0xff6688,
-                    side: THREE.DoubleSide,
-                    metalness: 0.3,
-                    roughness: 0.5
-                });
-                const petal = new THREE.Mesh(geom, mat);
-                group.add(petal);
+            const prismPoint2 = new THREE.PointLight(0x00f5ff, 2.0, 8);
+            prismPoint2.position.set(-2, 1.5, -2);
+            scene.add(prismPoint2);
 
-                // Inner details
-                for (let i = 0; i < 3; i++) {
-                    const detailShape = new THREE.Shape();
-                    const scale = 0.3 - i * 0.08;
-                    detailShape.moveTo(0, 0);
-                    detailShape.lineTo(scale, 0);
-                    detailShape.lineTo(scale * 0.5, scale * 0.8);
-                    detailShape.closePath();
+            // Black obsidian mirror pedestal
+            const plinthGroup = new THREE.Group();
+            const plinthGeom = new THREE.CylinderGeometry(2.4, 2.6, 0.25, 48);
+            const plinthMat = new THREE.MeshStandardMaterial({
+                color: 0x090714,
+                roughness: 0.15,
+                metalness: 0.9
+            });
+            const plinth = new THREE.Mesh(plinthGeom, plinthMat);
+            plinth.position.y = -1.2;
+            plinthGroup.add(plinth);
 
-                    const detailGeom = new THREE.ShapeGeometry(detailShape, 8);
-                    const detailMat = new THREE.MeshStandardMaterial({
-                        color: new THREE.Color().setHSL(0.9 - i * 0.1, 0.8, 0.6),
-                        side: THREE.DoubleSide
-                    });
-                    const detail = new THREE.Mesh(detailGeom, detailMat);
-                    detail.position.set(0.05 + i * 0.05, 0.1 + i * 0.1, 0.01 + i * 0.01);
-                    detail.scale.setScalar(0.8 - i * 0.2);
-                    group.add(detail);
-                }
+            // Inlaid golden kaleidoscope rim
+            const rimGeom = new THREE.TorusGeometry(2.4, 0.03, 16, 64);
+            const goldMat = new THREE.MeshStandardMaterial({
+                color: 0xffd700,
+                metalness: 0.95,
+                roughness: 0.2
+            });
+            const rimMesh = new THREE.Mesh(rimGeom, goldMat);
+            rimMesh.rotation.x = Math.PI / 2;
+            rimMesh.position.y = -1.07;
+            plinthGroup.add(rimMesh);
+            scene.add(plinthGroup);
 
-                return group;
-            }
+            // Kaleidoscope Flower Main Group
+            const flowerRoot = new THREE.Group();
+            flowerRoot.position.set(0, 0.1, 0);
+            scene.add(flowerRoot);
 
-            // Create mirrored segments
-            for (let i = 0; i < segments; i++) {
-                const segment = createSegment();
-                const angle = (i / segments) * Math.PI * 2;
-                segment.rotation.z = angle;
-
-                // Mirror every other segment
-                if (i % 2 === 1) {
-                    segment.scale.x = -1;
-                }
-
-                kaleidoscopeGroup.add(segment);
-            }
-
-            // Inner flower ring
-            const innerRing = new THREE.Group();
-            for (let i = 0; i < segments; i++) {
-                const petalGeom = new THREE.CircleGeometry(0.1, 16, 0, Math.PI);
-                const petalMat = new THREE.MeshBasicMaterial({
-                    color: new THREE.Color().setHSL((i / segments) * 0.3 + 0.5, 0.9, 0.6),
+            // Faceted Crystal Materials with prismatic chromatic hues
+            function createCrystalMaterial(hue, roughness = 0.12) {
+                return new THREE.MeshPhysicalMaterial({
+                    color: new THREE.Color().setHSL(hue, 0.7, 0.65),
+                    emissive: new THREE.Color().setHSL(hue, 0.8, 0.1),
+                    roughness: roughness,
+                    metalness: 0.2,
+                    transmission: 0.45,
+                    transparent: true,
+                    opacity: 0.92,
+                    ior: 1.62,
+                    clearcoat: 1.0,
+                    clearcoatRoughness: 0.1,
                     side: THREE.DoubleSide
                 });
-                const petal = new THREE.Mesh(petalGeom, petalMat);
-                const angle = (i / segments) * Math.PI * 2;
-                petal.position.set(Math.cos(angle) * 0.15, Math.sin(angle) * 0.15, 0);
-                petal.rotation.z = angle + Math.PI / 2;
-                innerRing.add(petal);
             }
-            kaleidoscopeGroup.add(innerRing);
 
-            // Center gem
-            const centerGeom = new THREE.OctahedronGeometry(0.1, 0);
-            const centerMat = new THREE.MeshStandardMaterial({
-                color: 0xffffff,
-                metalness: 0.9,
-                roughness: 0.1
+            // Build Faceted Prism Petal Geometry
+            function createFacetedPrismPetal(length = 1.0, width = 0.35, depth = 0.12) {
+                const geom = new THREE.BufferGeometry();
+                const v = [
+                    0, 0, 0,                              // 0: base
+                    -width * 0.5, length * 0.45, 0,        // 1: left
+                    width * 0.5, length * 0.45, 0,         // 2: right
+                    0, length, 0,                          // 3: tip
+                    0, length * 0.5, depth,                // 4: front ridge
+                    0, length * 0.5, -depth * 0.4          // 5: back ridge
+                ];
+
+                const indices = [
+                    // Front faces
+                    0, 4, 1,
+                    0, 2, 4,
+                    1, 4, 3,
+                    4, 2, 3,
+                    // Back faces
+                    0, 1, 5,
+                    0, 5, 2,
+                    1, 3, 5,
+                    5, 3, 2
+                ];
+
+                geom.setAttribute('position', new THREE.Float32BufferAttribute(v, 3));
+                geom.setIndex(indices);
+                geom.computeVertexNormals();
+                return geom;
+            }
+
+            // Concentric Tiers configuration
+            const tiers = [
+                { count: 16, length: 1.35, width: 0.45, depth: 0.14, pitch: 0.82, y: 0.05, speed: 0.12, hue: 0.95 },  // Outer Magenta/Rose
+                { count: 12, length: 1.05, width: 0.38, depth: 0.12, pitch: 0.62, y: 0.18, speed: -0.18, hue: 0.55 }, // Mid Cyan/Azure
+                { count: 12, length: 0.78, width: 0.28, depth: 0.10, pitch: 0.44, y: 0.30, speed: 0.24, hue: 0.15 },  // Inner Amber/Gold
+                { count: 8,  length: 0.52, width: 0.20, depth: 0.08, pitch: 0.28, y: 0.42, speed: -0.32, hue: 0.80 }   // Core Violet
+            ];
+
+            const tierGroups = [];
+
+            tiers.forEach((tData, tIdx) => {
+                const tierGroup = new THREE.Group();
+                tierGroup.position.y = tData.y;
+                tierGroup.userData = { speed: tData.speed, basePitch: tData.pitch };
+
+                const geom = createFacetedPrismPetal(tData.length, tData.width, tData.depth);
+                const mat = createCrystalMaterial(tData.hue);
+
+                // Golden filigree support ring beneath each tier
+                const ringGeom = new THREE.TorusGeometry(tData.length * 0.45, 0.015, 8, 32);
+                const ringMesh = new THREE.Mesh(ringGeom, goldMat);
+                ringMesh.rotation.x = Math.PI / 2;
+                tierGroup.add(ringMesh);
+
+                for (let i = 0; i < tData.count; i++) {
+                    const angle = (i / tData.count) * Math.PI * 2;
+                    const pivot = new THREE.Group();
+                    pivot.rotation.y = angle;
+
+                    const petalMesh = new THREE.Mesh(geom, mat.clone());
+                    petalMesh.castShadow = true;
+                    petalMesh.receiveShadow = true;
+                    petalMesh.rotation.x = tData.pitch;
+                    petalMesh.userData = {
+                        initPitch: tData.pitch,
+                        phase: i * (Math.PI * 2 / tData.count),
+                        tier: tIdx
+                    };
+
+                    pivot.add(petalMesh);
+                    tierGroup.add(pivot);
+                }
+
+                flowerRoot.add(tierGroup);
+                tierGroups.push(tierGroup);
             });
-            const center = new THREE.Mesh(centerGeom, centerMat);
-            kaleidoscopeGroup.add(center);
+
+            // Brilliant Cut Octahedral Diamond Core
+            const gemGroup = new THREE.Group();
+            gemGroup.position.y = 0.52;
+
+            const gemGeom = new THREE.OctahedronGeometry(0.24, 2);
+            const gemMat = new THREE.MeshPhysicalMaterial({
+                color: 0xffffff,
+                emissive: 0xfff0fa,
+                emissiveIntensity: 0.3,
+                roughness: 0.04,
+                metalness: 0.1,
+                transmission: 0.85,
+                transparent: true,
+                opacity: 0.95,
+                ior: 2.42, // Diamond IOR
+                clearcoat: 1.0
+            });
+            const gemMesh = new THREE.Mesh(gemGeom, gemMat);
+            gemGroup.add(gemMesh);
+
+            // Gem Mount / Bezel in 24k Gold
+            const bezelGeom = new THREE.CylinderGeometry(0.18, 0.08, 0.15, 8);
+            const bezelMesh = new THREE.Mesh(bezelGeom, goldMat);
+            bezelMesh.position.y = -0.1;
+            gemGroup.add(bezelMesh);
+
+            // Golden Stamen Prisms around Gem
+            for (let i = 0; i < 8; i++) {
+                const stamenAngle = (i / 8) * Math.PI * 2;
+                const stamen = new THREE.Mesh(
+                    new THREE.ConeGeometry(0.015, 0.22, 6),
+                    goldMat
+                );
+                stamen.position.set(Math.cos(stamenAngle) * 0.14, -0.02, Math.sin(stamenAngle) * 0.14);
+                stamen.rotation.x = 0.25;
+                stamen.rotation.y = stamenAngle;
+                gemGroup.add(stamen);
+            }
+
+            flowerRoot.add(gemGroup);
+
+            // Ornate Stem & Leaves
+            const stemCurve = new THREE.CatmullRomCurve3([
+                new THREE.Vector3(0, 0.1, 0),
+                new THREE.Vector3(0.04, -0.4, -0.02),
+                new THREE.Vector3(-0.03, -0.8, 0.02),
+                new THREE.Vector3(0, -1.2, 0)
+            ]);
+            const stemGeom = new THREE.TubeGeometry(stemCurve, 32, 0.045, 12, false);
+            const stemMat = new THREE.MeshStandardMaterial({
+                color: 0x121e16,
+                roughness: 0.35,
+                metalness: 0.5
+            });
+            const stemMesh = new THREE.Mesh(stemGeom, stemMat);
+            flowerRoot.add(stemMesh);
+
+            // Faceted Glass Leaves on Stem
+            [-0.35, -0.7].forEach((yPos, idx) => {
+                const leafGeom = createFacetedPrismPetal(0.65, 0.24, 0.06);
+                const leafMat = createCrystalMaterial(0.38, 0.2); // Emerald crystal
+                const leaf = new THREE.Mesh(leafGeom, leafMat);
+                leaf.position.set(idx === 0 ? 0.05 : -0.05, yPos, 0);
+                leaf.rotation.z = idx === 0 ? -1.1 : 1.1;
+                leaf.rotation.x = 0.3;
+                flowerRoot.add(leaf);
+            });
+
+            // Ambient Chromatic Bokeh Dust
+            const particleCount = 120;
+            const pGeom = new THREE.BufferGeometry();
+            const pPos = new Float32Array(particleCount * 3);
+            const pColors = new Float32Array(particleCount * 3);
+
+            for (let i = 0; i < particleCount; i++) {
+                const r = 0.6 + Math.random() * 2.4;
+                const theta = Math.random() * Math.PI * 2;
+                const phi = (Math.random() - 0.5) * Math.PI * 0.8;
+
+                pPos[i * 3] = r * Math.cos(theta) * Math.cos(phi);
+                pPos[i * 3 + 1] = 0.2 + r * Math.sin(phi);
+                pPos[i * 3 + 2] = r * Math.sin(theta) * Math.cos(phi);
+
+                const c = new THREE.Color().setHSL(Math.random(), 0.9, 0.65);
+                pColors[i * 3] = c.r;
+                pColors[i * 3 + 1] = c.g;
+                pColors[i * 3 + 2] = c.b;
+            }
+
+            pGeom.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+            pGeom.setAttribute('color', new THREE.BufferAttribute(pColors, 3));
+
+            const pMat = new THREE.PointsMaterial({
+                size: 0.04,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.75,
+                blending: THREE.AdditiveBlending
+            });
+            const particles = new THREE.Points(pGeom, pMat);
+            scene.add(particles);
 
             function animate() {
                 requestAnimationFrame(animate);
                 const elapsed = clock.getElapsedTime();
 
-                // Rotate kaleidoscope
-                kaleidoscopeGroup.rotation.z = elapsed * 0.1;
+                // Rotate tiers in counter-harmonic kaleidoscopic motion
+                tierGroups.forEach((group, idx) => {
+                    group.rotation.y = elapsed * group.userData.speed;
 
-                // Inner ring rotates opposite
-                innerRing.rotation.z = -elapsed * 0.3;
-
-                // Segments pulse
-                kaleidoscopeGroup.children.forEach((child, i) => {
-                    if (child !== innerRing && child !== center) {
-                        const pulse = Math.sin(elapsed * 2 + i * 0.3) * 0.05;
-                        child.scale.setScalar(1 + pulse);
-                        child.scale.x = (i % 2 === 1) ? -(1 + pulse) : (1 + pulse);
-                    }
-                });
-
-                // Center rotates and pulses
-                center.rotation.x = elapsed;
-                center.rotation.y = elapsed * 0.7;
-                center.scale.setScalar(1 + Math.sin(elapsed * 3) * 0.1);
-
-                // Color cycling
-                const hueShift = elapsed * 0.05;
-                kaleidoscopeGroup.children.forEach((child, i) => {
-                    if (child.material) {
-                        child.material.color.setHSL((hueShift + i * 0.05) % 1, 0.7, 0.5);
-                    }
-                    child.children?.forEach((c, j) => {
-                        if (c.material) {
-                            c.material.color.setHSL((hueShift + i * 0.05 + j * 0.1) % 1, 0.8, 0.6);
+                    // Petal breathing & kaleidoscopic wave flutter
+                    group.children.forEach(pivot => {
+                        if (pivot.children && pivot.children[0] && pivot.children[0].userData.initPitch !== undefined) {
+                            const pMesh = pivot.children[0];
+                            const wave = Math.sin(elapsed * 2.2 + pMesh.userData.phase * 3.0) * 0.06;
+                            pMesh.rotation.x = pMesh.userData.initPitch + wave;
                         }
                     });
                 });
 
+                // Gem spin & diamond scintillation
+                gemGroup.rotation.y = elapsed * 0.8;
+                gemGroup.rotation.x = Math.sin(elapsed * 0.5) * 0.15;
+                gemMesh.position.y = Math.sin(elapsed * 3.0) * 0.02;
+
+                // Orbiting spectral light highlights
+                prismPoint1.position.x = Math.cos(elapsed * 1.2) * 2.5;
+                prismPoint1.position.z = Math.sin(elapsed * 1.2) * 2.5;
+                prismPoint2.position.x = Math.cos(-elapsed * 1.0) * 2.5;
+                prismPoint2.position.z = Math.sin(-elapsed * 1.0) * 2.5;
+
+                // Slow flower root levitation sway
+                flowerRoot.position.y = 0.1 + Math.sin(elapsed * 1.4) * 0.03;
+                flowerRoot.rotation.y = Math.sin(elapsed * 0.2) * 0.05;
+
+                // Subtle particle drift
+                particles.rotation.y = elapsed * 0.04;
+
+                if (controls) controls.update();
                 renderer.render(scene, camera);
             }
 

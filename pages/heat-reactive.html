@@ -10,16 +10,20 @@
     <style>
         .hint {
             position: fixed;
-            bottom: 120px;
+            top: 72px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(255, 100, 50, 0.2);
-            backdrop-filter: blur(10px);
-            padding: 10px 20px;
+            background: rgba(255, 100, 50, 0.15);
+            border: 1px solid rgba(255, 100, 50, 0.3);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 8px 18px;
             border-radius: 20px;
-            color: white;
-            font-size: 14px;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 13px;
+            letter-spacing: 0.5px;
             z-index: 50;
+            pointer-events: none;
         }
     </style>
 </head>
@@ -53,202 +57,255 @@
         (function () {
             const container = document.getElementById('canvas-container');
             const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
-                background: 0x0a0a12
+                background: 0x08040a,
+                cameraPos: [0, 1.4, 3.8],
+                controls: {
+                    target: new THREE.Vector3(0, 0.45, 0),
+                    minDistance: 2.0,
+                    maxDistance: 7.0,
+                    autoRotate: true,
+                    autoRotateSpeed: 0.35
+                }
             });
 
-            camera.position.set(0, 2, 5);
-            camera.lookAt(0, 0.5, 0);
+            // Studio Environment & Lighting
+            FlowerUtils.createStudioEnvironment(renderer, 'warm_sunset');
 
-            // Lighting
-            const ambient = new THREE.AmbientLight(0x404060, 0.4);
-            scene.add(ambient);
+            const ambientLight = new THREE.AmbientLight(0x181024, 1.2);
+            scene.add(ambientLight);
 
-            const mainLight = new THREE.DirectionalLight(0xffffff, 0.6);
-            mainLight.position.set(5, 8, 5);
-            scene.add(mainLight);
+            const sunsetLight = new THREE.DirectionalLight(0xffeedd, 2.2);
+            sunsetLight.position.set(4, 6, 3);
+            scene.add(sunsetLight);
 
-            // Heat source (follows mouse)
-            const heatGeom = new THREE.SphereGeometry(0.15, 32, 32);
-            const heatMat = new THREE.MeshBasicMaterial({
+            const coldRimLight = new THREE.DirectionalLight(0x2255bb, 1.8);
+            coldRimLight.position.set(-4, 2, -3);
+            scene.add(coldRimLight);
+
+            // Luxury Dark Gold Pedestal
+            const pedestal = FlowerUtils.createPedestal({
+                radius: 1.85,
+                height: 0.16,
+                y: -0.78,
+                color: 0x0f0b12,
+                metalness: 0.95,
+                roughness: 0.12,
+                rimColor: 0xff7722
+            });
+            scene.add(pedestal);
+
+            // Floating Atmosphere Embers
+            const atmosphere = FlowerUtils.createAtmosphere(scene, {
+                count: 130,
+                color: 0xffaa44,
+                size: 0.025,
+                spread: 5.0,
+                ySpread: 3.5
+            });
+
+            // Floating Heat Plasma Orb
+            const heatOrbGroup = new THREE.Group();
+            heatOrbGroup.position.set(1.4, 0.8, 1.2);
+            scene.add(heatOrbGroup);
+
+            const orbCoreGeom = new THREE.SphereGeometry(0.1, 32, 32);
+            const orbCoreMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            const orbCore = new THREE.Mesh(orbCoreGeom, orbCoreMat);
+            heatOrbGroup.add(orbCore);
+
+            const orbCoronaGeom = new THREE.SphereGeometry(0.24, 24, 24);
+            const orbCoronaMat = new THREE.MeshBasicMaterial({
                 color: 0xff4400,
                 transparent: true,
-                opacity: 0.8
+                opacity: 0.45,
+                blending: THREE.AdditiveBlending
             });
-            const heatSphere = new THREE.Mesh(heatGeom, heatMat);
-            heatSphere.position.set(2, 1, 1);
-            scene.add(heatSphere);
+            const orbCorona = new THREE.Mesh(orbCoronaGeom, orbCoronaMat);
+            heatOrbGroup.add(orbCorona);
 
-            // Heat glow
-            const heatGlowGeom = new THREE.SphereGeometry(0.4, 16, 16);
-            const heatGlowMat = new THREE.MeshBasicMaterial({
-                color: 0xff6600,
-                transparent: true,
-                opacity: 0.3
-            });
-            const heatGlow = new THREE.Mesh(heatGlowGeom, heatGlowMat);
-            heatSphere.add(heatGlow);
+            const heatLight = new THREE.PointLight(0xff5511, 3.5, 5);
+            heatOrbGroup.add(heatLight);
 
-            // Heat light
-            const heatLight = new THREE.PointLight(0xff4400, 2, 5);
-            heatSphere.add(heatLight);
-
-            // Mouse tracking
+            // Mouse & Touch Tracking for Heat Orb
             const mouse = new THREE.Vector2();
             const raycaster = new THREE.Raycaster();
-            const targetPos = new THREE.Vector3(2, 1, 1);
+            const targetPos = new THREE.Vector3(1.4, 0.8, 1.2);
+            let hasUserPointer = false;
 
-            // Invisible plane for raycast
-            const planeGeom = new THREE.PlaneGeometry(20, 20);
-            const planeMat = new THREE.MeshBasicMaterial({ visible: false });
-            const plane = new THREE.Mesh(planeGeom, planeMat);
-            plane.position.z = 0;
-            scene.add(plane);
+            // Tracking plane at flower depth
+            const trackingPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
 
-            function onMouseMove(event) {
+            function onPointerMove(e) {
                 const rect = renderer.domElement.getBoundingClientRect();
-                mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-                mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+                mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+                mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+                hasUserPointer = true;
 
                 raycaster.setFromCamera(mouse, camera);
-                const intersects = raycaster.intersectObject(plane);
-                if (intersects.length > 0) {
-                    targetPos.copy(intersects[0].point);
-                    targetPos.z = Math.max(targetPos.z, 0.5);
+                const hit = new THREE.Vector3();
+                if (raycaster.ray.intersectPlane(trackingPlane, hit)) {
+                    targetPos.copy(hit);
+                    targetPos.z = Math.max(targetPos.z, 0.4);
                 }
             }
 
-            window.addEventListener('mousemove', onMouseMove);
-            window.addEventListener('touchmove', (e) => {
-                if (e.touches.length > 0) {
-                    onMouseMove({ clientX: e.touches[0].clientX, clientY: e.touches[0].clientY });
+            container.addEventListener('pointermove', onPointerMove);
+            container.addEventListener('pointerleave', () => { hasUserPointer = false; });
+
+            // Thermochromic Color Ramps
+            const coldCol = new THREE.Color(0x1a2e66); // Deep sapphire
+            const coldEmissive = new THREE.Color(0x060c22);
+            const warmCol = new THREE.Color(0xd46a18); // Amber copper
+            const warmEmissive = new THREE.Color(0x882200);
+            const hotCol = new THREE.Color(0xff4422); // Molten crimson
+            const hotEmissive = new THREE.Color(0xff3300);
+
+            // Flower Group
+            const flower = new THREE.Group();
+            flower.position.y = 0.35;
+            scene.add(flower);
+
+            // 3 Tiers of Double-Curved Petals
+            const tiers = [
+                { count: 12, length: 1.15, width: 0.38, curl: 0.8, wave: 0.25, angle: 0.8, y: 0.0 },
+                { count: 9,  length: 0.92, width: 0.34, curl: 0.6, wave: 0.2, angle: 0.55, y: 0.06 },
+                { count: 7,  length: 0.68, width: 0.28, curl: 0.4, wave: 0.15, angle: 0.35, y: 0.12 }
+            ];
+
+            const allPetals = [];
+            const tempWorldPos = new THREE.Vector3();
+            const tempCol = new THREE.Color();
+            const tempEmiss = new THREE.Color();
+
+            tiers.forEach((tier, tIdx) => {
+                const geom = FlowerUtils.createCurvedPetalGeometry({
+                    length: tier.length,
+                    width: tier.width,
+                    curl: tier.curl,
+                    wave: tier.wave,
+                    segmentsL: 24,
+                    segmentsW: 16
+                });
+
+                for (let i = 0; i < tier.count; i++) {
+                    const angle = (i / tier.count) * Math.PI * 2 + (tIdx * 0.4);
+
+                    const mat = new THREE.MeshPhysicalMaterial({
+                        color: coldCol.clone(),
+                        emissive: coldEmissive.clone(),
+                        emissiveIntensity: 0.6,
+                        metalness: 0.4,
+                        roughness: 0.3,
+                        clearcoat: 0.85,
+                        clearcoatRoughness: 0.2,
+                        side: THREE.DoubleSide
+                    });
+
+                    const mesh = new THREE.Mesh(geom, mat);
+                    mesh.position.y = tier.y;
+                    mesh.rotation.y = angle;
+                    mesh.rotation.x = tier.angle;
+                    mesh.userData = {
+                        origRotX: tier.angle,
+                        angle,
+                        heatLevel: 0.0,
+                        freq: 1.8 + tIdx * 0.5
+                    };
+                    flower.add(mesh);
+                    allPetals.push(mesh);
                 }
             });
 
-            // Flower group
-            const flowerGroup = new THREE.Group();
-            scene.add(flowerGroup);
-
-            // Cold and hot colors
-            const coldColor = new THREE.Color(0x4488ff);
-            const warmColor = new THREE.Color(0xffaa44);
-            const hotColor = new THREE.Color(0xff4422);
-
-            // Create petal
-            function createPetal() {
-                const shape = new THREE.Shape();
-                shape.moveTo(0, 0);
-                shape.bezierCurveTo(0.15, 0.08, 0.2, 0.35, 0.12, 0.6);
-                shape.bezierCurveTo(0.05, 0.75, -0.05, 0.75, -0.12, 0.6);
-                shape.bezierCurveTo(-0.2, 0.35, -0.15, 0.08, 0, 0);
-
-                const geom = new THREE.ShapeGeometry(shape, 24);
-                const positions = geom.attributes.position;
-                for (let i = 0; i < positions.count; i++) {
-                    const y = positions.getY(i);
-                    positions.setZ(i, Math.sin(y * Math.PI * 0.6) * 0.1);
-                }
-                positions.needsUpdate = true;
-                geom.computeVertexNormals();
-                return geom;
-            }
-
-            // Create petals
-            const petalCount = 10;
-            const petals = [];
-
-            for (let i = 0; i < petalCount; i++) {
-                const geom = createPetal();
-                const mat = new THREE.MeshStandardMaterial({
-                    color: coldColor.clone(),
-                    side: THREE.DoubleSide,
-                    roughness: 0.5
-                });
-
-                const petal = new THREE.Mesh(geom, mat);
-                const angle = (i / petalCount) * Math.PI * 2;
-                const layer = i < 5 ? 0 : 1;
-
-                petal.rotation.z = angle;
-                petal.rotation.x = -Math.PI / 2 + 0.4 + layer * 0.1;
-                petal.position.y = 0.5;
-                petal.scale.setScalar(1 - layer * 0.2);
-
-                flowerGroup.add(petal);
-                petals.push({
-                    mesh: petal,
-                    worldPos: new THREE.Vector3()
-                });
-            }
-
-            // Center
-            const centerGeom = new THREE.SphereGeometry(0.1, 32, 32);
-            const centerMat = new THREE.MeshStandardMaterial({
-                color: coldColor.clone(),
-                roughness: 0.6
+            // Core & Stamens
+            const core = FlowerUtils.createGlowingCore(flower, {
+                radius: 0.22,
+                color: 0xff5500,
+                innerColor: 0xffeedd,
+                y: 0.18
             });
-            const center = new THREE.Mesh(centerGeom, centerMat);
-            center.position.y = 0.55;
-            flowerGroup.add(center);
 
-            // Stem
+            FlowerUtils.createStamenCluster(flower, {
+                count: 36,
+                radius: 0.14,
+                height: 0.34,
+                spread: 0.38,
+                stemColor: 0x993311,
+                antherColor: 0xffbb44,
+                y: 0.15
+            });
+
+            // Organic Stem
             const stemCurve = new THREE.CatmullRomCurve3([
-                new THREE.Vector3(0, 0.4, 0),
-                new THREE.Vector3(0.02, 0, 0.01),
-                new THREE.Vector3(-0.01, -0.5, -0.01),
-                new THREE.Vector3(0, -1, 0)
+                new THREE.Vector3(0, 0.05, 0),
+                new THREE.Vector3(0.03, -0.28, 0.02),
+                new THREE.Vector3(-0.02, -0.55, -0.01),
+                new THREE.Vector3(0, -0.78, 0)
             ]);
-            const stemGeom = new THREE.TubeGeometry(stemCurve, 16, 0.025, 8, false);
-            const stemMat = new THREE.MeshStandardMaterial({ color: 0x2d5a27 });
-            const stem = new THREE.Mesh(stemGeom, stemMat);
-            flowerGroup.add(stem);
-
-            // Ground
-            const groundGeom = new THREE.CircleGeometry(5, 64);
-            const groundMat = new THREE.MeshStandardMaterial({ color: 0x111118, roughness: 0.9 });
-            const ground = new THREE.Mesh(groundGeom, groundMat);
-            ground.rotation.x = -Math.PI / 2;
-            ground.position.y = -1;
-            scene.add(ground);
+            const stemGeom = new THREE.TubeGeometry(stemCurve, 32, 0.032, 12, false);
+            const stemMat = new THREE.MeshPhysicalMaterial({
+                color: 0x182414,
+                emissive: 0x081206,
+                emissiveIntensity: 0.4,
+                metalness: 0.5,
+                roughness: 0.35,
+                clearcoat: 0.7
+            });
+            const stemMesh = new THREE.Mesh(stemGeom, stemMat);
+            flower.add(stemMesh);
 
             function animate() {
                 requestAnimationFrame(animate);
                 const elapsed = clock.getElapsedTime();
                 const delta = clock.getDelta();
 
-                // Smooth heat sphere movement
-                heatSphere.position.lerp(targetPos, delta * 5);
+                // Gentle floating breath
+                flower.position.y = 0.35 + Math.sin(elapsed * 1.5) * 0.035;
 
-                // Pulse heat sphere
-                const pulse = 1 + Math.sin(elapsed * 8) * 0.1;
-                heatGlow.scale.setScalar(pulse);
-                heatLight.intensity = 1.5 + Math.sin(elapsed * 6) * 0.5;
+                // Heat orb movement: follows pointer if available, else orbits smoothly
+                if (!hasUserPointer) {
+                    const orbitAngle = elapsed * 0.8;
+                    targetPos.set(
+                        Math.cos(orbitAngle) * 1.4,
+                        0.7 + Math.sin(elapsed * 1.6) * 0.3,
+                        Math.sin(orbitAngle) * 1.2
+                    );
+                }
+                heatOrbGroup.position.lerp(targetPos, delta * 4.5);
 
-                // Update petal colors based on heat proximity
-                petals.forEach(p => {
-                    p.mesh.getWorldPosition(p.worldPos);
-                    const dist = p.worldPos.distanceTo(heatSphere.position);
-                    const maxDist = 3;
-                    const heat = Math.max(0, 1 - dist / maxDist);
+                // Orb corona pulse
+                const pulse = 1.0 + Math.sin(elapsed * 6.0) * 0.15;
+                orbCorona.scale.setScalar(pulse);
+                heatLight.intensity = 3.0 + Math.sin(elapsed * 5.0) * 1.0;
 
-                    // Interpolate colors
-                    const targetColor = new THREE.Color();
-                    if (heat < 0.5) {
-                        targetColor.lerpColors(coldColor, warmColor, heat * 2);
+                // Petal heat conduction based on 3D distance
+                for (let i = 0; i < allPetals.length; i++) {
+                    const p = allPetals[i];
+                    p.getWorldPosition(tempWorldPos);
+                    const dist = tempWorldPos.distanceTo(heatOrbGroup.position);
+                    const targetHeat = THREE.MathUtils.clamp(1.0 - (dist / 2.6), 0, 1);
+
+                    p.userData.heatLevel = THREE.MathUtils.lerp(p.userData.heatLevel, targetHeat, delta * 3.5);
+                    const h = p.userData.heatLevel;
+
+                    if (h < 0.5) {
+                        tempCol.lerpColors(coldCol, warmCol, h * 2);
+                        tempEmiss.lerpColors(coldEmissive, warmEmissive, h * 2);
                     } else {
-                        targetColor.lerpColors(warmColor, hotColor, (heat - 0.5) * 2);
+                        tempCol.lerpColors(warmCol, hotCol, (h - 0.5) * 2);
+                        tempEmiss.lerpColors(warmEmissive, hotEmissive, (h - 0.5) * 2);
                     }
-                    p.mesh.material.color.lerp(targetColor, delta * 3);
-                });
 
-                // Center color
-                const centerDist = center.getWorldPosition(new THREE.Vector3()).distanceTo(heatSphere.position);
-                const centerHeat = Math.max(0, 1 - centerDist / 3);
-                const centerTargetColor = new THREE.Color().lerpColors(coldColor, hotColor, centerHeat);
-                centerMat.color.lerp(centerTargetColor, delta * 3);
+                    p.material.color.copy(tempCol);
+                    p.material.emissive.copy(tempEmiss);
+                    p.material.emissiveIntensity = 0.5 + h * 1.2;
 
-                // Slow rotation
-                flowerGroup.rotation.y = elapsed * 0.1;
+                    // Petals curl slightly toward heat
+                    const heatCurl = h * 0.12;
+                    p.rotation.x = p.userData.origRotX - heatCurl + Math.sin(elapsed * p.userData.freq + p.userData.angle) * 0.03;
+                }
 
+                core.pulse(elapsed, 1.6);
+                atmosphere.update();
                 renderer.render(scene, camera);
             }
 

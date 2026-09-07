@@ -7,12 +7,44 @@
     <title>Kinetic Flower | Flowers For You 🌸</title>
     <link rel="icon" href="../favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="../css/style.css">
+    <style>
+        .kinetic-badge {
+            position: fixed;
+            top: 75px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(26, 18, 12, 0.8);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            padding: 8px 24px;
+            border-radius: 30px;
+            color: #fdba74;
+            font-size: 13px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            border: 1px solid rgba(251, 146, 60, 0.25);
+            box-shadow: 0 8px 32px rgba(234, 88, 12, 0.2);
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            pointer-events: none;
+        }
+
+        .kinetic-badge span {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #fb923c;
+            box-shadow: 0 0 10px #fb923c;
+        }
+    </style>
 </head>
 
 <body>
     <div class="loading-overlay">
         <div class="loading-flower"></div>
-        <p class="loading-text">Winding gears...</p>
+        <p class="loading-text">Engaging kinetic linkages...</p>
     </div>
 
     <div class="flower-page">
@@ -25,9 +57,13 @@
             </a>
         </nav>
         <div id="canvas-container" class="flower-canvas"></div>
+        <div class="kinetic-badge">
+            <span></span>
+            Dual-Axis Mechanical Wave • Harmonic Motion
+        </div>
         <div class="flower-info">
             <h1>Kinetic Flower</h1>
-            <p>Mechanical petals driven by turning gears</p>
+            <p>Counter-rotating concentric tiers of polished brass and copper petal fins undulating in reciprocal geometric harmony</p>
         </div>
     </div>
 
@@ -37,176 +73,192 @@
         (function () {
             const container = document.getElementById('canvas-container');
             const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
-                background: 0x1a1815
+                background: 0x0c0906,
+                antialias: true
             });
 
-            camera.position.set(0, 3, 5);
-            camera.lookAt(0, 0.3, 0);
+            FlowerUtils.createStudioEnvironment(renderer, 'warm_sunset');
+            const controls = FlowerUtils.setupOrbitControls(camera, renderer.domElement, {
+                autoRotateSpeed: 0.45,
+                minDistance: 2.2,
+                maxDistance: 8.5
+            });
 
-            // Warm industrial lighting
-            const ambient = new THREE.AmbientLight(0x554433, 0.5);
+            camera.position.set(0, 1.4, 3.6);
+            camera.lookAt(0, 0.35, 0);
+
+            // Lighting
+            const ambient = new THREE.AmbientLight(0x28190e, 0.7);
             scene.add(ambient);
-            const mainLight = new THREE.DirectionalLight(0xffddaa, 1);
-            mainLight.position.set(3, 5, 3);
-            scene.add(mainLight);
 
-            // Materials
-            const brassmat = new THREE.MeshStandardMaterial({
-                color: 0xccaa66,
-                metalness: 0.8,
-                roughness: 0.3
+            const sunLight = new THREE.DirectionalLight(0xffedd5, 2.2);
+            sunLight.position.set(5, 8, 4);
+            scene.add(sunLight);
+
+            const copperRim = new THREE.DirectionalLight(0xf97316, 1.8);
+            copperRim.position.set(-4, -2, -3);
+            scene.add(copperRim);
+
+            // Luxury Pedestal
+            const pedestal = FlowerUtils.createPedestal(scene, {
+                radius: 1.8,
+                height: 0.16,
+                y: -1.3,
+                baseColor: 0x140e0a,
+                rimColor: 0xf97316,
+                marble: true
             });
 
-            const copperMat = new THREE.MeshStandardMaterial({
-                color: 0xcc7755,
-                metalness: 0.7,
-                roughness: 0.4
+            // Atmosphere
+            const atmosphere = FlowerUtils.createAtmosphere(scene, {
+                count: 110,
+                color: 0xfdba74,
+                size: 0.035,
+                spread: 6.5,
+                driftSpeed: 0.2
             });
 
-            const steelMat = new THREE.MeshStandardMaterial({
-                color: 0x888888,
-                metalness: 0.9,
-                roughness: 0.2
-            });
-
-            // Flower group
+            // Flower Group
             const flowerGroup = new THREE.Group();
             scene.add(flowerGroup);
 
-            // Create gear
-            function createGear(radius, teeth, thickness) {
-                const shape = new THREE.Shape();
-                const toothSize = (Math.PI * 2 * radius) / teeth / 3;
+            // Materials
+            const brassMat = new THREE.MeshPhysicalMaterial({
+                color: 0xd4af37,
+                metalness: 0.92,
+                roughness: 0.2,
+                clearcoat: 0.8,
+                side: THREE.DoubleSide
+            });
 
-                for (let i = 0; i < teeth; i++) {
-                    const angle1 = (i / teeth) * Math.PI * 2;
-                    const angle2 = ((i + 0.3) / teeth) * Math.PI * 2;
-                    const angle3 = ((i + 0.7) / teeth) * Math.PI * 2;
-                    const angle4 = ((i + 1) / teeth) * Math.PI * 2;
+            const copperMat = new THREE.MeshPhysicalMaterial({
+                color: 0xdd6b3b,
+                metalness: 0.95,
+                roughness: 0.22,
+                clearcoat: 0.8,
+                side: THREE.DoubleSide
+            });
 
-                    const innerR = radius * 0.85;
-                    const outerR = radius;
+            const darkSteelMat = new THREE.MeshStandardMaterial({
+                color: 0x1f2937,
+                metalness: 0.9,
+                roughness: 0.3
+            });
 
-                    if (i === 0) {
-                        shape.moveTo(Math.cos(angle1) * innerR, Math.sin(angle1) * innerR);
-                    }
-                    shape.lineTo(Math.cos(angle2) * outerR, Math.sin(angle2) * outerR);
-                    shape.lineTo(Math.cos(angle3) * outerR, Math.sin(angle3) * outerR);
-                    shape.lineTo(Math.cos(angle4) * innerR, Math.sin(angle4) * innerR);
+            // Articulated Stem with Mechanical Universal Joints
+            const stemPoints = [
+                new THREE.Vector3(0, 0.3, 0),
+                new THREE.Vector3(0.04, -0.1, 0.02),
+                new THREE.Vector3(-0.03, -0.6, -0.02),
+                new THREE.Vector3(0.01, -1.25, 0)
+            ];
+            const stemCurve = new THREE.CatmullRomCurve3(stemPoints);
+            const stemGeom = new THREE.TubeGeometry(stemCurve, 32, 0.038, 12, false);
+            const stem = new THREE.Mesh(stemGeom, darkSteelMat);
+            flowerGroup.add(stem);
+
+            // Central Kinetic Hub
+            const hubGeom = new THREE.CylinderGeometry(0.24, 0.2, 0.22, 24);
+            const hub = new THREE.Mesh(hubGeom, brassMat);
+            hub.position.y = 0.38;
+            flowerGroup.add(hub);
+
+            // Kinetic Tier Rings
+            const tierGroups = [];
+            const tierConfigs = [
+                { count: 12, length: 1.25, width: 0.44, curl: 0.65, wave: 0.22, y: 0.38, rotX: 0.95, mat: brassMat, speed: 0.4, waveSpeed: 2.2, phaseOffset: 0 },
+                { count: 10, length: 1.05, width: 0.38, curl: 0.55, wave: 0.20, y: 0.42, rotX: 0.72, mat: copperMat, speed: -0.5, waveSpeed: 2.6, phaseOffset: 1.5 },
+                { count: 8,  length: 0.85, width: 0.32, curl: 0.45, wave: 0.16, y: 0.46, rotX: 0.50, mat: brassMat, speed: 0.65, waveSpeed: 3.0, phaseOffset: 3.0 }
+            ];
+
+            tierConfigs.forEach((tier, tIdx) => {
+                const group = new THREE.Group();
+                group.position.y = tier.y;
+                flowerGroup.add(group);
+
+                const geom = FlowerUtils.createCurvedPetalGeometry({
+                    length: tier.length,
+                    width: tier.width,
+                    curl: tier.curl,
+                    wave: tier.wave,
+                    segmentsW: 14,
+                    segmentsL: 24
+                });
+
+                const meshes = [];
+                for (let i = 0; i < tier.count; i++) {
+                    const angle = (i / tier.count) * Math.PI * 2;
+                    const pivot = new THREE.Group();
+                    pivot.rotation.y = angle;
+
+                    const mesh = new THREE.Mesh(geom, tier.mat);
+                    mesh.rotation.x = tier.rotX;
+
+                    // Counterbalance weight on petal base
+                    const weightGeom = new THREE.SphereGeometry(0.024, 8, 8);
+                    const weight = new THREE.Mesh(weightGeom, darkSteelMat);
+                    weight.position.set(0, 0.04, 0.02);
+                    mesh.add(weight);
+
+                    pivot.add(mesh);
+                    group.add(pivot);
+
+                    meshes.push({
+                        mesh,
+                        baseRotX: tier.rotX,
+                        phase: i * (Math.PI * 2 / tier.count)
+                    });
                 }
 
-                const extrudeSettings = { depth: thickness, bevelEnabled: false };
-                const geom = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-                return geom;
-            }
-
-            // Main gear (below flower)
-            const mainGear = new THREE.Mesh(createGear(0.4, 16, 0.05), brassmat);
-            mainGear.rotation.x = Math.PI / 2;
-            mainGear.position.y = 0.1;
-            flowerGroup.add(mainGear);
-
-            // Secondary gears
-            const gear2 = new THREE.Mesh(createGear(0.2, 10, 0.04), copperMat);
-            gear2.rotation.x = Math.PI / 2;
-            gear2.position.set(0.55, 0.1, 0);
-            flowerGroup.add(gear2);
-
-            const gear3 = new THREE.Mesh(createGear(0.15, 8, 0.04), copperMat);
-            gear3.rotation.x = Math.PI / 2;
-            gear3.position.set(-0.5, 0.1, 0.2);
-            flowerGroup.add(gear3);
-
-            // Petals on hinges
-            const petalCount = 6;
-            const petals = [];
-
-            function createKineticPetal() {
-                const group = new THREE.Group();
-
-                // Hinge
-                const hingeGeom = new THREE.CylinderGeometry(0.02, 0.02, 0.06, 8);
-                const hinge = new THREE.Mesh(hingeGeom, steelMat);
-                hinge.rotation.z = Math.PI / 2;
-                group.add(hinge);
-
-                // Arm
-                const armGeom = new THREE.BoxGeometry(0.02, 0.3, 0.01);
-                const arm = new THREE.Mesh(armGeom, brassmat);
-                arm.position.y = 0.15;
-                group.add(arm);
-
-                // Petal
-                const shape = new THREE.Shape();
-                shape.moveTo(0, 0);
-                shape.bezierCurveTo(0.12, 0.05, 0.15, 0.25, 0.08, 0.4);
-                shape.bezierCurveTo(0.02, 0.48, -0.02, 0.48, -0.08, 0.4);
-                shape.bezierCurveTo(-0.15, 0.25, -0.12, 0.05, 0, 0);
-
-                const petalGeom = new THREE.ShapeGeometry(shape, 16);
-                const petalMat = new THREE.MeshStandardMaterial({
-                    color: 0xffaa77,
-                    side: THREE.DoubleSide,
-                    metalness: 0.3,
-                    roughness: 0.6
+                tierGroups.push({
+                    group,
+                    meshes,
+                    speed: tier.speed,
+                    waveSpeed: tier.waveSpeed,
+                    phaseOffset: tier.phaseOffset
                 });
-                const petal = new THREE.Mesh(petalGeom, petalMat);
-                petal.position.y = 0.28;
-                group.add(petal);
+            });
 
-                return group;
-            }
+            // Center Stamen Radiators
+            const stamenCluster = FlowerUtils.createStamenCluster({
+                count: 32,
+                height: 0.28,
+                spread: 0.12,
+                antherColor: 0xf97316,
+                filamentColor: 0xd4af37
+            });
+            stamenCluster.position.y = 0.48;
+            flowerGroup.add(stamenCluster);
 
-            for (let i = 0; i < petalCount; i++) {
-                const petal = createKineticPetal();
-                const angle = (i / petalCount) * Math.PI * 2;
-                petal.rotation.z = angle;
-                petal.position.set(
-                    Math.cos(angle) * 0.1,
-                    0.2,
-                    Math.sin(angle) * 0.1
-                );
-                petal.userData.phase = i * (Math.PI * 2 / petalCount);
-                flowerGroup.add(petal);
-                petals.push(petal);
-            }
-
-            // Center mechanism
-            const centerGeom = new THREE.CylinderGeometry(0.08, 0.1, 0.1, 16);
-            const center = new THREE.Mesh(centerGeom, brassmat);
-            center.position.y = 0.25;
-            flowerGroup.add(center);
-
-            // Stem (pipe)
-            const stemGeom = new THREE.CylinderGeometry(0.04, 0.05, 1, 8);
-            const stem = new THREE.Mesh(stemGeom, copperMat);
-            stem.position.y = -0.4;
-            flowerGroup.add(stem);
+            // Core Pulse
+            const core = FlowerUtils.createGlowingCore({
+                radius: 0.13,
+                color: 0xf97316,
+                glowColor: 0xea580c,
+                emissiveIntensity: 2.0
+            });
+            core.position.y = 0.52;
+            flowerGroup.add(core);
 
             function animate() {
                 requestAnimationFrame(animate);
                 const elapsed = clock.getElapsedTime();
 
-                const gearSpeed = elapsed * 0.5;
+                // Reciprocal wave motions across concentric counter-rotating tiers
+                tierGroups.forEach(tg => {
+                    tg.group.rotation.y = elapsed * tg.speed;
 
-                // Rotate gears
-                mainGear.rotation.z = gearSpeed;
-                gear2.rotation.z = -gearSpeed * 1.6;
-                gear3.rotation.z = gearSpeed * 2;
-
-                // Petals driven by gear
-                petals.forEach((petal, i) => {
-                    const petalOpen = (Math.sin(gearSpeed + petal.userData.phase) + 1) * 0.5;
-                    petal.rotation.x = -Math.PI / 2 + petalOpen * 0.8;
+                    tg.meshes.forEach(m => {
+                        const harmonic = Math.sin(elapsed * tg.waveSpeed + m.phase + tg.phaseOffset) * 0.14;
+                        m.mesh.rotation.x = m.baseRotX + harmonic;
+                    });
                 });
 
-                // Center rotates
-                center.rotation.y = gearSpeed * 0.5;
+                flowerGroup.position.y = Math.sin(elapsed * 0.8) * 0.02;
 
-                flowerGroup.rotation.y = elapsed * 0.05;
-
-                camera.position.x = Math.sin(elapsed * 0.1) * 0.5;
-                camera.lookAt(0, 0.3, 0);
+                core.update(elapsed);
+                atmosphere.update();
+                controls.update();
 
                 renderer.render(scene, camera);
             }

@@ -7,12 +7,50 @@
     <title>Wireframe Botanical Flower | Flowers For You 🌸</title>
     <link rel="icon" href="../favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="../css/style.css">
+    <style>
+        .cad-badge {
+            position: fixed;
+            top: 75px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(8, 20, 16, 0.8);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            padding: 8px 24px;
+            border-radius: 30px;
+            color: #34d399;
+            font-size: 13px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            border: 1px solid rgba(52, 211, 153, 0.25);
+            box-shadow: 0 8px 32px rgba(16, 185, 129, 0.2);
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            pointer-events: none;
+        }
+
+        .cad-badge span {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #34d399;
+            box-shadow: 0 0 10px #34d399;
+            animation: cadPulse 2s infinite ease-in-out;
+        }
+
+        @keyframes cadPulse {
+            0%, 100% { opacity: 0.5; transform: scale(0.9); }
+            50% { opacity: 1; transform: scale(1.2); }
+        }
+    </style>
 </head>
 
 <body>
     <div class="loading-overlay">
         <div class="loading-flower"></div>
-        <p class="loading-text">Rendering mesh...</p>
+        <p class="loading-text">Synthesizing holographic wireframe...</p>
     </div>
 
     <div class="flower-page">
@@ -25,9 +63,13 @@
             </a>
         </nav>
         <div id="canvas-container" class="flower-canvas"></div>
+        <div class="cad-badge">
+            <span></span>
+            Holographic CAD Matrix • Polygon Lattice
+        </div>
         <div class="flower-info">
             <h1>Wireframe Botanical Flower</h1>
-            <p>Glowing wireframe with flowing data points</p>
+            <p>Architectural holographic wireframe bloom with glass lattice facets and streaming data pulses coursing through vascular circuits</p>
         </div>
     </div>
 
@@ -37,163 +79,220 @@
         (function () {
             const container = document.getElementById('canvas-container');
             const { scene, camera, renderer, clock } = FlowerUtils.initScene(container, {
-                background: 0x0a0510
+                background: 0x060f0c,
+                antialias: true
             });
 
-            camera.position.set(0, 2, 4.5);
-            camera.lookAt(0, 0.5, 0);
+            FlowerUtils.createStudioEnvironment(renderer, 'dark_luxury');
+            const controls = FlowerUtils.setupOrbitControls(camera, renderer.domElement, {
+                autoRotateSpeed: 0.45,
+                minDistance: 2.2,
+                maxDistance: 8.5
+            });
 
-            // Minimal ambient
-            const ambient = new THREE.AmbientLight(0x222233, 0.3);
+            camera.position.set(0, 1.4, 3.6);
+            camera.lookAt(0, 0.35, 0);
+
+            // Lighting
+            const ambient = new THREE.AmbientLight(0x0a241b, 0.7);
             scene.add(ambient);
 
-            // Flower group
+            const sunLight = new THREE.DirectionalLight(0xd1fae5, 2.0);
+            sunLight.position.set(5, 8, 4);
+            scene.add(sunLight);
+
+            const emeraldRim = new THREE.DirectionalLight(0x10b981, 1.8);
+            emeraldRim.position.set(-4, -2, -3);
+            scene.add(emeraldRim);
+
+            // Holographic CAD Pedestal
+            const pedestal = FlowerUtils.createPedestal(scene, {
+                radius: 1.8,
+                height: 0.16,
+                y: -1.3,
+                baseColor: 0x091812,
+                rimColor: 0x10b981,
+                marble: false
+            });
+
+            // Rotating Holographic Radar Rings
+            const radarRings = [];
+            for (let i = 0; i < 3; i++) {
+                const ringGeom = new THREE.RingGeometry(0.5 + i * 0.4, 0.52 + i * 0.4, 48);
+                const ringMat = new THREE.MeshBasicMaterial({ color: 0x34d399, side: THREE.DoubleSide, transparent: true, opacity: 0.35 - i * 0.08 });
+                const ring = new THREE.Mesh(ringGeom, ringMat);
+                ring.rotation.x = -Math.PI / 2;
+                ring.position.y = -1.2 + i * 0.02;
+                scene.add(ring);
+                radarRings.push(ring);
+            }
+
+            // Atmosphere
+            const atmosphere = FlowerUtils.createAtmosphere(scene, {
+                count: 110,
+                color: 0x6ee7b7,
+                size: 0.035,
+                spread: 6.5,
+                driftSpeed: 0.2
+            });
+
+            // Flower Group
             const flowerGroup = new THREE.Group();
             scene.add(flowerGroup);
 
-            // Wireframe material
-            const wireMat = new THREE.LineBasicMaterial({ color: 0x00ffaa, transparent: true, opacity: 0.8 });
+            // Materials
+            const wireframeMat = new THREE.MeshBasicMaterial({
+                color: 0x10b981,
+                wireframe: true,
+                transparent: true,
+                opacity: 0.85
+            });
 
-            // Create wireframe petal
-            function createWireframePetal() {
-                const group = new THREE.Group();
+            const glassFacetMat = new THREE.MeshPhysicalMaterial({
+                color: 0x064e3b,
+                roughness: 0.1,
+                transmission: 0.85,
+                thickness: 0.5,
+                clearcoat: 1.0,
+                transparent: true,
+                opacity: 0.35,
+                side: THREE.DoubleSide
+            });
 
-                // Petal outline
-                const points = [];
-                const segments = 20;
-                for (let i = 0; i <= segments; i++) {
-                    const t = i / segments;
-                    const x = Math.sin(t * Math.PI) * 0.15 * Math.sin(t * Math.PI * 0.5);
-                    const y = t * 0.6;
-                    points.push(new THREE.Vector3(x, y, 0));
+            // Wireframe Stem
+            const stemPoints = [
+                new THREE.Vector3(0, 0.3, 0),
+                new THREE.Vector3(0.04, -0.1, 0.02),
+                new THREE.Vector3(-0.03, -0.6, -0.02),
+                new THREE.Vector3(0.01, -1.25, 0)
+            ];
+            const stemCurve = new THREE.CatmullRomCurve3(stemPoints);
+            const stemGeom = new THREE.TubeGeometry(stemCurve, 24, 0.038, 8, false);
+            const stemWire = new THREE.Mesh(stemGeom, wireframeMat);
+            const stemGlass = new THREE.Mesh(stemGeom, glassFacetMat);
+            flowerGroup.add(stemWire);
+            flowerGroup.add(stemGlass);
+
+            // Petals with Glass facets + Neon Wireframe
+            const tiers = [
+                { count: 9, length: 1.25, width: 0.46, curl: 0.65, wave: 0.22, y: 0.38, rotX: 0.95 },
+                { count: 8, length: 1.05, width: 0.40, curl: 0.55, wave: 0.18, y: 0.42, rotX: 0.72 },
+                { count: 6, length: 0.85, width: 0.34, curl: 0.45, wave: 0.15, y: 0.46, rotX: 0.48 }
+            ];
+
+            const petalMeshes = [];
+
+            tiers.forEach((tier, tIdx) => {
+                const geom = FlowerUtils.createCurvedPetalGeometry({
+                    length: tier.length,
+                    width: tier.width,
+                    curl: tier.curl,
+                    wave: tier.wave,
+                    segmentsW: 10,
+                    segmentsL: 16
+                });
+
+                for (let i = 0; i < tier.count; i++) {
+                    const angle = (i / tier.count) * Math.PI * 2 + (tIdx * 0.4);
+                    const pivot = new THREE.Group();
+                    pivot.position.set(0, tier.y, 0);
+                    pivot.rotation.y = angle;
+
+                    const glassMesh = new THREE.Mesh(geom, glassFacetMat);
+                    const wireMesh = new THREE.Mesh(geom, wireframeMat);
+                    glassMesh.rotation.x = tier.rotX;
+                    wireMesh.rotation.x = tier.rotX;
+
+                    pivot.add(glassMesh);
+                    pivot.add(wireMesh);
+                    flowerGroup.add(pivot);
+
+                    petalMeshes.push({
+                        glassMesh,
+                        wireMesh,
+                        pivot,
+                        tier: tIdx,
+                        baseRotX: tier.rotX,
+                        phase: i * 0.5 + tIdx * 1.2
+                    });
                 }
-                for (let i = segments; i >= 0; i--) {
-                    const t = i / segments;
-                    const x = -Math.sin(t * Math.PI) * 0.15 * Math.sin(t * Math.PI * 0.5);
-                    const y = t * 0.6;
-                    points.push(new THREE.Vector3(x, y, 0));
-                }
+            });
 
-                const outlineGeom = new THREE.BufferGeometry().setFromPoints(points);
-                const outline = new THREE.Line(outlineGeom, wireMat.clone());
-                group.add(outline);
+            // Streaming Data Pulses
+            const dataPulseCount = 60;
+            const pulseGeom = new THREE.BufferGeometry();
+            const pulsePos = new Float32Array(dataPulseCount * 3);
+            const pulseData = [];
 
-                // Internal veins
-                for (let v = 0; v < 3; v++) {
-                    const veinPoints = [];
-                    for (let i = 0; i <= 10; i++) {
-                        const t = i / 10;
-                        const x = (v - 1) * 0.04;
-                        const y = t * 0.55;
-                        veinPoints.push(new THREE.Vector3(x, y, 0));
-                    }
-                    const veinGeom = new THREE.BufferGeometry().setFromPoints(veinPoints);
-                    const vein = new THREE.Line(veinGeom, wireMat.clone());
-                    group.add(vein);
-                }
-
-                return group;
+            for (let i = 0; i < dataPulseCount; i++) {
+                pulseData.push({
+                    petalIndex: i % petalMeshes.length,
+                    t: Math.random(),
+                    speed: 0.4 + Math.random() * 0.4
+                });
             }
+            pulseGeom.setAttribute('position', new THREE.BufferAttribute(pulsePos, 3));
+            const pulseMat = new THREE.PointsMaterial({
+                color: 0x34d399,
+                size: 0.055,
+                transparent: true,
+                opacity: 0.9,
+                blending: THREE.AdditiveBlending
+            });
+            const pulses = new THREE.Points(pulseGeom, pulseMat);
+            flowerGroup.add(pulses);
 
-            // Create petals
-            const petalCount = 8;
-            const petals = [];
-            for (let i = 0; i < petalCount; i++) {
-                const petal = createWireframePetal();
-                const angle = (i / petalCount) * Math.PI * 2;
-                petal.rotation.z = angle;
-                petal.rotation.x = -Math.PI / 2 + 0.4;
-                petal.position.y = 0.5;
-                flowerGroup.add(petal);
-                petals.push(petal);
-            }
-
-            // Center wireframe sphere
-            const centerGeom = new THREE.IcosahedronGeometry(0.1, 1);
-            const centerMat = new THREE.MeshBasicMaterial({ color: 0x00ffaa, wireframe: true });
-            const center = new THREE.Mesh(centerGeom, centerMat);
-            center.position.y = 0.55;
-            flowerGroup.add(center);
-
-            // Stem wireframe
-            const stemPoints = [];
-            for (let i = 0; i <= 20; i++) {
-                const t = i / 20;
-                stemPoints.push(new THREE.Vector3(
-                    Math.sin(t * Math.PI * 2) * 0.02,
-                    0.4 - t * 1.2,
-                    Math.cos(t * Math.PI * 2) * 0.02
-                ));
-            }
-            const stemGeom = new THREE.BufferGeometry().setFromPoints(stemPoints);
-            const stem = new THREE.Line(stemGeom, wireMat.clone());
-            flowerGroup.add(stem);
-
-            // Flowing data points
-            const dataPoints = [];
-            const dataCount = 50;
-            for (let i = 0; i < dataCount; i++) {
-                const pointGeom = new THREE.SphereGeometry(0.015, 4, 4);
-                const pointMat = new THREE.MeshBasicMaterial({ color: 0x00ffaa });
-                const point = new THREE.Mesh(pointGeom, pointMat);
-
-                // Assign to a petal
-                const petalIndex = Math.floor(Math.random() * petalCount);
-                point.userData = {
-                    petalIndex: petalIndex,
-                    progress: Math.random(),
-                    speed: 0.005 + Math.random() * 0.01
-                };
-
-                scene.add(point);
-                dataPoints.push(point);
-            }
+            // Center Wireframe Icosahedron Core
+            const core = FlowerUtils.createGlowingCore({
+                radius: 0.14,
+                color: 0x10b981,
+                glowColor: 0x059669,
+                emissiveIntensity: 2.2
+            });
+            core.position.y = 0.52;
+            flowerGroup.add(core);
 
             function animate() {
                 requestAnimationFrame(animate);
                 const elapsed = clock.getElapsedTime();
 
-                // Animate data points flowing along petals
-                dataPoints.forEach(point => {
-                    point.userData.progress += point.userData.speed;
-                    if (point.userData.progress > 1) point.userData.progress = 0;
-
-                    const petal = petals[point.userData.petalIndex];
-                    const angle = (point.userData.petalIndex / petalCount) * Math.PI * 2;
-                    const t = point.userData.progress;
-
-                    // Calculate position along petal
-                    const localY = t * 0.6;
-                    const localX = Math.sin(t * Math.PI) * 0.1 * Math.sin(t * Math.PI * 0.5);
-
-                    // Transform to world coordinates
-                    const radius = 0.05 + t * 0.25;
-                    point.position.set(
-                        Math.cos(angle) * radius + localX * Math.cos(angle),
-                        0.5 + localY * 0.6 - t * 0.1,
-                        Math.sin(angle) * radius + localX * Math.sin(angle)
-                    );
-
-                    // Pulse
-                    point.scale.setScalar(1 + Math.sin(elapsed * 5 + t * Math.PI * 2) * 0.3);
+                // Rotate radar rings
+                radarRings.forEach((r, idx) => {
+                    r.rotation.z = elapsed * (0.2 + idx * 0.15) * (idx % 2 === 0 ? 1 : -1);
                 });
 
-                // Wire pulse
-                const pulse = Math.sin(elapsed * 3) * 0.3 + 0.7;
-                petals.forEach(petal => {
-                    petal.children.forEach(child => {
-                        if (child.material) child.material.opacity = pulse;
-                    });
+                // Harmonic breathing oscillation
+                petalMeshes.forEach(p => {
+                    const wave = Math.sin(elapsed * 1.8 + p.phase) * 0.03;
+                    p.glassMesh.rotation.x = p.baseRotX + wave;
+                    p.wireMesh.rotation.x = p.baseRotX + wave;
                 });
 
-                // Center rotates
-                center.rotation.x = elapsed;
-                center.rotation.y = elapsed * 0.7;
+                // Update data pulses coursing through petal lines
+                const pArr = pulseGeom.attributes.position.array;
+                for (let i = 0; i < dataPulseCount; i++) {
+                    const d = pulseData[i];
+                    d.t = (d.t + 0.012 * d.speed) % 1.0;
 
+                    const p = petalMeshes[d.petalIndex];
+                    const angle = p.pivot.rotation.y;
+                    const r = d.t * 1.1;
+                    const y = p.pivot.position.y + Math.sin(d.t * Math.PI * 0.5) * 0.6;
+                    const x = Math.cos(angle) * r;
+                    const z = Math.sin(angle) * r;
+
+                    pArr[i * 3] = x;
+                    pArr[i * 3 + 1] = y;
+                    pArr[i * 3 + 2] = z;
+                }
+                pulseGeom.attributes.position.needsUpdate = true;
+
+                flowerGroup.position.y = Math.sin(elapsed * 0.8) * 0.02;
                 flowerGroup.rotation.y = elapsed * 0.1;
 
-                camera.position.x = Math.sin(elapsed * 0.1) * 0.4;
-                camera.lookAt(0, 0.5, 0);
+                core.update(elapsed);
+                atmosphere.update();
+                controls.update();
 
                 renderer.render(scene, camera);
             }
